@@ -1,0 +1,12 @@
+{
+  "vaultPath": "~/CrossingVault",
+  "sqlitePath": "~/CrossingVault/.index/refs.sqlite",
+  "importSources": {
+    "xlsxDir": "/Users/zeoooo/Downloads/60-表格",
+    "htmlDir": "/Users/zeoooo/Downloads/60-html"
+  },
+  "modelAdapter": {
+    "defaultCli": "claude",
+    "fallbackCli": "codex"
+  }
+}
