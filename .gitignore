@@ -22,3 +22,15 @@
 /19-*.md
 /20-*.md
 .DS_Store
+
+# vault 不进 git
+CrossingVault/
+~/CrossingVault
+# python 产物
+tools/bulk_import/.venv/
+tools/bulk_import/**/__pycache__/
+tools/bulk_import/**/*.egg-info/
+tools/bulk_import/.pytest_cache/
+# node 产物
+packages/*/node_modules/
+packages/*/dist/
