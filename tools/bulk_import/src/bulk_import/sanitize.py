@@ -20,9 +20,11 @@ def _truncate_bytes(s: str, limit: int) -> str:
     return s
 
 def build_stem(date: str, title: str, url: str) -> str:
+    from hashlib import sha1
+    disambig = "_" + sha1(url.encode("utf-8")).hexdigest()[:8]
     base = f"{date}_{sanitize_filename(title)}"
-    if len(base.encode("utf-8")) <= MAX_STEM_BYTES:
-        return base
-    suffix = "_" + url[-8:]
-    room = MAX_STEM_BYTES - len(suffix.encode("utf-8"))
-    return _truncate_bytes(base, room) + suffix
+    full = base + disambig
+    if len(full.encode("utf-8")) <= MAX_STEM_BYTES:
+        return full
+    room = MAX_STEM_BYTES - len(disambig.encode("utf-8"))
+    return _truncate_bytes(base, room) + disambig

@@ -36,7 +36,7 @@ def _hash_body(plain: str) -> str:
 def _frontmatter_yaml(art: Article) -> str:
     def esc(v):
         if v is None: return '""'
-        s = str(v).replace('"', '\\"')
+        s = str(v).replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r')
         return f'"{s}"'
     lines = [
         "---",
@@ -103,7 +103,14 @@ def run_import(cfg: Config) -> ImportStats:
             console.print(f"[yellow]Skip {account}: no html dir[/]")
             continue
 
-        rows = list(iter_xlsx_rows(xlsx))
+        try:
+            rows = list(iter_xlsx_rows(xlsx))
+        except Exception as e:
+            console.print(f"[red]Cannot read {xlsx.name}: {type(e).__name__}: {e}[/]")
+            log_issue(cfg.sqlite_path, account=account, xlsx_row=None,
+                      html_path=None, error_kind="XLSX_READ_ERROR",
+                      message=f"{type(e).__name__}: {e}")
+            continue
         for row in tqdm(rows, desc=account[:10], leave=False):
             existing = get_by_url(cfg.sqlite_path, row.url)
             if existing is not None:
@@ -125,6 +132,13 @@ def run_import(cfg: Config) -> ImportStats:
                           html_path=str(html_path), error_kind="EMPTY_BODY",
                           message=str(e))
                 stats.empty_body += 1
+                continue
+            except OSError as e:
+                log_issue(cfg.sqlite_path, account=row.account,
+                          xlsx_row=row.xlsx_row_number,
+                          html_path=str(html_path), error_kind="WRITE_ERROR",
+                          message=f"{type(e).__name__}: {e}")
+                stats.write_error += 1
                 continue
             except Exception as e:
                 log_issue(cfg.sqlite_path, account=row.account,
