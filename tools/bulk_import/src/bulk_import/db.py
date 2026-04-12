@@ -21,8 +21,8 @@ CREATE TABLE IF NOT EXISTS ref_articles (
   word_count       INTEGER,
   md_path          TEXT NOT NULL,
   html_path        TEXT NOT NULL,
-  body_plain       TEXT,
-  body_segmented   TEXT,
+  body_plain       TEXT NOT NULL DEFAULT '',
+  body_segmented   TEXT NOT NULL DEFAULT '',
   topics_core_json TEXT,
   topics_fine_json TEXT,
   ingest_status    TEXT NOT NULL DEFAULT 'raw',
@@ -121,6 +121,7 @@ def upsert_article(path: Path, art: Article) -> None:
               ingest_status, content_hash, imported_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(url) DO UPDATE SET
+              id=excluded.id,
               title=excluded.title, author=excluded.author,
               published_at=excluded.published_at, is_original=excluded.is_original,
               position=excluded.position, cover=excluded.cover, summary=excluded.summary,
