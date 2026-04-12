@@ -60,3 +60,19 @@ def test_run_import_idempotent(tmp_path):
     stats2 = run_import(cfg)
     assert stats2.skipped >= 1
     assert stats2.succeeded == 0
+
+def test_rebuild_from_vault(tmp_path):
+    xlsx_dir, html_dir = _fake_sources(tmp_path)
+    vault = tmp_path / "vault"
+    cfg = Config(vault_path=vault, sqlite_path=vault / ".index/refs.sqlite",
+                 xlsx_dir=xlsx_dir, html_dir=html_dir,
+                 default_cli="claude", fallback_cli="codex")
+    run_import(cfg)
+    # delete sqlite
+    cfg.sqlite_path.unlink()
+    from bulk_import.importer import rebuild_from_vault
+    stats = rebuild_from_vault(cfg)
+    assert stats.succeeded == 1
+    from bulk_import.db import get_by_url
+    art = get_by_url(cfg.sqlite_path, "http://mp.weixin.qq.com/s?abc")
+    assert art is not None

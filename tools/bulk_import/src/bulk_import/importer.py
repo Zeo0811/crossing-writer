@@ -4,6 +4,7 @@ from pathlib import Path
 from hashlib import sha1
 import shutil
 import json
+import re
 from typing import Optional
 from tqdm import tqdm
 from rich.console import Console
@@ -165,14 +166,96 @@ def run_import(cfg: Config) -> ImportStats:
                   f"write={stats.write_error}[/]")
     return stats
 
+def _parse_frontmatter(md_text: str) -> tuple[dict, str]:
+    if not md_text.startswith("---"):
+        return {}, md_text
+    end = md_text.find("\n---", 3)
+    if end < 0:
+        return {}, md_text
+    fm = md_text[3:end].strip()
+    body = md_text[end+4:].lstrip("\n")
+    data = {}
+    for line in fm.splitlines():
+        if ":" not in line: continue
+        k, _, v = line.partition(":")
+        v = v.strip()
+        if v.startswith('"') and v.endswith('"'):
+            # unescape our escape sequences: \\, \", \n, \r
+            v = v[1:-1].replace('\\n', '\n').replace('\\r', '\r').replace('\\"', '"').replace('\\\\', '\\')
+        elif v == "null":
+            v = None
+        elif v in ("true","false"):
+            v = v == "true"
+        elif v.startswith("[") and v.endswith("]"):
+            try:
+                v = json.loads(v)
+            except Exception:
+                pass
+        data[k.strip()] = v
+    return data, body
+
+def rebuild_from_vault(cfg: Config) -> ImportStats:
+    init_db(cfg.sqlite_path)
+    stats = ImportStats()
+    refs_dir = cfg.vault_path / "10_refs"
+    if not refs_dir.exists():
+        return stats
+    for md_file in refs_dir.rglob("*.md"):
+        try:
+            text = md_file.read_text(encoding="utf-8")
+            fm, body = _parse_frontmatter(text)
+            if fm.get("type") != "ref_article":
+                continue
+            # strip common markdown markers to approximate plain text
+            plain = re.sub(r"[#*>`\[\]()!]", "", body)
+            plain = re.sub(r"\s+", " ", plain).strip()
+            pos_val = fm.get("position")
+            position = int(pos_val) if pos_val not in (None, "null") else None
+            wc_val = fm.get("word_count")
+            word_count = int(wc_val) if wc_val not in (None, "null") else None
+            art = Article(
+                id=_hash_url(fm["url"]),
+                account=fm["account"],
+                title=fm["title"],
+                author=fm.get("author"),
+                published_at=fm["published_at"],
+                is_original=bool(fm.get("is_original")),
+                position=position,
+                url=fm["url"],
+                cover=fm.get("cover"),
+                summary=fm.get("summary"),
+                word_count=word_count,
+                md_path=str(md_file.relative_to(cfg.vault_path)),
+                html_path=str(md_file.with_suffix(".html").relative_to(cfg.vault_path)),
+                body_plain=plain,
+                body_segmented=segment(plain),
+                topics_core=fm.get("topics_core") or None,
+                topics_fine=fm.get("topics_fine") or None,
+                ingest_status=fm.get("ingest_status", "raw"),
+                content_hash=_hash_body(plain),
+            )
+            upsert_article(cfg.sqlite_path, art)
+            stats.succeeded += 1
+        except Exception as e:
+            log_issue(cfg.sqlite_path, account=None, xlsx_row=None,
+                      html_path=str(md_file), error_kind="WRITE_ERROR",
+                      message=f"{type(e).__name__}: {e}")
+            stats.write_error += 1
+    return stats
+
 def main() -> int:
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="config.json")
+    ap.add_argument("--rebuild-from-vault", action="store_true",
+                    help="Rebuild SQLite from existing vault md files (skip xlsx/html)")
     args = ap.parse_args()
     cfg = load_config(Path(args.config))
-    run_import(cfg)
-    return 0
+    if args.rebuild_from_vault:
+        stats = rebuild_from_vault(cfg)
+    else:
+        stats = run_import(cfg)
+    return 0 if (stats.parse_error == 0 and stats.write_error == 0) else 1
 
 if __name__ == "__main__":
     raise SystemExit(main())
