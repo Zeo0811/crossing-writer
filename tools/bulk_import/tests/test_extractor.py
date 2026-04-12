@@ -29,3 +29,13 @@ def test_extract_empty_body_raises():
     from bulk_import.extractor import EmptyBodyError
     with pytest.raises(EmptyBodyError):
         extract("<html><body></body></html>")
+
+def test_extract_does_not_drop_paragraphs_mentioning_common_words():
+    html = """<html><body><div id="js_content">
+    <p>这篇文章很值得一读，在看完之后请分享给同事。</p>
+    <p>正文第二段也要保留。</p>
+    </div></body></html>"""
+    from bulk_import.extractor import extract
+    res = extract(html)
+    assert "在看完之后请分享" in res.markdown
+    assert "正文第二段也要保留" in res.markdown

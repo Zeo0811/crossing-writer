@@ -10,6 +10,8 @@ BOILERPLATE_TEXT_PATTERNS = [
     "微信扫一扫", "赞赏作者", "在看", "分享",
 ]
 
+BOILERPLATE_MATCH_SET = set(BOILERPLATE_TEXT_PATTERNS)
+
 REMOVE_TAGS = ["script", "style", "noscript", "iframe", "svg"]
 
 class EmptyBodyError(Exception):
@@ -34,12 +36,10 @@ def _strip(node):
             el.decompose()
     for el in list(node.find_all(string=True)):
         txt = (el.string or "").strip()
-        for pat in BOILERPLATE_TEXT_PATTERNS:
-            if pat and pat in txt:
-                parent = el.parent
-                if parent is not None:
-                    parent.decompose()
-                break
+        if txt and txt in BOILERPLATE_MATCH_SET:
+            parent = el.parent
+            if parent is not None:
+                parent.decompose()
 
 def _promote_data_src(node):
     for img in node.find_all("img"):
