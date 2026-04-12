@@ -6,7 +6,7 @@
     "htmlDir": "/Users/zeoooo/Downloads/60-html"
   },
   "modelAdapter": {
-    "defaultCli": "claude",
-    "fallbackCli": "codex"
+    "defaultCli": "codex",
+    "fallbackCli": "claude"
   }
 }
