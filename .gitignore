@@ -40,3 +40,4 @@ packages/web-ui/dist/
 packages/web-ui/src/**/*.js
 packages/web-ui/src/**/*.js.map
 packages/*/tsconfig.tsbuildinfo
+/node_modules/
