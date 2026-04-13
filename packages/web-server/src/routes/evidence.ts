@@ -150,6 +150,77 @@ export function registerEvidenceRoutes(app: FastifyInstance, deps: EvidenceDeps)
     },
   );
 
+  const VALID_SEVERITY = new Set(["major", "minor", "positive"]);
+
+  function validateNotesFrontmatter(fm: any, expectedCaseId: string): string | null {
+    if (!fm || typeof fm !== "object") return "frontmatter required";
+    if (fm.type !== "evidence_notes") return "type must be 'evidence_notes'";
+    if (fm.case_id !== expectedCaseId) return `case_id must equal ${expectedCaseId}`;
+    if (fm.ran_at != null && typeof fm.ran_at !== "string") return "ran_at must be string";
+    if (fm.duration_min != null && (typeof fm.duration_min !== "number" || fm.duration_min < 0)) {
+      return "duration_min must be non-negative number";
+    }
+    if (fm.quantitative != null) {
+      if (typeof fm.quantitative !== "object") return "quantitative must be object";
+      for (const [k, v] of Object.entries(fm.quantitative)) {
+        if (k === "custom") {
+          if (typeof v !== "object") return "quantitative.custom must be object";
+        } else if (typeof v !== "number") {
+          return `quantitative.${k} must be number`;
+        }
+      }
+    }
+    if (fm.observations != null) {
+      if (!Array.isArray(fm.observations)) return "observations must be array";
+      for (const [i, obs] of fm.observations.entries()) {
+        if (!obs || typeof obs !== "object") return `observations[${i}] must be object`;
+        if (typeof obs.point !== "string" || !obs.point) return `observations[${i}].point required`;
+        if (!VALID_SEVERITY.has(obs.severity)) return `observations[${i}].severity invalid`;
+        if (obs.screenshot_ref != null && typeof obs.screenshot_ref !== "string") {
+          return `observations[${i}].screenshot_ref must be string`;
+        }
+        if (obs.generated_ref != null && typeof obs.generated_ref !== "string") {
+          return `observations[${i}].generated_ref must be string`;
+        }
+      }
+    }
+    return null;
+  }
+
+  app.get<{ Params: { id: string; caseId: string } }>(
+    "/api/projects/:id/evidence/:caseId/notes",
+    async (req, reply) => {
+      const projectDir = join(deps.projectsDir, req.params.id);
+      const evStore = new EvidenceStore(projectDir);
+      const notes = await evStore.readNotes(req.params.caseId);
+      if (!notes) return reply.code(404).send({ error: "notes not found" });
+      return reply.send(notes);
+    },
+  );
+
+  app.put<{
+    Params: { id: string; caseId: string };
+    Body: { frontmatter: Record<string, any>; body: string };
+  }>(
+    "/api/projects/:id/evidence/:caseId/notes",
+    async (req, reply) => {
+      const body = req.body ?? ({} as any);
+      const err = validateNotesFrontmatter(body.frontmatter, req.params.caseId);
+      if (err) return reply.code(400).send({ error: err });
+      if (typeof body.body !== "string") {
+        return reply.code(400).send({ error: "body must be string" });
+      }
+      const projectDir = join(deps.projectsDir, req.params.id);
+      const evStore = new EvidenceStore(projectDir);
+      await evStore.writeNotes(req.params.caseId, {
+        frontmatter: body.frontmatter,
+        body: body.body,
+      });
+      await buildProjectEvidence(deps, req.params.id);
+      return reply.send({ ok: true });
+    },
+  );
+
   app.get<{ Params: { id: string; caseId: string } }>(
     "/api/projects/:id/evidence/:caseId",
     async (req, reply) => {
