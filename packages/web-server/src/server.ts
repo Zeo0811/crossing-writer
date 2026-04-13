@@ -8,6 +8,7 @@ import { ImageStore } from "./services/image-store.js";
 import { registerProjectsRoutes } from "./routes/projects.js";
 import { registerBriefRoutes } from "./routes/brief.js";
 import { registerOverviewRoutes } from "./routes/overview.js";
+import { registerCasePlanRoutes } from "./routes/case-plan.js";
 import { ExpertRegistry } from "./services/expert-registry.js";
 import { registerExpertsRoutes } from "./routes/experts.js";
 import { registerMissionRoutes } from "./routes/mission.js";
@@ -54,6 +55,9 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
   });
 
   registerStreamRoutes(app, { projectsDir: cfg.projectsDir });
+
+  const vaultRegistry = new ExpertRegistry(cfg.vaultPath);
+  registerCasePlanRoutes(app, { store, expertRegistry: vaultRegistry });
 
   registerOverviewRoutes(app, {
     store, imageStore, projectsDir: cfg.projectsDir,

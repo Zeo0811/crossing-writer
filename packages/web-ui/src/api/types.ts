@@ -69,3 +69,10 @@ export interface OverviewGenerateBody {
   productUrls: string[];
   userDescription?: string;
 }
+
+export interface CaseExpertInfo {
+  name: string;
+  specialty: string;
+  creativity_score: number | null;
+  preselected: boolean;
+}

@@ -1,4 +1,6 @@
-import type { Project, Expert, ProjectImage, OverviewGenerateBody } from "./types";
+import type { Project, Expert, ProjectImage, OverviewGenerateBody, CaseExpertInfo } from "./types";
+
+export type { CaseExpertInfo };
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -119,6 +121,21 @@ export async function patchOverview(projectId: string, markdown: string): Promis
 export async function approveOverview(projectId: string): Promise<void> {
   const res = await fetch(`/api/projects/${projectId}/overview/approve`, { method: "POST" });
   if (!res.ok) throw new Error("approve failed");
+}
+
+export async function listCaseExperts(projectId: string): Promise<CaseExpertInfo[]> {
+  const res = await fetch(`/api/projects/${projectId}/experts/case`);
+  if (!res.ok) throw new Error("failed");
+  return res.json();
+}
+
+export async function startCasePlan(projectId: string, experts: string[]): Promise<void> {
+  const res = await fetch(`/api/projects/${projectId}/case-plan/start`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ experts }),
+  });
+  if (!res.ok) throw new Error("start failed");
 }
 
 export const apiMission = {
