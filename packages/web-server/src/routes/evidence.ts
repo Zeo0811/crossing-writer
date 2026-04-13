@@ -245,4 +245,31 @@ export function registerEvidenceRoutes(app: FastifyInstance, deps: EvidenceDeps)
       });
     },
   );
+
+  app.post<{ Params: { id: string } }>(
+    "/api/projects/:id/evidence/submit",
+    async (req, reply) => {
+      const summary = await buildProjectEvidence(deps, req.params.id);
+      const incomplete = Object.entries(summary.cases)
+        .filter(([, v]) => !v.completeness.complete)
+        .map(([k]) => k);
+      if (incomplete.length > 0) {
+        return reply.code(409).send({
+          error: "not all cases complete",
+          incomplete_cases: incomplete,
+        });
+      }
+      const submitted_at = new Date().toISOString();
+      await deps.store.update(req.params.id, {
+        status: "evidence_ready",
+        evidence: {
+          cases: (await deps.store.get(req.params.id))?.evidence?.cases ?? {},
+          index_path: "evidence/index.md",
+          all_complete: true,
+          submitted_at,
+        },
+      });
+      return reply.send({ ok: true });
+    },
+  );
 }
