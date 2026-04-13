@@ -17,4 +17,6 @@ export { ProductOverviewAgent } from "./roles/product-overview-agent.js";
 export type { OverviewInput, OverviewOutput } from "./roles/product-overview-agent.js";
 export { CasePlannerExpert } from "./roles/case-planner-expert.js";
 export type { CaseExpertOpts, Round1Input as CaseRound1Input, Round2Input as CaseRound2Input, CaseResult } from "./roles/case-planner-expert.js";
+export { CaseCoordinator } from "./roles/case-coordinator.js";
+export type { SynthesizeInput } from "./roles/case-coordinator.js";
 export const VERSION = "0.2.0";
