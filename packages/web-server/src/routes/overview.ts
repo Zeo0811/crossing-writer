@@ -2,11 +2,19 @@ import type { FastifyInstance } from "fastify";
 import "@fastify/multipart";
 import type { ProjectStore } from "../services/project-store.js";
 import type { ImageStore } from "../services/image-store.js";
+import { analyzeOverview } from "../services/overview-analyzer-service.js";
 
 export interface OverviewDeps {
   store: ProjectStore;
   imageStore: ImageStore;
   projectsDir: string;
+  analyzeOverviewDeps: {
+    vaultPath: string;
+    sqlitePath: string;
+    agents: Record<string, unknown>;
+    defaultCli: "claude" | "codex";
+    fallbackCli: "claude" | "codex";
+  };
 }
 
 export function registerOverviewRoutes(app: FastifyInstance, deps: OverviewDeps) {
@@ -62,4 +70,28 @@ export function registerOverviewRoutes(app: FastifyInstance, deps: OverviewDeps)
       return reply.code(204).send();
     },
   );
+
+  app.post<{
+    Params: { id: string };
+    Body: { productUrls?: string[]; userDescription?: string };
+  }>("/api/projects/:id/overview/generate", async (req, reply) => {
+    const { id } = req.params;
+    const project = await deps.store.get(id);
+    if (!project) return reply.code(404).send({ error: "project not found" });
+    const images = await deps.imageStore.list(id);
+    if (images.length === 0) {
+      return reply.code(400).send({ error: "at least one image required" });
+    }
+    const body = req.body ?? {};
+    void analyzeOverview({
+      projectId: id,
+      projectsDir: deps.projectsDir,
+      store: deps.store,
+      imageStore: deps.imageStore,
+      productUrls: body.productUrls ?? [],
+      userDescription: body.userDescription,
+      ...deps.analyzeOverviewDeps,
+    }).catch(() => { /* error is logged via events */ });
+    return reply.code(202).send({ status: "analyzing" });
+  });
 }

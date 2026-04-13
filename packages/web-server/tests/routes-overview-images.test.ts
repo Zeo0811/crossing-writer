@@ -17,7 +17,13 @@ async function mkApp() {
   const app = Fastify();
   await app.register(multipart);
   registerProjectsRoutes(app, { store });
-  registerOverviewRoutes(app, { store, imageStore, projectsDir });
+  registerOverviewRoutes(app, {
+    store, imageStore, projectsDir,
+    analyzeOverviewDeps: {
+      vaultPath: "", sqlitePath: "",
+      agents: {}, defaultCli: "claude", fallbackCli: "codex",
+    },
+  });
   await app.ready();
   const created = (await app.inject({
     method: "POST", url: "/api/projects", payload: { name: "T" },

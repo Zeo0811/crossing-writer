@@ -55,7 +55,13 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
 
   registerStreamRoutes(app, { projectsDir: cfg.projectsDir });
 
-  registerOverviewRoutes(app, { store, imageStore, projectsDir: cfg.projectsDir });
+  registerOverviewRoutes(app, {
+    store, imageStore, projectsDir: cfg.projectsDir,
+    analyzeOverviewDeps: {
+      vaultPath: cfg.vaultPath, sqlitePath: cfg.sqlitePath,
+      agents: cfg.agents, defaultCli: cfg.defaultCli, fallbackCli: cfg.fallbackCli,
+    },
+  });
 
   app.get("/api/health", async () => ({
     ok: true,
