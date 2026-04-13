@@ -1,6 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import { useQuery } from "@tanstack/react-query";
 import { apiMission } from "../../api/client";
+import { stripFrontmatter } from "../../utils/markdown";
 
 export function SelectedMissionView({
   projectId,
@@ -26,7 +27,7 @@ export function SelectedMissionView({
             borderColor: "var(--green-border)",
           }}
         >
-          <ReactMarkdown>{data}</ReactMarkdown>
+          <ReactMarkdown>{stripFrontmatter(data).body}</ReactMarkdown>
         </article>
       ) : null}
       <p className="text-sm text-gray-500 mt-2">selected path: {selectedPath}</p>

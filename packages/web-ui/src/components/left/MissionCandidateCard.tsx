@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCandidates } from "../../hooks/useCandidates";
 import { apiMission } from "../../api/client";
+import { stripFrontmatter } from "../../utils/markdown";
 
 export function MissionCandidatesPanel({
   projectId,
@@ -29,8 +30,9 @@ export function MissionCandidatesPanel({
   if (isLoading) return <div className="text-gray-500">候选加载中…</div>;
   if (!data) return <div className="text-gray-500">尚未产出候选</div>;
 
-  // 按 "# 候选 " 分段（简化 parse；SP-03 再换 yaml parser）
-  const parts = data.split(/^# 候选 /m).slice(1);
+  // 剥 frontmatter，再按 "# 候选 " 分段（简化 parse；SP-03 再换 yaml parser）
+  const { body: stripped } = stripFrontmatter(data);
+  const parts = stripped.split(/^# 候选 /m).slice(1);
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">3 个候选 Mission</h2>
