@@ -137,6 +137,19 @@ export function registerEvidenceRoutes(app: FastifyInstance, deps: EvidenceDeps)
     },
   );
 
+  app.delete<{ Params: { id: string; caseId: string; kind: string; filename: string } }>(
+    "/api/projects/:id/evidence/:caseId/files/:kind/:filename",
+    async (req, reply) => {
+      const kind = req.params.kind as EvidenceKind;
+      if (!VALID_KINDS.has(kind)) return reply.code(400).send({ error: "invalid kind" });
+      const projectDir = join(deps.projectsDir, req.params.id);
+      const evStore = new EvidenceStore(projectDir);
+      await evStore.deleteFile(req.params.caseId, kind, req.params.filename);
+      await buildProjectEvidence(deps, req.params.id);
+      return reply.code(204).send();
+    },
+  );
+
   app.get<{ Params: { id: string; caseId: string } }>(
     "/api/projects/:id/evidence/:caseId",
     async (req, reply) => {

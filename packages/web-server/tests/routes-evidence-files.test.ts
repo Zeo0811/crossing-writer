@@ -107,3 +107,30 @@ describe("POST /evidence/:caseId/files", () => {
     expect(res.json().filename).toBe("a-2.png");
   });
 });
+
+describe("DELETE /evidence/:caseId/files/:kind/:filename", () => {
+  it("204 on delete", async () => {
+    const { app, project } = await mkApp();
+    const boundary = "----bd";
+    await app.inject({
+      method: "POST",
+      url: `/api/projects/${project.id}/evidence/case-01/files`,
+      payload: multipartBody(boundary, "screenshot", "x.png", "image/png", "x"),
+      headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+    });
+    const res = await app.inject({
+      method: "DELETE",
+      url: `/api/projects/${project.id}/evidence/case-01/files/screenshot/x.png`,
+    });
+    expect(res.statusCode).toBe(204);
+  });
+
+  it("204 silent if file missing (idempotent)", async () => {
+    const { app, project } = await mkApp();
+    const res = await app.inject({
+      method: "DELETE",
+      url: `/api/projects/${project.id}/evidence/case-01/files/screenshot/nope.png`,
+    });
+    expect(res.statusCode).toBe(204);
+  });
+});
