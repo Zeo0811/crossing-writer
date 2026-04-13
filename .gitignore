@@ -34,3 +34,9 @@ tools/bulk_import/.pytest_cache/
 # node 产物
 packages/*/node_modules/
 packages/*/dist/
+
+# web-ui build outputs
+packages/web-ui/dist/
+packages/web-ui/src/**/*.js
+packages/web-ui/src/**/*.js.map
+packages/*/tsconfig.tsbuildinfo
