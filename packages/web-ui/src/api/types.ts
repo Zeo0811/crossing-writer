@@ -56,3 +56,16 @@ export interface Expert {
   default_preselect: boolean;
   specialty: string;
 }
+
+export interface ProjectImage {
+  filename: string;
+  source: "brief" | "screenshot";
+  relPath: string;
+  absPath: string;
+  label?: string;
+}
+
+export interface OverviewGenerateBody {
+  productUrls: string[];
+  userDescription?: string;
+}

@@ -1,4 +1,4 @@
-import type { Project, Expert } from "./types";
+import type { Project, Expert, ProjectImage, OverviewGenerateBody } from "./types";
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -58,6 +58,47 @@ export const api = {
   listExperts: () =>
     request<{ topic_panel: Expert[] }>("/api/experts"),
 };
+
+export async function uploadOverviewImage(
+  projectId: string,
+  file: File,
+  source: "brief" | "screenshot",
+  label?: string,
+): Promise<ProjectImage> {
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("source", source);
+  if (label) fd.append("label", label);
+  const res = await fetch(`/api/projects/${projectId}/overview/images`, {
+    method: "POST", body: fd,
+  });
+  if (!res.ok) throw new Error(`upload failed: ${res.status}`);
+  return res.json();
+}
+
+export async function listOverviewImages(projectId: string): Promise<ProjectImage[]> {
+  const res = await fetch(`/api/projects/${projectId}/overview/images`);
+  return res.json();
+}
+
+export async function deleteOverviewImage(projectId: string, filename: string): Promise<void> {
+  const res = await fetch(`/api/projects/${projectId}/overview/images/${filename}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error(`delete failed: ${res.status}`);
+}
+
+export async function generateOverview(
+  projectId: string, body: OverviewGenerateBody,
+): Promise<{ ok: true }> {
+  const res = await fetch(`/api/projects/${projectId}/overview/generate`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`generate failed: ${res.status}`);
+  return res.json();
+}
 
 export const apiMission = {
   start: (projectId: string, experts: string[]) =>
