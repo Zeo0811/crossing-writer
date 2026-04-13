@@ -8,5 +8,11 @@
   "modelAdapter": {
     "defaultCli": "codex",
     "fallbackCli": "claude"
+  },
+  "agents": {
+    "brief_analyst":              { "cli": "claude", "model": "sonnet" },
+    "coordinator":                { "cli": "claude", "model": "opus" },
+    "topic_expert.赛博禅心":       { "cli": "claude", "model": "opus" },
+    "topic_expert.数字生命卡兹克": { "cli": "codex" }
   }
 }
