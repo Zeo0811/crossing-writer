@@ -2,6 +2,8 @@ import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import { loadServerConfig, type ServerConfig } from "./config.js";
 import { resolve } from "node:path";
+import { ProjectStore } from "./services/project-store.js";
+import { registerProjectsRoutes } from "./routes/projects.js";
 
 const configPath = process.env.CROSSING_CONFIG
   ?? resolve(process.cwd(), "../../config.json");
@@ -12,6 +14,10 @@ export function buildApp(overrideConfig?: ServerConfig): FastifyInstance {
   app.decorate("crossingConfig", cfg);
 
   app.register(cors, { origin: true });
+
+  const store = new ProjectStore(cfg.projectsDir);
+  app.decorate("projectStore", store);
+  registerProjectsRoutes(app, { store });
 
   app.get("/api/health", async () => ({
     ok: true,
@@ -26,6 +32,7 @@ export function buildApp(overrideConfig?: ServerConfig): FastifyInstance {
 declare module "fastify" {
   interface FastifyInstance {
     crossingConfig: ServerConfig;
+    projectStore: ProjectStore;
   }
 }
 
