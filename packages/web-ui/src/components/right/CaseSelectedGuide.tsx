@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { getSelectedCases } from "../../api/client";
 
 export function CaseSelectedGuide({ projectId }: { projectId: string }) {
-  const [md, setMd] = useState<string | null>(null);
+  const [md, setMd] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
     getSelectedCases(projectId).then(setMd);
   }, [projectId]);
 
-  if (md == null) return <div>加载中...</div>;
+  if (md === undefined) return <div>加载中...</div>;
 
   return (
     <div className="p-4">

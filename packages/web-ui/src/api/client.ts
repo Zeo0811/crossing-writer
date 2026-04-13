@@ -161,6 +161,8 @@ export async function getSelectedCases(projectId: string): Promise<string | null
   return res.text();
 }
 
+export const getProject = (id: string) => api.getProject(id);
+
 export const apiMission = {
   start: (projectId: string, experts: string[]) =>
     request<{ ok: true; status: string }>(`/api/projects/${projectId}/mission/start`, {

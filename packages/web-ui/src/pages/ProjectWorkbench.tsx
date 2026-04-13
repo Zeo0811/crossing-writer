@@ -1,5 +1,6 @@
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useProject } from "../hooks/useProjects";
+import { getProject } from "../api/client";
 import { useProjectStream } from "../hooks/useProjectStream";
 import { BriefIntakeForm } from "../components/right/BriefIntakeForm";
 import { ExpertSelector } from "../components/right/ExpertSelector";
@@ -10,6 +11,12 @@ import { MissionCandidatesPanel } from "../components/left/MissionCandidateCard"
 import { SelectedMissionView } from "../components/left/SelectedMissionView";
 import { ProductOverviewCard } from "../components/left/ProductOverviewCard";
 import { SectionAccordion, Section } from "../components/layout/SectionAccordion";
+import { OverviewIntakeForm } from "../components/right/OverviewIntakeForm";
+import { CaseExpertSelector } from "../components/right/CaseExpertSelector";
+import { CaseListPanel } from "../components/left/CaseListPanel";
+import { CaseSelectedGuide } from "../components/right/CaseSelectedGuide";
+
+type SecStat = "completed" | "active" | "pending";
 
 const SECTION_ORDER: Array<{ key: string; activeStates: string[] }> = [
   {
@@ -30,7 +37,7 @@ const SECTION_ORDER: Array<{ key: string; activeStates: string[] }> = [
   },
 ];
 
-function sectionStatusFor(key: string, projectStatus: string): "completed" | "active" | "pending" {
+function sectionStatusFor(key: string, projectStatus: string): SecStat {
   const currentIdx = SECTION_ORDER.findIndex((s) => s.activeStates.includes(projectStatus));
   const myIdx = SECTION_ORDER.findIndex((s) => s.key === key);
   if (myIdx < 0) return "pending";
@@ -40,16 +47,74 @@ function sectionStatusFor(key: string, projectStatus: string): "completed" | "ac
   return "pending";
 }
 
-export function ProjectWorkbench() {
-  const { id } = useParams<{ id: string }>();
-  const { data: project, refetch } = useProject(id);
-  const { events, activeAgents } = useProjectStream(id);
-  if (!project || !id) return <div className="p-6">加载中…</div>;
+function rightPanel(status: string, projectId: string, onRefetch: () => void) {
+  // SP-02 Brief/Mission panels
+  if (status === "created") {
+    return <BriefIntakeForm projectId={projectId} onUploaded={onRefetch} />;
+  }
+  if (status === "brief_uploaded" || status === "brief_analyzing") {
+    return (
+      <div className="p-4 bg-white rounded border">Brief Analyst 运行中…</div>
+    );
+  }
+  if (status === "brief_ready" || status === "awaiting_expert_selection") {
+    return <ExpertSelector projectId={projectId} onStarted={onRefetch} />;
+  }
+  if (
+    status === "round1_running" ||
+    status === "synthesizing" ||
+    status === "round2_running"
+  ) {
+    return (
+      <div className="p-4 bg-white rounded border text-gray-500">
+        专家评审中（见下面时间线）
+      </div>
+    );
+  }
 
+  // SP-03 Overview/Case panels
+  switch (status) {
+    case "awaiting_overview_input":
+    case "overview_failed":
+      return <OverviewIntakeForm projectId={projectId} />;
+    case "overview_analyzing":
+      return <div className="p-4">正在生成产品概览…</div>;
+    case "overview_ready":
+      return <div className="p-4">点左侧卡片里的「批准进入 Case 规划」</div>;
+    case "awaiting_case_expert_selection":
+      return <CaseExpertSelector projectId={projectId} />;
+    case "case_planning_running":
+    case "case_synthesizing":
+      return <div className="p-4">规划中…（看右下时间线）</div>;
+    case "awaiting_case_selection":
+      return <div className="p-4">请在左侧选 2-4 个 Case</div>;
+    case "case_plan_approved":
+      return <CaseSelectedGuide projectId={projectId} />;
+    default:
+      return null;
+  }
+}
+
+export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: string } = {}) {
+  const params = useParams<{ id: string }>();
+  const projectId = propProjectId ?? params.id ?? "";
+
+  const [project, setProject] = useState<any>(null);
+  const { events, activeAgents } = useProjectStream(projectId);
+
+  function refetch() {
+    getProject(projectId).then(setProject).catch(() => {});
+  }
+
+  useEffect(() => {
+    if (!projectId) return;
+    refetch();
+    const id = setInterval(refetch, 2000);
+    return () => clearInterval(id);
+  }, [projectId]);
+
+  if (!project) return <div>加载中...</div>;
   const status = project.status;
-
-  const showExpertSelector =
-    status === "brief_ready" || status === "awaiting_expert_selection";
 
   const showCandidates = status === "awaiting_mission_pick";
   const showSelected = status === "mission_approved";
@@ -60,9 +125,11 @@ export function ProjectWorkbench() {
         className="p-4 border-b bg-white flex items-center gap-3"
         style={{ borderColor: "var(--border)" }}
       >
-        <Link to="/" className="text-sm text-gray-500">
-          ← 列表
-        </Link>
+        {!propProjectId && (
+          <Link to="/" className="text-sm text-gray-500">
+            ← 列表
+          </Link>
+        )}
         <h1 className="font-semibold">{project.name}</h1>
         <span className="text-xs px-2 py-0.5 rounded bg-gray-100">
           {project.status}
@@ -84,51 +151,40 @@ export function ProjectWorkbench() {
                 {(status === "brief_uploaded" || status === "brief_analyzing") ? (
                   <div className="text-gray-500">Brief Analyst 运行中…（稍候 1-2 分钟）</div>
                 ) : (
-                  <BriefSummaryCard projectId={id} />
+                  <BriefSummaryCard projectId={projectId} />
                 )}
               </Section>
 
               <Section title="Mission 选定" status={sectionStatusFor("mission", status)}>
                 {showCandidates && !showSelected ? (
-                  <MissionCandidatesPanel projectId={id} onSelected={() => refetch()} />
-                ) : showSelected && project.mission.selected_path ? (
+                  <MissionCandidatesPanel projectId={projectId} onSelected={refetch} />
+                ) : showSelected && project.mission?.selected_path ? (
                   <SelectedMissionView
-                    projectId={id}
+                    projectId={projectId}
                     selectedPath={project.mission.selected_path}
                   />
                 ) : null}
               </Section>
 
               <Section title="产品概览" status={sectionStatusFor("overview", status)}>
-                <ProductOverviewCard projectId={id} status={status} />
+                <ProductOverviewCard projectId={projectId} status={status} />
               </Section>
 
               <Section title="Case 列表" status={sectionStatusFor("case", status)}>
-                <div>待开始</div>
+                <CaseListPanel projectId={projectId} />
               </Section>
             </SectionAccordion>
           )}
         </div>
 
         {/* 右侧：表单/专家选择/时间线 */}
-        <div className="w-2/5 overflow-auto p-6 bg-[var(--gray-light)] space-y-4">
-          {status === "created" && (
-            <BriefIntakeForm projectId={id} onUploaded={() => refetch()} />
-          )}
-          {(status === "brief_uploaded" || status === "brief_analyzing") && (
-            <div className="p-4 bg-white rounded border">Brief Analyst 运行中…</div>
-          )}
-          {showExpertSelector && (
-            <ExpertSelector projectId={id} onStarted={() => refetch()} />
-          )}
-          {(status === "round1_running" ||
-            status === "synthesizing" ||
-            status === "round2_running") && (
-            <div className="p-4 bg-white rounded border text-gray-500">
-              专家评审中（见下面时间线）
-            </div>
-          )}
-          <AgentTimeline events={events} />
+        <div className="w-2/5 flex flex-col overflow-hidden bg-[var(--gray-light)]">
+          <div className="flex-1 overflow-auto p-6 space-y-4">
+            {rightPanel(status, projectId, refetch)}
+          </div>
+          <div className="border-t max-h-60 overflow-auto p-2">
+            <AgentTimeline events={events} />
+          </div>
         </div>
       </div>
     </div>
