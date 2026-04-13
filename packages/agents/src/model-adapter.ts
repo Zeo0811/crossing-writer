@@ -10,6 +10,7 @@ export interface InvokeOptions {
   userMessage: string;
   model?: string;
   timeout?: number;
+  images?: string[];
 }
 
 export interface AgentResult {
@@ -26,6 +27,7 @@ export function invokeAgent(opts: InvokeOptions): AgentResult {
 
   if (opts.cli === "codex") {
     const outPath = join(mkdtempSync(join(tmpdir(), "agent-")), "out.txt");
+    const imageArgs = (opts.images ?? []).flatMap((p) => ["-i", p]);
     const args = [
       "exec",
       "--skip-git-repo-check",
@@ -33,6 +35,7 @@ export function invokeAgent(opts: InvokeOptions): AgentResult {
       "--ephemeral",
       "--sandbox", "read-only",
       "--output-last-message", outPath,
+      ...imageArgs,
       ...(opts.model ? ["-m", opts.model] : []),
       fullPrompt,
     ];
@@ -51,8 +54,10 @@ export function invokeAgent(opts: InvokeOptions): AgentResult {
   }
 
   // claude
+  const imageArgs = (opts.images ?? []).flatMap((p) => ["--image", p]);
   const args = [
     "-p", fullPrompt,
+    ...imageArgs,
     ...(opts.model ? ["--model", opts.model] : []),
   ];
   const proc = spawnSync("claude", args, { encoding: "buffer", timeout });

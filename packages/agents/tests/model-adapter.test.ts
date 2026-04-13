@@ -87,3 +87,75 @@ describe("invokeAgent", () => {
     expect(call[1]).toContain("gpt-5.4");
   });
 });
+
+describe("invokeAgent with images", () => {
+  beforeEach(() => { vi.mocked(spawnSync).mockReset(); });
+
+  it("passes -i <path> per image for codex cli", () => {
+    vi.mocked(spawnSync).mockImplementation(((cmd: string, args: readonly string[]) => {
+      const outIdx = args.indexOf("--output-last-message");
+      if (outIdx >= 0) writeFileSync(args[outIdx + 1]!, "ok");
+      return { status: 0, stdout: Buffer.from(""), stderr: Buffer.from("") } as any;
+    }) as any);
+
+    invokeAgent({
+      agentKey: "product_overview",
+      cli: "codex",
+      systemPrompt: "describe images",
+      userMessage: "",
+      images: ["/abs/img-1.png", "/abs/img-2.png"],
+    });
+
+    const call = vi.mocked(spawnSync).mock.calls[0]!;
+    const args = call[1] as string[];
+    const iIdx1 = args.indexOf("-i");
+    expect(iIdx1).toBeGreaterThan(-1);
+    expect(args[iIdx1 + 1]).toBe("/abs/img-1.png");
+    const iIdx2 = args.indexOf("-i", iIdx1 + 1);
+    expect(iIdx2).toBeGreaterThan(-1);
+    expect(args[iIdx2 + 1]).toBe("/abs/img-2.png");
+  });
+
+  it("passes --image <path> per image for claude cli", () => {
+    vi.mocked(spawnSync).mockReturnValue({
+      status: 0,
+      stdout: Buffer.from("ok"),
+      stderr: Buffer.from(""),
+    } as any);
+
+    invokeAgent({
+      agentKey: "x",
+      cli: "claude",
+      systemPrompt: "",
+      userMessage: "",
+      images: ["/abs/a.png", "/abs/b.png"],
+    });
+
+    const call = vi.mocked(spawnSync).mock.calls[0]!;
+    const args = call[1] as string[];
+    const flags = args.filter((a: string) => a === "--image");
+    expect(flags.length).toBe(2);
+    expect(args).toContain("/abs/a.png");
+    expect(args).toContain("/abs/b.png");
+
+    const pIdx = args.indexOf("-p");
+    const firstImageIdx = args.indexOf("--image");
+    expect(firstImageIdx).toBeGreaterThan(pIdx);
+    const modelIdx = args.indexOf("--model");
+    if (modelIdx !== -1) expect(firstImageIdx).toBeLessThan(modelIdx);
+  });
+
+  it("no-op when images is empty or undefined", () => {
+    vi.mocked(spawnSync).mockReturnValue({
+      status: 0, stdout: Buffer.from("ok"), stderr: Buffer.from(""),
+    } as any);
+    invokeAgent({
+      agentKey: "x", cli: "claude",
+      systemPrompt: "", userMessage: "",
+    });
+    const call = vi.mocked(spawnSync).mock.calls[0]!;
+    const args = call[1] as string[];
+    expect(args).not.toContain("--image");
+    expect(args).not.toContain("-i");
+  });
+});
