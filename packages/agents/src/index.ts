@@ -11,4 +11,6 @@ export { BriefAnalyst } from "./roles/brief-analyst.js";
 export type { BriefAnalyzeInput } from "./roles/brief-analyst.js";
 export { TopicExpert } from "./roles/topic-expert.js";
 export type { TopicExpertOpts, Round1Input, Round2Input } from "./roles/topic-expert.js";
+export { Coordinator } from "./roles/coordinator.js";
+export type { CoordinatorOpts, Round1SynthInput, Round2AggregateInput } from "./roles/coordinator.js";
 export const VERSION = "0.2.0";
