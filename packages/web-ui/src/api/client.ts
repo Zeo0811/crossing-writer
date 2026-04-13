@@ -154,6 +154,13 @@ export async function selectCases(projectId: string, indices: number[]): Promise
   if (!res.ok) throw new Error("select failed");
 }
 
+export async function getSelectedCases(projectId: string): Promise<string | null> {
+  const res = await fetch(`/api/projects/${projectId}/case-plan/selected`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("failed");
+  return res.text();
+}
+
 export const apiMission = {
   start: (projectId: string, experts: string[]) =>
     request<{ ok: true; status: string }>(`/api/projects/${projectId}/mission/start`, {
