@@ -221,15 +221,70 @@ crossing-writer/
 {
   "id": "metanovas-review",
   "name": "MetaNovas 实测",
+  "slug": "metanovas-review",
   "status": "awaiting_mission_pick",
   "stage": "mission",
+  "article_type": "product-review",
+  "expected_word_count": null,
+  "deadline": null,
+  "priority": "normal",
+  "tags": ["测评", "MetaNovas", "B2B"],
+  "client": {
+    "name": null,
+    "brand": "MetaNovas",
+    "product": "MetaClaw"
+  },
+  "brief": {
+    "source_type": "docx",
+    "raw_path": "brief/raw/brief.docx",
+    "md_path": "brief/brief.md",
+    "summary_path": "brief/brief-summary.md",
+    "uploaded_at": "2026-04-13T12:00:00+08:00"
+  },
+  "product_info": {
+    "name": "MetaClaw",
+    "official_url": "https://metanovas.example.com",
+    "trial_url": null,
+    "docs_url": null,
+    "fetched_path": "context/product-fetched.md",
+    "notes": "2026 年 Q2 上线"
+  },
   "experts_selected": ["赛博禅心", "数字生命卡兹克"],
-  "brief_path": "brief/brief.md",
-  "selected_mission_path": null,
+  "mission": {
+    "candidates_path": "mission/candidates.md",
+    "selected_index": null,
+    "selected_path": null,
+    "selected_at": null,
+    "selected_by": null
+  },
+  "runs": [
+    {
+      "id": "run-1",
+      "stage": "mission",
+      "started_at": "2026-04-13T12:05:00+08:00",
+      "ended_at": "2026-04-13T12:09:34+08:00",
+      "experts": ["赛博禅心", "数字生命卡兹克"],
+      "status": "completed"
+    }
+  ],
   "created_at": "2026-04-13T12:00:00+08:00",
-  "updated_at": "2026-04-13T12:34:56+08:00"
+  "updated_at": "2026-04-13T12:34:56+08:00",
+  "schema_version": 1
 }
 ```
+
+**字段说明**：
+- `status` / `stage`：当前状态机位置（见 §12），stage 是粗粒度（intake/mission/case/…）
+- `article_type`：`product-review` / `industry-analysis` / `interview` / `tutorial` / …（枚举，SP-02 首版 3-5 种）
+- `priority`：`low` / `normal` / `high`（UI 排序用）
+- `tags`：用户自由标签，用于项目列表筛选
+- `client.*`：从 Brief Analyst 自动填，用户可改
+- `brief.source_type`：`docx` / `pdf` / `md` / `txt` / `text`（直接粘贴）
+- `product_info.*`：用户在 Intake 表单填 + URL fetch 补全
+- `experts_selected`：本次 run 选中的专家列表
+- `mission.selected_index`：1/2/3（candidates 里哪个被选）
+- `runs[]`：本项目历次 Mission run 历史（每次重跑一个新 run-id，保留）
+- `schema_version`：未来迁移兼容
 
 ### 6.3 brief-summary.md frontmatter
 
@@ -237,21 +292,80 @@ crossing-writer/
 ---
 type: brief_summary
 project_id: metanovas-review
-client: <甲方名>
+generated_by: brief_analyst
+generated_at: 2026-04-13T12:02:30+08:00
+model_used: claude-sonnet
+
+# 基础识别
+client: 深圳某科技公司
 brand: MetaNovas
-product: <产品名>
-article_type: product-review
-goal: <一句话传播目标>
-audience: <目标读者>
-key_messages: ["...", "..."]
-value_props: ["...", "..."]
-forbidden_claims: ["...", "..."]
-tone: <品牌语气>
-deadline: <YYYY-MM-DD or null>
-gap_notes: <信息缺口说明>
+product: MetaClaw
+product_category: AI Agent 协作平台
+product_stage: launched  # prelaunch | launched | iteration | end-of-life
+
+# 传播目标
+goal: 向 AI 内容创作者传播 MetaClaw 的多 Agent 协作能力
+goal_kind: awareness  # awareness | conversion | retention | thought_leadership
+audience:
+  primary: AI 内容创作者 / 技术型博主
+  secondary: 运营/市场负责人
+  persona_keywords: ["coding Agent", "多模态", "中文"]
+
+# 内容约束
+key_messages:
+  - "多 Agent 协作是品牌内容生产的解药"
+  - "MetaClaw 的 Workflow DSL 可被非技术同学使用"
+value_props:
+  - "流程可视化"
+  - "原生中文理解"
+  - "社区模板生态"
+forbidden_claims:
+  - "不要说「替代人类写手」"
+  - "不要对标具体友商（比如 XXX）做贬低对比"
+must_cover_points:
+  - "Workflow 编排界面"
+  - "与 Claude/Codex 的集成"
+avoid_angles:
+  - "纯技术深度（掉粉）"
+  - "过度 PR 调"
+
+# 语气与形式
+tone:
+  voice: 克制专业
+  forbidden_words: ["炸裂", "颠覆"]
+  preferred_words: ["实测", "我们发现", "挺稳"]
+style_reference: "十字路口 Crossing"  # 对应 style-panel 的一张卡
+
+# 交付
+required_deliverables:
+  - format: wechat_article
+    word_count_range: [3000, 5000]
+    with_images: true
+  - format: x_thread
+    word_count_range: [300, 600]
+deadline: 2026-05-15
+deadline_strictness: soft  # soft | hard
+
+# 信息缺口
+gap_notes:
+  - "Brief 没说是否允许爆料未上线功能"
+  - "目标读者群的具体画像还要进一步澄清"
+confidence: 0.78  # Brief 信息完整度，0-1
 ---
+
 # Brief 摘要
-<Brief Analyst 自然语言总结 ~300 字>
+
+<自然语言总结 ~300 字，包含客户背景、产品核心、传播目的、读者画像、
+ 关键信息、禁区、语气、交付要求。段落形式，便于专家阅读。>
+
+## 原始 Brief 关键片段
+
+> <引用 Brief 里最关键的 3-5 段原文，带段落来源>
+
+## Brief Analyst 的判断
+
+<1-2 段 Analyst 对这个 brief 的独立判断：传播难度、潜在陷阱、
+ 建议优先探索的角度。>
 ```
 
 ### 6.4 mission/candidates.md
@@ -260,21 +374,60 @@ gap_notes: <信息缺口说明>
 ---
 type: mission_candidates
 project_id: metanovas-review
-coordinator_version: v1
-generated_at: ...
+run_id: run-1
+generated_by: coordinator
+generated_at: 2026-04-13T12:08:12+08:00
+model_used: claude-opus
+experts_round1: ["赛博禅心", "数字生命卡兹克"]
+experts_round2: ["赛博禅心", "数字生命卡兹克"]
+round2_rankings:
+  - candidate_index: 2
+    aggregate_score: 8.5
+  - candidate_index: 1
+    aggregate_score: 7.0
+  - candidate_index: 3
+    aggregate_score: 6.2
+final_order: [2, 1, 3]   # 按排名决定 UI 显示顺序
 ---
 
 # 候选 1
 
-**主命题**：...
-**次命题**：...
-**必打点**：...
-**避免角度**：...
-**建议文章类型**：...
-**支撑论据**：...
+## 元数据
+- **角度名称**：Workflow DSL 的低门槛样本
+- **文章类型**：product-review
+- **推荐标题方向**（不是最终标题）：
+  - "MetaClaw 的 Workflow 编辑器：把多 Agent 从玩具变成工具"
+  - "我们用 MetaClaw 复刻了一份内容生产线"
+- **综合评分**（round2 aggregate）：7.0 / 10
+
+## Mission 字段
+- **primary_claim**：MetaClaw 的 Workflow DSL 是非技术同学也能编排多 Agent 的关键
+- **secondary_claims**:
+  - "它解决了多 Agent 系统的最大门槛：流程可视化"
+  - "对中文 prompt 的原生支持让国内创作者不需要重学英文"
+- **must_cover**:
+  - 编辑器的可视化体验（截图）
+  - 至少 1 个真实 workflow 示例
+- **avoid**:
+  - 不要比 LangGraph（会被当成对立 PR）
+  - 不要提未上线的 v2 功能
+- **recommended_structure**: "问题切入 → 工具演示 → 工作流示例 → 行业判断"
+- **target_audience_fit**: 0.85  # 专家评估对目标读者的契合度
+
+## 支撑论据（来自 Brief + refs-pack）
+- Brief §3 明确提到"非技术同学"
+- refs-pack.md 里 3 篇同类评测（卡兹克/苍何/硅星人）都提到"多 Agent 系统难门槛"
+- Coordinator 交叉验证：赛博禅心 round1 提出类似角度（详见 round1/赛博禅心.md）
+
+## Round 2 评审摘要
+- **赛博禅心**：7/10，风险=容易写成 workflow 教程手册
+- **数字生命卡兹克**：7/10，风险=需要至少 2 段视频演示否则抽象
 
 # 候选 2
+
+## 元数据
 ...
+（同上结构）
 
 # 候选 3
 ...
@@ -286,21 +439,66 @@ generated_at: ...
 ---
 type: mission
 project_id: metanovas-review
+run_id: run-1
 selected_from: candidates.md#候选 2
+candidate_index: 2
 approved_by: human
-approved_at: ...
+approved_at: 2026-04-13T12:34:56+08:00
+human_edits: true  # 用户是否编辑过候选内容
+edit_summary: "加了一条 avoid: 不要用「降本增效」套话"
+
+# 可追溯
+brief_summary_path: brief/brief-summary.md
+refs_pack_path: context/refs-pack.md
+round1_expert_files:
+  - mission/round1/赛博禅心.md
+  - mission/round1/数字生命卡兹克.md
+round2_expert_files:
+  - mission/round2/赛博禅心.md
+  - mission/round2/数字生命卡兹克.md
+
+# 最终 Mission 字段（供 SP-03 Case Planner 使用）
+article_type: product-review
+primary_claim: <一句话主命题>
+secondary_claims:
+  - ...
+must_cover:
+  - ...
+avoid:
+  - ...
+recommended_structure: "..."
+tone_reference: "十字路口 Crossing"
+target_audience_fit: 0.85
 ---
 
 # Mission
 
-**主命题**：...
-**次命题**：...
-**必打点**：...
-**避免角度**：...
-**建议文章类型**：...
+## 主命题
+<3-4 句话展开主命题 + 为什么选这个角度>
+
+## 次命题
+- <次命题 1> — <展开>
+- <次命题 2> — <展开>
+
+## 必打点
+- <必打点 1>
+- <必打点 2>
+
+## 避免角度
+- <避免 1> — <为什么>
+- <避免 2>
+
+## 推荐文章结构骨架
+<给 SP-03 Writer 用的初步结构建议，可以被修改>
+
+## 依据与溯源
+- Brief 摘要：brief/brief-summary.md
+- 专家意见见 round1/ + round2/
+- refs-pack：context/refs-pack.md（Top 30 历史参考文）
+- Coordinator 合成版本：mission/candidates.md 候选 2
 ```
 
-SP-03 Case Planner 读这个 md 作为输入即可。
+SP-03 Case Planner 读这个 md 的 frontmatter 和正文即可启动。
 
 ### 6.6 08_experts/*/index.yaml
 
@@ -402,15 +600,44 @@ SP-02 完成
 type: expert_round1
 expert: 赛博禅心
 project_id: metanovas-review
+run_id: run-1
+kb_source: 08_experts/topic-panel/experts/赛博禅心_kb.md
+model_used: claude-opus
+started_at: 2026-04-13T12:05:30+08:00
+ended_at: 2026-04-13T12:06:48+08:00
+
+# 对整个 brief 的评估
+brief_score: 8   # 1-10 这个 brief 本身的传播潜力
+brief_confidence: 0.7   # 这位专家对自己判断的置信度
+viability_flags:
+  - "产品在做差异化定位"
+  - "目标读者群匹配本号风格"
+
+# 本专家查询了哪些 refs（如果用了逃生舱工具）
+refs_queries_made:
+  - query: "multi-agent workflow 编辑器"
+    hits: 4
+  - query: "Agent DSL 对比"
+    hits: 2
+refs_cited:
+  - path: 10_refs/量子位/2026/....md
+    why: "同类 workflow 编辑器的历史评测"
+
+# 该专家觉得可行的 3 个角度
+angles:
+  - name: "多 Agent 门槛问题的历史拆解"
+    seed_claim: "多 Agent 系统过去 1 年都没走出玩具阶段的根因是……"
+    rationale: "符合本号深度类写作的口味，历史类比切入易出彩"
+    fit_score: 9
+    risk: "容易写散，要锚定到 MetaClaw 的具体能力"
+  - name: "..."
+    ...
+  - name: "..."
+    ...
 ---
-# 评分：8/10
-# 角度 1：<短描述>
-雏形命题：<一句话>
-理由：...
-# 角度 2
-...
-# 角度 3
-...
+
+# 我对这个选题的看法
+<300-500 字，本专家视角的完整思考，可被 Coordinator 引用>
 ```
 
 ### 8.3 Coordinator Round 1 Prompt（骨架）
@@ -432,13 +659,45 @@ project_id: metanovas-review
 ---
 type: expert_round2
 expert: 赛博禅心
+project_id: metanovas-review
+run_id: run-1
+kb_source: 08_experts/topic-panel/experts/赛博禅心_kb.md
+model_used: claude-opus
+started_at: ...
+ended_at: ...
+
+scores:
+  - candidate_index: 1
+    score: 7
+    strengths:
+      - "切入有新意"
+    weaknesses:
+      - "容易被读者当成教程"
+    fatal_risk: "如果视频演示做不好，整个角度成立不了"
+    would_pick: false
+  - candidate_index: 2
+    score: 9
+    strengths:
+      - "和本号文风对口"
+      - "refs-pack 里有充足支撑"
+    weaknesses:
+      - "叙事密度要求高"
+    fatal_risk: "写手功力不够会写成流水账"
+    would_pick: true
+  - candidate_index: 3
+    score: 6
+    strengths:
+      - "角度独特"
+    weaknesses:
+      - "和目标读者兴趣不匹配"
+    fatal_risk: "读者流失率高"
+    would_pick: false
+
+overall_recommendation: 2
 ---
-# 候选 1：评分 7/10
-风险：<最致命的一个>
-# 候选 2：评分 9/10
-风险：...
-# 候选 3：评分 6/10
-风险：...
+
+# 综合判断
+<200-400 字：这位专家为什么这样排序，对整体候选集的印象>
 ```
 
 ### 8.5 专家互相不可见实现
