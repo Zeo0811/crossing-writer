@@ -9,4 +9,6 @@ export { loadConfig, resolveAgent } from "./config.js";
 export type { AgentConfig, CrossingConfig } from "./config.js";
 export { BriefAnalyst } from "./roles/brief-analyst.js";
 export type { BriefAnalyzeInput } from "./roles/brief-analyst.js";
+export { TopicExpert } from "./roles/topic-expert.js";
+export type { TopicExpertOpts, Round1Input, Round2Input } from "./roles/topic-expert.js";
 export const VERSION = "0.2.0";
