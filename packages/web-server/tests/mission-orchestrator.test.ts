@@ -27,6 +27,7 @@ vi.mock("@crossing/agents", () => ({
       meta: { cli: "claude", durationMs: 10 },
     }),
   })),
+  resolveAgent: (_cfg: any, _key: string) => ({ cli: _cfg.modelAdapter.defaultCli }),
 }));
 
 vi.mock("../src/services/refs-fetcher.js", () => ({
@@ -87,6 +88,9 @@ describe("runMission", () => {
       registry,
       projectsDir,
       cli: "codex",
+      agents: {},
+      defaultCli: "codex",
+      fallbackCli: "claude",
       searchCtx: { sqlitePath: "/x", vaultPath: "/v" },
     });
 
@@ -130,6 +134,9 @@ describe("runMission", () => {
         registry,
         projectsDir,
         cli: "codex",
+        agents: {},
+        defaultCli: "codex",
+        fallbackCli: "claude",
         searchCtx: { sqlitePath: "/x", vaultPath: "/v" },
       }),
     ).rejects.toThrow(/brief summary missing/i);

@@ -25,7 +25,14 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
   const store = new ProjectStore(cfg.projectsDir);
   app.decorate("projectStore", store);
   registerProjectsRoutes(app, { store });
-  registerBriefRoutes(app, { store, projectsDir: cfg.projectsDir, cli: cfg.defaultCli });
+  registerBriefRoutes(app, {
+    store,
+    projectsDir: cfg.projectsDir,
+    cli: cfg.defaultCli,
+    agents: cfg.agents,
+    defaultCli: cfg.defaultCli,
+    fallbackCli: cfg.fallbackCli,
+  });
 
   const registry = new ExpertRegistry(cfg.expertsDir);
   app.decorate("expertRegistry", registry);
@@ -36,6 +43,9 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     registry,
     projectsDir: cfg.projectsDir,
     cli: cfg.defaultCli,
+    agents: cfg.agents,
+    defaultCli: cfg.defaultCli,
+    fallbackCli: cfg.fallbackCli,
     searchCtx: { sqlitePath: cfg.sqlitePath, vaultPath: cfg.vaultPath },
   });
 

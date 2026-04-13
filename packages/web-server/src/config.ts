@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { homedir } from "node:os";
+import type { AgentConfig } from "@crossing/agents";
 
 function expand(p: string): string {
   return p.startsWith("~") ? resolve(homedir(), p.slice(2)) : p;
@@ -13,6 +14,7 @@ export interface ServerConfig {
   expertsDir: string;
   defaultCli: "claude" | "codex";
   fallbackCli: "claude" | "codex";
+  agents: Record<string, AgentConfig>;
   configPath: string;
 }
 
@@ -26,6 +28,7 @@ export function loadServerConfig(path: string): ServerConfig {
     expertsDir: join(vaultPath, "08_experts"),
     defaultCli: raw.modelAdapter.defaultCli,
     fallbackCli: raw.modelAdapter.fallbackCli,
+    agents: raw.agents ?? {},
     configPath: resolve(path),
   };
 }

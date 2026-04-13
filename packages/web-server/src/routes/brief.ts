@@ -5,12 +5,16 @@ import type { ProjectStore } from "../services/project-store.js";
 import { extractToMarkdown } from "../services/file-extractor.js";
 import { appendEvent } from "../services/event-log.js";
 import { analyzeBrief } from "../services/brief-analyzer-service.js";
+import type { AgentConfig } from "@crossing/agents";
 
 export interface BriefDeps {
   store: ProjectStore;
   projectsDir: string;
   cli: "claude" | "codex";
   model?: string;
+  agents: Record<string, AgentConfig>;
+  defaultCli: "claude" | "codex";
+  fallbackCli: "claude" | "codex";
 }
 
 interface TextBody {
@@ -107,7 +111,9 @@ export function registerBriefRoutes(app: FastifyInstance, deps: BriefDeps) {
           projectsDir: deps.projectsDir,
           store: deps.store,
           cli: deps.cli,
-          model: deps.model,
+          agents: deps.agents,
+          defaultCli: deps.defaultCli,
+          fallbackCli: deps.fallbackCli,
         }).catch((err) => app.log.error({ err, projectId: id }, "analyzeBrief failed"));
       });
 

@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { BriefAnalyst } from "@crossing/agents";
+import { BriefAnalyst, resolveAgent, type AgentConfig } from "@crossing/agents";
 import type { ProjectStore } from "./project-store.js";
 import { appendEvent } from "./event-log.js";
 
@@ -8,12 +8,14 @@ export interface AnalyzeBriefOpts {
   projectId: string;
   projectsDir: string;
   store: ProjectStore;
-  cli: "claude" | "codex";
-  model?: string;
+  cli: "claude" | "codex";   // 保留用于 Fastify route 向后兼容，可作为默认
+  agents: Record<string, AgentConfig>;
+  defaultCli: "claude" | "codex";
+  fallbackCli: "claude" | "codex";
 }
 
 export async function analyzeBrief(opts: AnalyzeBriefOpts): Promise<void> {
-  const { projectId, projectsDir, store, cli, model } = opts;
+  const { projectId, projectsDir, store, agents, defaultCli, fallbackCli } = opts;
   const project = await store.get(projectId);
   if (!project || !project.brief) throw new Error("no brief to analyze");
 
@@ -30,7 +32,15 @@ export async function analyzeBrief(opts: AnalyzeBriefOpts): Promise<void> {
   try {
     const briefBody = await readFile(join(projectDir, project.brief.md_path), "utf-8");
     const productInfo = JSON.stringify(project.product_info ?? {}, null, 2);
-    const analyst = new BriefAnalyst({ cli, model });
+    const resolved = resolveAgent(
+      {
+        vaultPath: "", sqlitePath: "",
+        modelAdapter: { defaultCli, fallbackCli },
+        agents,
+      },
+      "brief_analyst",
+    );
+    const analyst = new BriefAnalyst({ cli: resolved.cli, model: resolved.model });
     const result = analyst.analyze({ projectId, briefBody, productInfo });
 
     const summaryPath = "brief/brief-summary.md";

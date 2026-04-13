@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { TopicExpert, Coordinator } from "@crossing/agents";
+import { TopicExpert, Coordinator, resolveAgent, type AgentConfig } from "@crossing/agents";
 import type { SearchCtx } from "@crossing/kb";
 import type { ProjectStore } from "./project-store.js";
 import type { ExpertRegistry } from "./expert-registry.js";
@@ -13,9 +13,24 @@ export interface RunMissionOpts {
   store: ProjectStore;
   registry: ExpertRegistry;
   projectsDir: string;
-  cli: "claude" | "codex";
+  cli: "claude" | "codex";    // 保留，兼容现有 routes
+  agents: Record<string, AgentConfig>;
+  defaultCli: "claude" | "codex";
+  fallbackCli: "claude" | "codex";
   model?: string;
   searchCtx: SearchCtx;
+}
+
+function resolveFor(key: string, opts: RunMissionOpts) {
+  const r = resolveAgent(
+    {
+      vaultPath: "", sqlitePath: "",
+      modelAdapter: { defaultCli: opts.defaultCli, fallbackCli: opts.fallbackCli },
+      agents: opts.agents,
+    },
+    key,
+  );
+  return r;
 }
 
 function bundle(entries: Array<{ name: string; text: string }>): string {
@@ -46,7 +61,7 @@ function extractQueries(briefSummary: string): string[] {
 }
 
 export async function runMission(opts: RunMissionOpts): Promise<void> {
-  const { projectId, experts, store, registry, projectsDir, cli, model, searchCtx } = opts;
+  const { projectId, experts, store, registry, projectsDir, searchCtx } = opts;
   const project = await store.get(projectId);
   if (!project) throw new Error("project not found");
   if (!project.brief?.summary_path) throw new Error("brief summary missing");
@@ -101,12 +116,13 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
       await appendEvent(projectDir, { type: "expert.round1_started", expert: name });
       const kbContent = registry.readKb("topic-panel", name);
       const entry = registry.listAll("topic-panel").find((e) => e.name === name)!;
+      const expertResolved = resolveFor(`topic_expert.${name}`, opts);
       const agent = new TopicExpert({
         name,
         kbContent,
         kbSource: `08_experts/topic-panel/${entry.file}`,
-        cli,
-        model,
+        cli: expertResolved.cli,
+        model: expertResolved.model,
       });
       const out = agent.round1({ projectId, runId, briefSummary, refsPack });
       await writeFile(join(projectDir, `mission/round1/${name}.md`), out.text, "utf-8");
@@ -123,7 +139,8 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
     to: "synthesizing",
   });
   await appendEvent(projectDir, { type: "coordinator.synthesizing" });
-  const coord = new Coordinator({ cli, model });
+  const coordResolved = resolveFor("coordinator", opts);
+  const coord = new Coordinator({ cli: coordResolved.cli, model: coordResolved.model });
   const candidatesResult = coord.round1Synthesize({
     projectId,
     runId,
@@ -153,12 +170,13 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
       await appendEvent(projectDir, { type: "expert.round2_started", expert: name });
       const kbContent = registry.readKb("topic-panel", name);
       const entry = registry.listAll("topic-panel").find((e) => e.name === name)!;
+      const expertResolved = resolveFor(`topic_expert.${name}`, opts);
       const agent = new TopicExpert({
         name,
         kbContent,
         kbSource: `08_experts/topic-panel/${entry.file}`,
-        cli,
-        model,
+        cli: expertResolved.cli,
+        model: expertResolved.model,
       });
       const out = agent.round2({ projectId, runId, candidatesMd: candidatesResult.text });
       await writeFile(join(projectDir, `mission/round2/${name}.md`), out.text, "utf-8");

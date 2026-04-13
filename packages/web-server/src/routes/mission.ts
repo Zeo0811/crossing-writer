@@ -5,6 +5,7 @@ import type { ProjectStore } from "../services/project-store.js";
 import type { ExpertRegistry } from "../services/expert-registry.js";
 import { runMission } from "../services/mission-orchestrator.js";
 import { appendEvent } from "../services/event-log.js";
+import type { AgentConfig } from "@crossing/agents";
 
 export interface MissionDeps {
   store: ProjectStore;
@@ -12,6 +13,9 @@ export interface MissionDeps {
   projectsDir: string;
   cli: "claude" | "codex";
   model?: string;
+  agents: Record<string, AgentConfig>;
+  defaultCli: "claude" | "codex";
+  fallbackCli: "claude" | "codex";
   searchCtx: { sqlitePath: string; vaultPath: string };
 }
 

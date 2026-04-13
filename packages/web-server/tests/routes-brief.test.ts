@@ -4,6 +4,7 @@ vi.mock("@crossing/agents", () => ({
   BriefAnalyst: class {
     analyze() { return { text: "---\ntype: brief_summary\n---\nok", meta: { cli: "codex", durationMs: 1 } }; }
   },
+  resolveAgent: (_cfg: any, _key: string) => ({ cli: _cfg.modelAdapter.defaultCli }),
 }));
 import { mkdtempSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -21,7 +22,7 @@ async function mkApp() {
   const app = Fastify();
   await app.register(multipart);
   registerProjectsRoutes(app, { store });
-  registerBriefRoutes(app, { store, projectsDir, cli: "codex" });
+  registerBriefRoutes(app, { store, projectsDir, cli: "codex", agents: {}, defaultCli: "codex", fallbackCli: "claude" });
   await app.ready();
   const created = (await app.inject({ method: "POST", url: "/api/projects", payload: { name: "T" } })).json();
   return { app, store, project: created, projectsDir };

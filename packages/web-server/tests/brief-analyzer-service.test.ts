@@ -12,6 +12,7 @@ vi.mock("@crossing/agents", () => ({
       meta: { cli: "codex", durationMs: 100 },
     }),
   })),
+  resolveAgent: (_cfg: any, _key: string) => ({ cli: _cfg.modelAdapter.defaultCli }),
 }));
 
 describe("analyzeBrief", () => {
@@ -33,6 +34,9 @@ describe("analyzeBrief", () => {
       projectsDir,
       store,
       cli: "codex",
+      agents: {},
+      defaultCli: "codex",
+      fallbackCli: "claude",
     });
 
     const updated = await store.get(p.id);
@@ -55,7 +59,7 @@ describe("analyzeBrief", () => {
       brief: { source_type: "text", raw_path: "brief/raw/brief.txt", md_path: "brief/brief.md", summary_path: null, uploaded_at: "" },
     });
 
-    await analyzeBrief({ projectId: p.id, projectsDir, store, cli: "codex" });
+    await analyzeBrief({ projectId: p.id, projectsDir, store, cli: "codex", agents: {}, defaultCli: "codex", fallbackCli: "claude" });
 
     const events = readFileSync(join(projectDir, "events.jsonl"), "utf-8");
     expect(events).toMatch(/"agent.started"/);
@@ -70,7 +74,7 @@ describe("analyzeBrief", () => {
     const store = new ProjectStore(projectsDir);
     const p = await store.create({ name: "Z" });
     await expect(
-      analyzeBrief({ projectId: p.id, projectsDir, store, cli: "codex" }),
+      analyzeBrief({ projectId: p.id, projectsDir, store, cli: "codex", agents: {}, defaultCli: "codex", fallbackCli: "claude" }),
     ).rejects.toThrow(/no brief/i);
   });
 });
