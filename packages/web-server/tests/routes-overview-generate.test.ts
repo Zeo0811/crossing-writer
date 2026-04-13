@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Fastify from "fastify";
@@ -8,6 +8,7 @@ import { registerProjectsRoutes } from "../src/routes/projects.js";
 import { registerOverviewRoutes } from "../src/routes/overview.js";
 import { ProjectStore } from "../src/services/project-store.js";
 import { ImageStore } from "../src/services/image-store.js";
+import { createConfigStore } from "../src/services/config-store.js";
 
 vi.mock("../src/services/overview-analyzer-service.js", () => ({
   analyzeOverview: vi.fn(async () => "/abs/out.md"),
@@ -21,12 +22,21 @@ describe("POST /overview/generate", () => {
     const imageStore = new ImageStore(projectsDir);
     const app = Fastify();
     await app.register(multipart);
+    const cfgPath = join(vault, "config.json");
+    writeFileSync(cfgPath, JSON.stringify({
+      vaultPath: vault,
+      sqlitePath: "",
+      modelAdapter: { defaultCli: "claude", fallbackCli: "codex" },
+      agents: {},
+    }, null, 2), "utf-8");
+    const configStore = createConfigStore(cfgPath);
     registerProjectsRoutes(app, { store });
     registerOverviewRoutes(app, {
       store, imageStore, projectsDir,
       analyzeOverviewDeps: {
-        vaultPath: "", sqlitePath: "",
-        agents: {}, defaultCli: "claude", fallbackCli: "codex",
+        vaultPath: vault,
+        sqlitePath: "",
+        configStore,
       },
     });
     await app.ready();
@@ -51,12 +61,21 @@ describe("POST /overview/generate", () => {
     const imageStore = new ImageStore(projectsDir);
     const app = Fastify();
     await app.register(multipart);
+    const cfgPath = join(vault, "config.json");
+    writeFileSync(cfgPath, JSON.stringify({
+      vaultPath: vault,
+      sqlitePath: "",
+      modelAdapter: { defaultCli: "claude", fallbackCli: "codex" },
+      agents: {},
+    }, null, 2), "utf-8");
+    const configStore = createConfigStore(cfgPath);
     registerProjectsRoutes(app, { store });
     registerOverviewRoutes(app, {
       store, imageStore, projectsDir,
       analyzeOverviewDeps: {
-        vaultPath: "", sqlitePath: "",
-        agents: {}, defaultCli: "claude", fallbackCli: "codex",
+        vaultPath: vault,
+        sqlitePath: "",
+        configStore,
       },
     });
     await app.ready();

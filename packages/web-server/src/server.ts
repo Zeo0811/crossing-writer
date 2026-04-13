@@ -72,11 +72,15 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     },
   });
 
+  const configStore = createConfigStore(configPath);
+  registerConfigRoutes(app, { configStore });
+
   registerOverviewRoutes(app, {
-    store, imageStore, projectsDir: cfg.projectsDir,
+    store, imageStore, projectsDir: configStore.current.projectsDir,
     analyzeOverviewDeps: {
-      vaultPath: cfg.vaultPath, sqlitePath: cfg.sqlitePath,
-      agents: cfg.agents, defaultCli: cfg.defaultCli, fallbackCli: cfg.fallbackCli,
+      vaultPath: configStore.current.vaultPath,
+      sqlitePath: configStore.current.sqlitePath,
+      configStore,
     },
   });
 
@@ -86,9 +90,6 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     defaultCli: cfg.defaultCli,
     ts: Date.now(),
   }));
-
-  const configStore = createConfigStore(configPath);
-  registerConfigRoutes(app, { configStore });
 
   return app;
 }

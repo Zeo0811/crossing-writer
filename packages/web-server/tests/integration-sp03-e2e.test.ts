@@ -10,6 +10,7 @@ import { registerCasePlanRoutes } from "../src/routes/case-plan.js";
 import { ProjectStore } from "../src/services/project-store.js";
 import { ImageStore } from "../src/services/image-store.js";
 import { ExpertRegistry } from "../src/services/expert-registry.js";
+import { createConfigStore } from "../src/services/config-store.js";
 
 vi.mock("../src/services/case-inspiration-pack-builder.js", () => ({
   buildInspirationPack: async () => "# Inspiration Pack\nmock content",
@@ -56,12 +57,20 @@ describe("SP-03 e2e: overview → case approval", () => {
     const store = new ProjectStore(projectsDir);
     const imageStore = new ImageStore(projectsDir);
     const expertRegistry = new ExpertRegistry(vault);
+    const cfgPath = join(vault, "config.json");
+    writeFileSync(cfgPath, JSON.stringify({
+      vaultPath: vault,
+      sqlitePath: "",
+      modelAdapter: { defaultCli: "claude", fallbackCli: "codex" },
+      agents: {},
+    }, null, 2), "utf-8");
+    const configStore = createConfigStore(cfgPath);
     const app = Fastify();
     await app.register(multipart);
     registerProjectsRoutes(app, { store });
     registerOverviewRoutes(app, {
       store, imageStore, projectsDir,
-      analyzeOverviewDeps: { vaultPath: vault, sqlitePath: "", agents: {}, defaultCli: "claude", fallbackCli: "codex" },
+      analyzeOverviewDeps: { vaultPath: vault, sqlitePath: "", configStore },
     });
     registerCasePlanRoutes(app, {
       store, expertRegistry, projectsDir,

@@ -5,6 +5,7 @@ import { join } from "node:path";
 import type { ProjectStore } from "../services/project-store.js";
 import type { ImageStore } from "../services/image-store.js";
 import { analyzeOverview } from "../services/overview-analyzer-service.js";
+import type { ConfigStore } from "../services/config-store.js";
 
 export interface OverviewDeps {
   store: ProjectStore;
@@ -13,9 +14,7 @@ export interface OverviewDeps {
   analyzeOverviewDeps: {
     vaultPath: string;
     sqlitePath: string;
-    agents: Record<string, unknown>;
-    defaultCli: "claude" | "codex";
-    fallbackCli: "claude" | "codex";
+    configStore: ConfigStore;
   };
 }
 
@@ -135,6 +134,7 @@ export function registerOverviewRoutes(app: FastifyInstance, deps: OverviewDeps)
       return reply.code(400).send({ error: "at least one image required" });
     }
     const body = req.body ?? {};
+    const cfg = deps.analyzeOverviewDeps.configStore.current;
     void analyzeOverview({
       projectId: id,
       projectsDir: deps.projectsDir,
@@ -142,8 +142,14 @@ export function registerOverviewRoutes(app: FastifyInstance, deps: OverviewDeps)
       imageStore: deps.imageStore,
       productUrls: body.productUrls ?? [],
       userDescription: body.userDescription,
-      ...deps.analyzeOverviewDeps,
-    }).catch(() => { /* error is logged via events */ });
+      vaultPath: deps.analyzeOverviewDeps.vaultPath,
+      sqlitePath: deps.analyzeOverviewDeps.sqlitePath,
+      agents: cfg.agents,
+      defaultCli: cfg.defaultCli,
+      fallbackCli: cfg.fallbackCli,
+    }).catch((e) => {
+      console.error("[analyzeOverview] crashed:", e);
+    });
     return reply.code(202).send({ status: "analyzing" });
   });
 }
