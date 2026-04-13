@@ -44,6 +44,14 @@ export interface Project {
     human_edited: boolean;
     edited_at?: string;
   };
+  case_plan?: {
+    experts_selected: string[];
+    candidates_path: string;
+    selected_path: string | null;
+    selected_indices: number[] | null;
+    selected_count: number;
+    approved_at: string | null;
+  };
   runs: Array<{
     id: string;
     stage: string;
