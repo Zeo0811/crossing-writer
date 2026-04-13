@@ -7,6 +7,7 @@ import { registerProjectsRoutes } from "../src/routes/projects.js";
 import { registerCasePlanRoutes } from "../src/routes/case-plan.js";
 import { ProjectStore } from "../src/services/project-store.js";
 import { ExpertRegistry } from "../src/services/expert-registry.js";
+import { createConfigStore } from "../src/services/config-store.js";
 
 vi.mock("../src/services/case-plan-orchestrator.js", () => ({
   runCasePlan: vi.fn(async () => "/abs/candidates.md"),
@@ -22,15 +23,22 @@ describe("/case-plan routes", () => {
       "experts: []\n", "utf-8");
     const store = new ProjectStore(projectsDir);
     const expertRegistry = new ExpertRegistry(vault);
+    const cfgPath = join(vault, "config.json");
+    writeFileSync(cfgPath, JSON.stringify({
+      vaultPath: vault,
+      sqlitePath: "",
+      modelAdapter: { defaultCli: "claude", fallbackCli: "codex" },
+      agents: {},
+    }, null, 2), "utf-8");
+    const configStore = createConfigStore(cfgPath);
     const app = Fastify();
     registerProjectsRoutes(app, { store });
     registerCasePlanRoutes(app, {
       store, expertRegistry,
-      orchestratorDeps: {
-        vaultPath: vault, sqlitePath: "",
-        agents: {}, defaultCli: "claude", fallbackCli: "codex",
-      },
       projectsDir,
+      orchestratorDeps: {
+        vaultPath: vault, sqlitePath: "", configStore,
+      },
     });
     await app.ready();
     const p = (await app.inject({
@@ -55,12 +63,20 @@ describe("/case-plan routes", () => {
     writeFileSync(join(vault, "08_experts/topic-panel/index.yaml"), "experts: []\n", "utf-8");
     const store = new ProjectStore(projectsDir);
     const expertRegistry = new ExpertRegistry(vault);
+    const cfgPath2 = join(vault, "config.json");
+    writeFileSync(cfgPath2, JSON.stringify({
+      vaultPath: vault,
+      sqlitePath: "",
+      modelAdapter: { defaultCli: "claude", fallbackCli: "codex" },
+      agents: {},
+    }, null, 2), "utf-8");
+    const configStore2 = createConfigStore(cfgPath2);
     const app = Fastify();
     registerProjectsRoutes(app, { store });
     registerCasePlanRoutes(app, {
       store, expertRegistry,
-      orchestratorDeps: { vaultPath: vault, sqlitePath: "", agents: {}, defaultCli: "claude", fallbackCli: "codex" },
       projectsDir,
+      orchestratorDeps: { vaultPath: vault, sqlitePath: "", configStore: configStore2 },
     });
     await app.ready();
     const p = (await app.inject({ method: "POST", url: "/api/projects", payload: { name: "T" } })).json();

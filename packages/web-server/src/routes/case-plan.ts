@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { ProjectStore } from "../services/project-store.js";
 import type { ExpertRegistry } from "../services/expert-registry.js";
+import type { ConfigStore } from "../services/config-store.js";
 import { computeCasePreselect } from "../services/case-expert-preselect.js";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -14,9 +15,7 @@ export interface CasePlanDeps {
   orchestratorDeps?: {
     vaultPath: string;
     sqlitePath: string;
-    agents: Record<string, unknown>;
-    defaultCli: "claude" | "codex";
-    fallbackCli: "claude" | "codex";
+    configStore: ConfigStore;
   };
 }
 
@@ -69,13 +68,21 @@ export function registerCasePlanRoutes(app: FastifyInstance, deps: CasePlanDeps)
           } catch { expertKbs[name] = ""; }
         }
       }
+      const cfg = orchDeps.configStore.current;
       void runCasePlan({
         projectId: req.params.id,
         projectsDir: deps.projectsDir!,
         store: deps.store,
-        experts, expertKbs,
-        ...orchDeps,
-      }).catch(() => {});
+        experts,
+        expertKbs,
+        vaultPath: orchDeps.vaultPath,
+        sqlitePath: orchDeps.sqlitePath,
+        agents: cfg.agents,
+        defaultCli: cfg.defaultCli,
+        fallbackCli: cfg.fallbackCli,
+      }).catch((e) => {
+        console.error("[runCasePlan] crashed:", e);
+      });
       return reply.code(202).send({ status: "planning" });
     },
   );

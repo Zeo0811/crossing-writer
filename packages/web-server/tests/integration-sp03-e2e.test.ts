@@ -74,7 +74,7 @@ describe("SP-03 e2e: overview → case approval", () => {
     });
     registerCasePlanRoutes(app, {
       store, expertRegistry, projectsDir,
-      orchestratorDeps: { vaultPath: vault, sqlitePath: "", agents: {}, defaultCli: "claude", fallbackCli: "codex" },
+      orchestratorDeps: { vaultPath: vault, sqlitePath: "", configStore },
     });
     await app.ready();
 

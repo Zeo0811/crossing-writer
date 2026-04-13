@@ -7,6 +7,7 @@ import { registerProjectsRoutes } from "../src/routes/projects.js";
 import { registerCasePlanRoutes } from "../src/routes/case-plan.js";
 import { ProjectStore } from "../src/services/project-store.js";
 import { ExpertRegistry } from "../src/services/expert-registry.js";
+import { createConfigStore } from "../src/services/config-store.js";
 
 describe("GET /api/projects/:id/experts/case", () => {
   it("returns experts with preselect flags", async () => {
@@ -34,14 +35,21 @@ describe("GET /api/projects/:id/experts/case", () => {
     const projectsDir = join(vault, "07_projects");
     const store = new ProjectStore(projectsDir);
     const registry = new ExpertRegistry(vault);
+    const cfgPath = join(vault, "config.json");
+    writeFileSync(cfgPath, JSON.stringify({
+      vaultPath: vault,
+      sqlitePath: "",
+      modelAdapter: { defaultCli: "claude", fallbackCli: "codex" },
+      agents: {},
+    }, null, 2), "utf-8");
+    const configStore = createConfigStore(cfgPath);
     const app = Fastify();
     registerProjectsRoutes(app, { store });
     registerCasePlanRoutes(app, {
       store, expertRegistry: registry,
       projectsDir,
       orchestratorDeps: {
-        vaultPath: vault, sqlitePath: "",
-        agents: {}, defaultCli: "claude", fallbackCli: "codex",
+        vaultPath: vault, sqlitePath: "", configStore,
       },
     });
     await app.ready();

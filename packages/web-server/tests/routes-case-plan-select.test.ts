@@ -7,6 +7,7 @@ import { registerProjectsRoutes } from "../src/routes/projects.js";
 import { registerCasePlanRoutes } from "../src/routes/case-plan.js";
 import { ProjectStore } from "../src/services/project-store.js";
 import { ExpertRegistry } from "../src/services/expert-registry.js";
+import { createConfigStore } from "../src/services/config-store.js";
 
 describe("POST /case-plan/select", () => {
   it("writes selected-cases.md and transitions to case_plan_approved", async () => {
@@ -16,11 +17,19 @@ describe("POST /case-plan/select", () => {
     writeFileSync(join(vault, "08_experts/topic-panel/index.yaml"), "experts: []\n", "utf-8");
     const store = new ProjectStore(projectsDir);
     const expertRegistry = new ExpertRegistry(vault);
+    const cfgPath = join(vault, "config.json");
+    writeFileSync(cfgPath, JSON.stringify({
+      vaultPath: vault,
+      sqlitePath: "",
+      modelAdapter: { defaultCli: "claude", fallbackCli: "codex" },
+      agents: {},
+    }, null, 2), "utf-8");
+    const configStore = createConfigStore(cfgPath);
     const app = Fastify();
     registerProjectsRoutes(app, { store });
     registerCasePlanRoutes(app, {
       store, expertRegistry, projectsDir,
-      orchestratorDeps: { vaultPath: vault, sqlitePath: "", agents: {}, defaultCli: "claude", fallbackCli: "codex" },
+      orchestratorDeps: { vaultPath: vault, sqlitePath: "", configStore },
     });
     await app.ready();
     const p = (await app.inject({ method: "POST", url: "/api/projects", payload: { name: "T" } })).json();
