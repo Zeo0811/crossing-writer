@@ -1,0 +1,58 @@
+export type ProjectStatus =
+  | "created"
+  | "brief_uploaded"
+  | "brief_analyzing"
+  | "brief_ready"
+  | "awaiting_expert_selection"
+  | "round1_running"
+  | "round1_failed"
+  | "synthesizing"
+  | "round2_running"
+  | "round2_failed"
+  | "awaiting_mission_pick"
+  | "mission_approved";
+
+export type ProjectStage = "intake" | "mission" | "completed";
+
+export interface Project {
+  id: string;
+  name: string;
+  slug: string;
+  status: ProjectStatus;
+  stage: ProjectStage;
+  article_type: string | null;
+  experts_selected: string[];
+  brief: null | {
+    source_type: string;
+    raw_path: string;
+    md_path: string;
+    summary_path: string | null;
+    uploaded_at: string;
+  };
+  product_info: null | {
+    name: string | null;
+    official_url: string | null;
+    trial_url: string | null;
+    docs_url: string | null;
+    fetched_path: string | null;
+    notes: string | null;
+  };
+  mission: {
+    candidates_path: string | null;
+    selected_index: number | null;
+    selected_path: string | null;
+    selected_at: string | null;
+    selected_by: string | null;
+  };
+  tags: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Expert {
+  name: string;
+  file: string;
+  active: boolean;
+  default_preselect: boolean;
+  specialty: string;
+}

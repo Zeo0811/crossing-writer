@@ -1,0 +1,14 @@
+{
+  "name": "crossing-writer",
+  "private": true,
+  "version": "0.2.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter=./packages/web-server --filter=./packages/web-ui run dev",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
+  "packageManager": "pnpm@9.0.0"
+}

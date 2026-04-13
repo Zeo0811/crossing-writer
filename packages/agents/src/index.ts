@@ -1,0 +1,16 @@
+export { invokeAgent } from "./model-adapter.js";
+export type { InvokeOptions, AgentResult } from "./model-adapter.js";
+export { AgentBase } from "./agent-base.js";
+export type { AgentOptions } from "./agent-base.js";
+export { loadPrompt } from "./prompts/index.js";
+export { parseToolCalls, runCrossingKbSearch } from "./tool-runner.js";
+export type { ToolCall, ToolResult } from "./tool-runner.js";
+export { loadConfig, resolveAgent } from "./config.js";
+export type { AgentConfig, CrossingConfig } from "./config.js";
+export { BriefAnalyst } from "./roles/brief-analyst.js";
+export type { BriefAnalyzeInput } from "./roles/brief-analyst.js";
+export { TopicExpert } from "./roles/topic-expert.js";
+export type { TopicExpertOpts, Round1Input, Round2Input } from "./roles/topic-expert.js";
+export { Coordinator } from "./roles/coordinator.js";
+export type { CoordinatorOpts, Round1SynthInput, Round2AggregateInput } from "./roles/coordinator.js";
+export const VERSION = "0.2.0";

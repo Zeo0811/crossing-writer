@@ -1,0 +1,58 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+@import "./tokens.css";
+
+body {
+  background: #f0f2f5;
+  color: var(--dark);
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+}
+* { box-sizing: border-box; }
+
+/* Markdown 渲染补齐：frontmatter 块通常会被 react-markdown 当 thematic break，单独处理下 */
+.prose :where(h1):not(:where([class~="not-prose"] *)) {
+  color: var(--green);
+  border-bottom: 2px solid var(--green-border);
+  padding-bottom: 0.3em;
+  margin-top: 1.5em;
+}
+.prose :where(h2):not(:where([class~="not-prose"] *)) {
+  color: var(--green-dark);
+  margin-top: 1.4em;
+}
+.prose :where(h3):not(:where([class~="not-prose"] *)) {
+  color: var(--dark);
+  margin-top: 1.2em;
+}
+.prose :where(code):not(:where([class~="not-prose"] *)) {
+  background: var(--gray-light);
+  padding: 0.15em 0.4em;
+  border-radius: 3px;
+  font-size: 0.88em;
+}
+.prose :where(pre):not(:where([class~="not-prose"] *)) {
+  background: var(--gray-light);
+  color: var(--dark);
+  border: 1px solid var(--border);
+}
+.prose :where(blockquote):not(:where([class~="not-prose"] *)) {
+  border-left: 3px solid var(--green);
+  background: var(--green-light);
+  padding: 0.6em 1em;
+  font-style: normal;
+}
+.prose :where(hr):not(:where([class~="not-prose"] *)) {
+  border-color: var(--border);
+  margin: 1.2em 0;
+}
+.prose :where(ul, ol):not(:where([class~="not-prose"] *)) li {
+  margin: 0.2em 0;
+}
+.prose :where(table):not(:where([class~="not-prose"] *)) {
+  border-collapse: collapse;
+}
+.prose :where(th, td):not(:where([class~="not-prose"] *)) {
+  border: 1px solid var(--border);
+  padding: 0.4em 0.8em;
+}
