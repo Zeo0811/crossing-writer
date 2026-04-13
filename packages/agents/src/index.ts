@@ -13,4 +13,6 @@ export { TopicExpert } from "./roles/topic-expert.js";
 export type { TopicExpertOpts, Round1Input, Round2Input } from "./roles/topic-expert.js";
 export { Coordinator } from "./roles/coordinator.js";
 export type { CoordinatorOpts, Round1SynthInput, Round2AggregateInput } from "./roles/coordinator.js";
+export { ProductOverviewAgent } from "./roles/product-overview-agent.js";
+export type { OverviewInput, OverviewOutput } from "./roles/product-overview-agent.js";
 export const VERSION = "0.2.0";
