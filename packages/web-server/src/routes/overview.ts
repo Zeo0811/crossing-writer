@@ -20,7 +20,9 @@ export interface OverviewDeps {
 }
 
 export function registerOverviewRoutes(app: FastifyInstance, deps: OverviewDeps) {
-  app.addContentTypeParser("text/markdown", { parseAs: "string" }, (_req, body, done) => done(null, body));
+  if (!app.hasContentTypeParser("text/markdown")) {
+    app.addContentTypeParser("text/markdown", { parseAs: "string" }, (_req, body, done) => done(null, body));
+  }
 
   app.get<{ Params: { id: string } }>(
     "/api/projects/:id/overview",

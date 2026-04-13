@@ -38,7 +38,9 @@ export function registerCasePlanRoutes(app: FastifyInstance, deps: CasePlanDeps)
     },
   );
 
-  app.addContentTypeParser("text/markdown", { parseAs: "string" }, (_r, b, done) => done(null, b));
+  if (!app.hasContentTypeParser("text/markdown")) {
+    app.addContentTypeParser("text/markdown", { parseAs: "string" }, (_r, b, done) => done(null, b));
+  }
 
   app.post<{ Params: { id: string }; Body: { experts: string[] } }>(
     "/api/projects/:id/case-plan/start",
