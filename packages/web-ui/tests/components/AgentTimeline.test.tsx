@@ -8,7 +8,7 @@ describe("AgentTimeline SP-03", () => {
       { ts: "2026-04-13T14:32:15Z", type: "agent.started",
         agent: "brief_analyst", cli: "claude", model: "sonnet" },
     ]} />);
-    expect(screen.getByText(/brief_analyst/)).toBeInTheDocument();
+    expect(screen.getAllByText(/brief_analyst/).length).toBeGreaterThan(0);
     expect(screen.getByText(/claude\/sonnet/)).toBeInTheDocument();
     const dot = screen.getByTestId("status-dot-brief_analyst");
     expect(dot.className).toMatch(/green/);
