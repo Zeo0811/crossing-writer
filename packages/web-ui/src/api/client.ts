@@ -58,3 +58,18 @@ export const api = {
   listExperts: () =>
     request<{ topic_panel: Expert[] }>("/api/experts"),
 };
+
+export const apiMission = {
+  start: (projectId: string, experts: string[]) =>
+    request<{ ok: true; status: string }>(`/api/projects/${projectId}/mission/start`, {
+      method: "POST",
+      body: JSON.stringify({ experts }),
+    }),
+  getCandidates: (projectId: string) =>
+    request<string>(`/api/projects/${projectId}/mission/candidates`),
+  select: (projectId: string, candidateIndex: number, edits?: string) =>
+    request<{ ok: true }>(`/api/projects/${projectId}/mission/select`, {
+      method: "POST",
+      body: JSON.stringify({ candidateIndex, edits }),
+    }),
+};
