@@ -42,6 +42,7 @@ export interface Project {
     overview_path: string;
     generated_at: string;
     human_edited: boolean;
+    edited_at?: string;
   };
   runs: Array<{
     id: string;

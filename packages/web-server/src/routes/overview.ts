@@ -1,5 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import "@fastify/multipart";
+import { readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import type { ProjectStore } from "../services/project-store.js";
 import type { ImageStore } from "../services/image-store.js";
 import { analyzeOverview } from "../services/overview-analyzer-service.js";
@@ -18,6 +20,39 @@ export interface OverviewDeps {
 }
 
 export function registerOverviewRoutes(app: FastifyInstance, deps: OverviewDeps) {
+  app.addContentTypeParser("text/markdown", { parseAs: "string" }, (_req, body, done) => done(null, body));
+
+  app.get<{ Params: { id: string } }>(
+    "/api/projects/:id/overview",
+    async (req, reply) => {
+      const overviewPath = join(deps.projectsDir, req.params.id, "context/product-overview.md");
+      try {
+        const body = await readFile(overviewPath, "utf-8");
+        reply.header("content-type", "text/markdown; charset=utf-8");
+        return reply.send(body);
+      } catch (e: any) {
+        if (e.code === "ENOENT") return reply.code(404).send({ error: "not generated" });
+        throw e;
+      }
+    },
+  );
+
+  app.patch<{ Params: { id: string } }>(
+    "/api/projects/:id/overview",
+    async (req, reply) => {
+      const overviewPath = join(deps.projectsDir, req.params.id, "context/product-overview.md");
+      const raw = typeof req.body === "string" ? req.body : String(req.body);
+      await writeFile(overviewPath, raw, "utf-8");
+      const p = await deps.store.get(req.params.id);
+      if (p && p.overview) {
+        await deps.store.update(req.params.id, {
+          overview: { ...p.overview, human_edited: true, edited_at: new Date().toISOString() },
+        });
+      }
+      return reply.code(200).send({ ok: true });
+    },
+  );
+
   app.post<{ Params: { id: string } }>(
     "/api/projects/:id/overview/images",
     async (req, reply) => {
