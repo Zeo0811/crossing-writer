@@ -47,7 +47,39 @@ function sectionStatusFor(key: string, projectStatus: string): SecStat {
   return "pending";
 }
 
-function rightPanel(status: string, projectId: string, onRefetch: () => void) {
+function findLastFailure(events: any[]): { agent?: string; cli?: string; model?: string | null; error?: string } | null {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i];
+    if (typeof e.type === "string" && e.type.endsWith(".failed")) {
+      const d = e.data ?? e;
+      return { agent: d.agent, cli: d.cli, model: d.model, error: d.error };
+    }
+  }
+  return null;
+}
+
+function FailureCard({ title, fail, onRetry }: { title: string; fail: any; onRetry?: () => void }) {
+  return (
+    <div className="p-4 bg-red-50 border border-red-300 rounded">
+      <h3 className="font-semibold text-red-700">{title}</h3>
+      {fail?.agent && (
+        <p className="text-xs text-gray-600 mt-1">
+          {fail.agent} · {fail.cli}/{fail.model ?? "?"}
+        </p>
+      )}
+      <pre className="text-xs whitespace-pre-wrap mt-2 max-h-48 overflow-auto bg-white p-2 border border-red-200">
+        {fail?.error ?? "未捕获错误（见右下时间线）"}
+      </pre>
+      {onRetry && (
+        <button onClick={onRetry} className="mt-2 bg-red-600 text-white px-3 py-1 text-sm">
+          重试
+        </button>
+      )}
+    </div>
+  );
+}
+
+function rightPanel(status: string, projectId: string, onRefetch: () => void, events: any[]) {
   // SP-02 Brief/Mission panels
   if (status === "created") {
     return <BriefIntakeForm projectId={projectId} onUploaded={onRefetch} />;
@@ -76,14 +108,27 @@ function rightPanel(status: string, projectId: string, onRefetch: () => void) {
   switch (status) {
     case "mission_approved":
     case "awaiting_overview_input":
-    case "overview_failed":
       return <OverviewIntakeForm projectId={projectId} />;
+    case "overview_failed":
+      return (
+        <div className="space-y-4 p-4">
+          <FailureCard title="产品概览生成失败" fail={findLastFailure(events)} />
+          <OverviewIntakeForm projectId={projectId} />
+        </div>
+      );
     case "overview_analyzing":
       return <div className="p-4">正在生成产品概览…</div>;
     case "overview_ready":
       return <div className="p-4">点左侧卡片里的「批准进入 Case 规划」</div>;
     case "awaiting_case_expert_selection":
       return <CaseExpertSelector projectId={projectId} />;
+    case "case_planning_failed":
+      return (
+        <div className="space-y-4 p-4">
+          <FailureCard title="Case 规划失败" fail={findLastFailure(events)} />
+          <CaseExpertSelector projectId={projectId} />
+        </div>
+      );
     case "case_planning_running":
     case "case_synthesizing":
       return <div className="p-4">规划中…（看右下时间线）</div>;
@@ -101,7 +146,7 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
   const projectId = propProjectId ?? params.id ?? "";
 
   const [project, setProject] = useState<any>(null);
-  const { events, activeAgents } = useProjectStream(projectId);
+  const { events, activeAgents, connectionState, lastEventTs } = useProjectStream(projectId);
 
   function refetch() {
     getProject(projectId).then(setProject).catch(() => {});
@@ -178,13 +223,13 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
           )}
         </div>
 
-        {/* 右侧：表单/专家选择/时间线 */}
+        {/* 右侧：时间线（顶部）+ 表单/专家选择 */}
         <div className="w-2/5 flex flex-col overflow-hidden bg-[var(--gray-light)]">
-          <div className="flex-1 overflow-auto p-6 space-y-4">
-            {rightPanel(status, projectId, refetch)}
+          <div className="p-3 border-b bg-white">
+            <AgentTimeline events={events} connectionState={connectionState} lastEventTs={lastEventTs} />
           </div>
-          <div className="border-t max-h-60 overflow-auto p-2">
-            <AgentTimeline events={events} />
+          <div className="flex-1 overflow-auto p-6 space-y-4">
+            {rightPanel(status, projectId, refetch, events)}
           </div>
         </div>
       </div>
