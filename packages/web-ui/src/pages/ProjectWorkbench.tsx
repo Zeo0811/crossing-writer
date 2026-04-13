@@ -11,6 +11,7 @@ import { MissionCandidatesPanel } from "../components/left/MissionCandidateCard"
 import { SelectedMissionView } from "../components/left/SelectedMissionView";
 import { ProductOverviewCard } from "../components/left/ProductOverviewCard";
 import { SectionAccordion, Section } from "../components/layout/SectionAccordion";
+import { SectionStatusBadge } from "../components/status/SectionStatusBadge";
 import { OverviewIntakeForm } from "../components/right/OverviewIntakeForm";
 import { CaseExpertSelector } from "../components/right/CaseExpertSelector";
 import { CaseListPanel } from "../components/left/CaseListPanel";
@@ -193,7 +194,7 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
             <div className="text-gray-500">右侧上传 Brief 开始</div>
           ) : (
             <SectionAccordion>
-              <Section title="Brief 摘要" status={sectionStatusFor("brief", status)}>
+              <Section title={<>Brief 摘要 <SectionStatusBadge sectionKey="brief" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("brief", status)}>
                 {(status === "brief_uploaded" || status === "brief_analyzing") ? (
                   <div className="text-gray-500">Brief Analyst 运行中…（稍候 1-2 分钟）</div>
                 ) : (
@@ -201,7 +202,7 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
                 )}
               </Section>
 
-              <Section title="Mission 选定" status={sectionStatusFor("mission", status)}>
+              <Section title={<>Mission 选定 <SectionStatusBadge sectionKey="mission" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("mission", status)}>
                 {showCandidates && !showSelected ? (
                   <MissionCandidatesPanel projectId={projectId} onSelected={refetch} />
                 ) : showSelected && project.mission?.selected_path ? (
@@ -212,11 +213,11 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
                 ) : null}
               </Section>
 
-              <Section title="产品概览" status={sectionStatusFor("overview", status)}>
+              <Section title={<>产品概览 <SectionStatusBadge sectionKey="overview" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("overview", status)}>
                 <ProductOverviewCard projectId={projectId} status={status} />
               </Section>
 
-              <Section title="Case 列表" status={sectionStatusFor("case", status)}>
+              <Section title={<>Case 列表 <SectionStatusBadge sectionKey="case" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("case", status)}>
                 <CaseListPanel projectId={projectId} />
               </Section>
             </SectionAccordion>

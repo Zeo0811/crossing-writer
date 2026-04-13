@@ -8,7 +8,7 @@ export function SectionAccordion({ children }: { children: ReactNode }) {
 
 export function Section({
   title, status, children,
-}: { title: string; status: SectionStatus; children: ReactNode }) {
+}: { title: ReactNode; status: SectionStatus; children: ReactNode }) {
   const [expanded, setExpanded] = useState(status === "active");
 
   function onToggle() {
