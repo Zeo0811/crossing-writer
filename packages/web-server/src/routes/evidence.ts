@@ -1,8 +1,9 @@
+import "@fastify/multipart";
 import type { FastifyInstance } from "fastify";
 import { join } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import type { ProjectStore } from "../services/project-store.js";
-import { EvidenceStore } from "../services/evidence-store.js";
+import { EvidenceStore, type EvidenceKind } from "../services/evidence-store.js";
 import { computeCompleteness } from "../services/evidence-completeness.js";
 
 export interface EvidenceDeps {
@@ -84,6 +85,55 @@ export function registerEvidenceRoutes(app: FastifyInstance, deps: EvidenceDeps)
         submitted_at: summary.submitted_at,
         index_path: "evidence/index.md",
       });
+    },
+  );
+
+  const KIND_LIMITS: Record<EvidenceKind, number> = {
+    screenshot: 10 * 1024 * 1024,
+    recording: 100 * 1024 * 1024,
+    generated: 200 * 1024 * 1024,
+  };
+  const CASE_TOTAL_LIMIT = 1024 * 1024 * 1024;
+  const VALID_KINDS = new Set<EvidenceKind>(["screenshot", "recording", "generated"]);
+
+  app.post<{ Params: { id: string; caseId: string } }>(
+    "/api/projects/:id/evidence/:caseId/files",
+    async (req, reply) => {
+      const projectDir = join(deps.projectsDir, req.params.id);
+      const cases = parseSelectedCases(projectDir);
+      if (!cases.find((c) => c.caseId === req.params.caseId)) {
+        return reply.code(404).send({ error: "case not found" });
+      }
+      const evStore = new EvidenceStore(projectDir);
+      let kind: EvidenceKind | undefined;
+      let fileData: { filename: string; buffer: Buffer } | null = null;
+      const parts = req.parts();
+      for await (const part of parts) {
+        if (part.type === "file") {
+          const chunks: Buffer[] = [];
+          for await (const c of part.file) chunks.push(c as Buffer);
+          fileData = { filename: part.filename, buffer: Buffer.concat(chunks) };
+        } else {
+          if (part.fieldname === "kind") kind = String(part.value) as EvidenceKind;
+        }
+      }
+      if (!fileData) return reply.code(400).send({ error: "no file" });
+      if (!kind || !VALID_KINDS.has(kind)) {
+        return reply.code(400).send({ error: `invalid kind: ${kind}` });
+      }
+      if (fileData.buffer.length > KIND_LIMITS[kind]) {
+        return reply.code(413).send({ error: `${kind} exceeds limit ${KIND_LIMITS[kind]} bytes` });
+      }
+      const all = await Promise.all(
+        (["screenshot", "recording", "generated"] as EvidenceKind[]).map((k) => evStore.listFiles(req.params.caseId, k)),
+      );
+      const currentTotal = all.flat().reduce((s, f) => s + f.size, 0);
+      if (currentTotal + fileData.buffer.length > CASE_TOTAL_LIMIT) {
+        return reply.code(409).send({ error: `case total exceeds ${CASE_TOTAL_LIMIT} bytes` });
+      }
+      const info = await evStore.saveFile(req.params.caseId, kind, fileData.filename, fileData.buffer);
+      await buildProjectEvidence(deps, req.params.id);
+      return reply.code(201).send({ ...info, kind });
     },
   );
 

@@ -26,7 +26,7 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
   app.decorate("crossingConfig", cfg);
 
   await app.register(cors, { origin: true });
-  await app.register(multipart, { limits: { fileSize: 20 * 1024 * 1024 } });
+  await app.register(multipart, { limits: { fileSize: 1.5 * 1024 * 1024 * 1024 } });
 
   const store = new ProjectStore(cfg.projectsDir);
   app.decorate("projectStore", store);
