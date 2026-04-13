@@ -4,8 +4,10 @@ import multipart from "@fastify/multipart";
 import { loadServerConfig, type ServerConfig } from "./config.js";
 import { resolve } from "node:path";
 import { ProjectStore } from "./services/project-store.js";
+import { ImageStore } from "./services/image-store.js";
 import { registerProjectsRoutes } from "./routes/projects.js";
 import { registerBriefRoutes } from "./routes/brief.js";
+import { registerOverviewRoutes } from "./routes/overview.js";
 import { ExpertRegistry } from "./services/expert-registry.js";
 import { registerExpertsRoutes } from "./routes/experts.js";
 import { registerMissionRoutes } from "./routes/mission.js";
@@ -24,6 +26,8 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
 
   const store = new ProjectStore(cfg.projectsDir);
   app.decorate("projectStore", store);
+  const imageStore = new ImageStore(cfg.projectsDir);
+  app.decorate("imageStore", imageStore);
   registerProjectsRoutes(app, { store });
   registerBriefRoutes(app, {
     store,
@@ -51,6 +55,8 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
 
   registerStreamRoutes(app, { projectsDir: cfg.projectsDir });
 
+  registerOverviewRoutes(app, { store, imageStore, projectsDir: cfg.projectsDir });
+
   app.get("/api/health", async () => ({
     ok: true,
     vaultPath: cfg.vaultPath,
@@ -66,6 +72,7 @@ declare module "fastify" {
     crossingConfig: ServerConfig;
     projectStore: ProjectStore;
     expertRegistry: ExpertRegistry;
+    imageStore: ImageStore;
   }
 }
 
