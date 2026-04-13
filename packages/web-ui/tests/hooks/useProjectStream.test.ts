@@ -37,3 +37,19 @@ describe("useProjectStream agent aggregation", () => {
     });
   });
 });
+
+describe("useProjectStream connection state", () => {
+  it("initial state is connecting (no connected yet)", () => {
+    const { result } = renderHook(() => useProjectStream("p1"));
+    expect(result.current.connectionState).toBe("connecting");
+    expect(result.current.lastEventTs).toBeNull();
+  });
+
+  it("__injectForTest updates lastEventTs", () => {
+    const { result } = renderHook(() => useProjectStream("p1"));
+    act(() => {
+      (result.current as any).__injectForTest({ type: "overview.started", agent: "x", ts: "2026-04-13T10:00:00Z" });
+    });
+    expect(result.current.lastEventTs).toBeGreaterThan(0);
+  });
+});
