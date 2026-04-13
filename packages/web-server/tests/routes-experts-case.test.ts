@@ -36,7 +36,14 @@ describe("GET /api/projects/:id/experts/case", () => {
     const registry = new ExpertRegistry(vault);
     const app = Fastify();
     registerProjectsRoutes(app, { store });
-    registerCasePlanRoutes(app, { store, expertRegistry: registry });
+    registerCasePlanRoutes(app, {
+      store, expertRegistry: registry,
+      projectsDir,
+      orchestratorDeps: {
+        vaultPath: vault, sqlitePath: "",
+        agents: {}, defaultCli: "claude", fallbackCli: "codex",
+      },
+    });
     await app.ready();
     const p = (await app.inject({ method: "POST", url: "/api/projects", payload: { name: "T" } })).json();
     const res = await app.inject({ method: "GET", url: `/api/projects/${p.id}/experts/case` });

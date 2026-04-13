@@ -57,7 +57,18 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
   registerStreamRoutes(app, { projectsDir: cfg.projectsDir });
 
   const vaultRegistry = new ExpertRegistry(cfg.vaultPath);
-  registerCasePlanRoutes(app, { store, expertRegistry: vaultRegistry });
+  registerCasePlanRoutes(app, {
+    store,
+    expertRegistry: vaultRegistry,
+    projectsDir: cfg.projectsDir,
+    orchestratorDeps: {
+      vaultPath: cfg.vaultPath,
+      sqlitePath: cfg.sqlitePath,
+      agents: cfg.agents,
+      defaultCli: cfg.defaultCli,
+      fallbackCli: cfg.fallbackCli,
+    },
+  });
 
   registerOverviewRoutes(app, {
     store, imageStore, projectsDir: cfg.projectsDir,
