@@ -4,6 +4,7 @@ import { useProjectStream } from "../hooks/useProjectStream";
 import { BriefIntakeForm } from "../components/right/BriefIntakeForm";
 import { ExpertSelector } from "../components/right/ExpertSelector";
 import { AgentTimeline } from "../components/status/AgentTimeline";
+import { AgentStatusBar } from "../components/status/AgentStatusBar";
 import { BriefSummaryCard } from "../components/left/BriefSummaryCard";
 import { MissionCandidatesPanel } from "../components/left/MissionCandidateCard";
 import { SelectedMissionView } from "../components/left/SelectedMissionView";
@@ -42,7 +43,7 @@ function sectionStatusFor(key: string, projectStatus: string): "completed" | "ac
 export function ProjectWorkbench() {
   const { id } = useParams<{ id: string }>();
   const { data: project, refetch } = useProject(id);
-  const { events } = useProjectStream(id);
+  const { events, activeAgents } = useProjectStream(id);
   if (!project || !id) return <div className="p-6">加载中…</div>;
 
   const status = project.status;
@@ -66,6 +67,7 @@ export function ProjectWorkbench() {
         <span className="text-xs px-2 py-0.5 rounded bg-gray-100">
           {project.status}
         </span>
+        <AgentStatusBar activeAgents={activeAgents} />
       </header>
 
       <div className="flex-1 flex overflow-hidden">
