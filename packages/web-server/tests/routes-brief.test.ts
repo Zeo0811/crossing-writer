@@ -1,4 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+vi.mock("@crossing/agents", () => ({
+  BriefAnalyst: class {
+    analyze() { return { text: "---\ntype: brief_summary\n---\nok", meta: { cli: "codex", durationMs: 1 } }; }
+  },
+}));
 import { mkdtempSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -15,7 +21,7 @@ async function mkApp() {
   const app = Fastify();
   await app.register(multipart);
   registerProjectsRoutes(app, { store });
-  registerBriefRoutes(app, { store, projectsDir });
+  registerBriefRoutes(app, { store, projectsDir, cli: "codex" });
   await app.ready();
   const created = (await app.inject({ method: "POST", url: "/api/projects", payload: { name: "T" } })).json();
   return { app, store, project: created, projectsDir };

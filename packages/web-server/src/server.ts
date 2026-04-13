@@ -21,7 +21,7 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
   const store = new ProjectStore(cfg.projectsDir);
   app.decorate("projectStore", store);
   registerProjectsRoutes(app, { store });
-  registerBriefRoutes(app, { store, projectsDir: cfg.projectsDir });
+  registerBriefRoutes(app, { store, projectsDir: cfg.projectsDir, cli: cfg.defaultCli });
 
   app.get("/api/health", async () => ({
     ok: true,

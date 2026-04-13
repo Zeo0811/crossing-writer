@@ -1,13 +1,16 @@
 import type { FastifyInstance } from "fastify";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ProjectStore } from "../services/project-store.js";
 import { extractToMarkdown } from "../services/file-extractor.js";
 import { appendEvent } from "../services/event-log.js";
+import { analyzeBrief } from "../services/brief-analyzer-service.js";
 
 export interface BriefDeps {
   store: ProjectStore;
   projectsDir: string;
+  cli: "claude" | "codex";
+  model?: string;
 }
 
 interface TextBody {
@@ -48,7 +51,6 @@ export function registerBriefRoutes(app: FastifyInstance, deps: BriefDeps) {
         const buf = await data.toBuffer();
         await writeFile(abs, buf);
         markdown = await extractToMarkdown(buf, data.filename);
-        // multipart fields
         extra = {
           productName: data.fields?.productName?.value ?? null,
           productUrl: data.fields?.productUrl?.value ?? null,
@@ -98,7 +100,34 @@ export function registerBriefRoutes(app: FastifyInstance, deps: BriefDeps) {
         to: "brief_uploaded",
       });
 
+      // 异步触发 Brief Analyst，不阻塞 HTTP 响应
+      setImmediate(() => {
+        analyzeBrief({
+          projectId: id,
+          projectsDir: deps.projectsDir,
+          store: deps.store,
+          cli: deps.cli,
+          model: deps.model,
+        }).catch((err) => app.log.error({ err, projectId: id }, "analyzeBrief failed"));
+      });
+
       return reply.send({ ok: true });
+    },
+  );
+
+  app.get<{ Params: { id: string } }>(
+    "/api/projects/:id/brief-summary",
+    async (req, reply) => {
+      const project = await deps.store.get(req.params.id);
+      if (!project || !project.brief?.summary_path) {
+        return reply.code(404).send({ error: "no summary yet" });
+      }
+      const buf = await readFile(
+        join(deps.projectsDir, req.params.id, project.brief.summary_path),
+        "utf-8",
+      );
+      reply.header("content-type", "text/markdown; charset=utf-8");
+      return buf;
     },
   );
 }
