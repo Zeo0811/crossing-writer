@@ -20,6 +20,14 @@ export async function analyzeBrief(opts: AnalyzeBriefOpts): Promise<void> {
   if (!project || !project.brief) throw new Error("no brief to analyze");
 
   const projectDir = join(projectsDir, projectId);
+  const resolved = resolveAgent(
+    {
+      vaultPath: "", sqlitePath: "",
+      modelAdapter: { defaultCli, fallbackCli },
+      agents,
+    },
+    "brief_analyst",
+  );
   const fromStatus = project.status;
   await appendEvent(projectDir, {
     type: "state_changed",
@@ -27,19 +35,16 @@ export async function analyzeBrief(opts: AnalyzeBriefOpts): Promise<void> {
     to: "brief_analyzing",
   });
   await store.update(projectId, { status: "brief_analyzing" });
-  await appendEvent(projectDir, { type: "agent.started", agent: "brief_analyst" });
+  await appendEvent(projectDir, {
+    type: "agent.started",
+    agent: "brief_analyst",
+    cli: resolved.cli,
+    model: resolved.model ?? null,
+  });
 
   try {
     const briefBody = await readFile(join(projectDir, project.brief.md_path), "utf-8");
     const productInfo = JSON.stringify(project.product_info ?? {}, null, 2);
-    const resolved = resolveAgent(
-      {
-        vaultPath: "", sqlitePath: "",
-        modelAdapter: { defaultCli, fallbackCli },
-        agents,
-      },
-      "brief_analyst",
-    );
     const analyst = new BriefAnalyst({ cli: resolved.cli, model: resolved.model });
     const result = analyst.analyze({ projectId, briefBody, productInfo });
 
@@ -54,6 +59,8 @@ export async function analyzeBrief(opts: AnalyzeBriefOpts): Promise<void> {
       type: "agent.completed",
       agent: "brief_analyst",
       output: summaryPath,
+      cli: resolved.cli,
+      model: resolved.model ?? null,
     });
     await appendEvent(projectDir, {
       type: "state_changed",
@@ -65,6 +72,8 @@ export async function analyzeBrief(opts: AnalyzeBriefOpts): Promise<void> {
       type: "agent.failed",
       agent: "brief_analyst",
       error: String(e),
+      cli: resolved.cli,
+      model: resolved.model ?? null,
     });
     await store.update(projectId, { status: "brief_uploaded" });
     throw e;
