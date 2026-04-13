@@ -37,6 +37,12 @@ export interface Project {
     selected_at: string | null;
     selected_by: string | null;
   };
+  overview?: {
+    images_dir: string;
+    overview_path: string;
+    generated_at: string;
+    human_edited: boolean;
+  };
   runs: Array<{
     id: string;
     stage: string;

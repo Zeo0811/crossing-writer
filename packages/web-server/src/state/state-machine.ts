@@ -10,7 +10,10 @@ export type ProjectStatus =
   | "round2_running"
   | "round2_failed"
   | "awaiting_mission_pick"
-  | "mission_approved";
+  | "mission_approved"
+  | "overview_analyzing"
+  | "overview_ready"
+  | "overview_failed";
 
 export type ProjectStage = "intake" | "mission" | "completed";
 
