@@ -113,10 +113,15 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
   const round1Results: Array<{ name: string; text: string }> = [];
   await Promise.all(
     experts.map(async (name) => {
-      await appendEvent(projectDir, { type: "expert.round1_started", expert: name });
+      const expertResolved = resolveFor(`topic_expert.${name}`, opts);
+      await appendEvent(projectDir, {
+        type: "expert.round1_started",
+        expert: name,
+        cli: expertResolved.cli,
+        model: expertResolved.model ?? null,
+      });
       const kbContent = registry.readKb("topic-panel", name);
       const entry = registry.listAll("topic-panel").find((e) => e.name === name)!;
-      const expertResolved = resolveFor(`topic_expert.${name}`, opts);
       const agent = new TopicExpert({
         name,
         kbContent,
@@ -127,7 +132,12 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
       const out = agent.round1({ projectId, runId, briefSummary, refsPack });
       await writeFile(join(projectDir, `mission/round1/${name}.md`), out.text, "utf-8");
       round1Results.push({ name, text: out.text });
-      await appendEvent(projectDir, { type: "expert.round1_completed", expert: name });
+      await appendEvent(projectDir, {
+        type: "expert.round1_completed",
+        expert: name,
+        cli: expertResolved.cli,
+        model: expertResolved.model ?? null,
+      });
     }),
   );
 
@@ -138,8 +148,12 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
     from: "round1_running",
     to: "synthesizing",
   });
-  await appendEvent(projectDir, { type: "coordinator.synthesizing" });
   const coordResolved = resolveFor("coordinator", opts);
+  await appendEvent(projectDir, {
+    type: "coordinator.synthesizing",
+    cli: coordResolved.cli,
+    model: coordResolved.model ?? null,
+  });
   const coord = new Coordinator({ cli: coordResolved.cli, model: coordResolved.model });
   const candidatesResult = coord.round1Synthesize({
     projectId,
@@ -154,6 +168,8 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
   await appendEvent(projectDir, {
     type: "coordinator.candidates_ready",
     output_path: candidatesPath,
+    cli: coordResolved.cli,
+    model: coordResolved.model ?? null,
   });
 
   // round2 parallel
@@ -167,10 +183,15 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
   const round2Results: Array<{ name: string; text: string }> = [];
   await Promise.all(
     experts.map(async (name) => {
-      await appendEvent(projectDir, { type: "expert.round2_started", expert: name });
+      const expertResolved = resolveFor(`topic_expert.${name}`, opts);
+      await appendEvent(projectDir, {
+        type: "expert.round2_started",
+        expert: name,
+        cli: expertResolved.cli,
+        model: expertResolved.model ?? null,
+      });
       const kbContent = registry.readKb("topic-panel", name);
       const entry = registry.listAll("topic-panel").find((e) => e.name === name)!;
-      const expertResolved = resolveFor(`topic_expert.${name}`, opts);
       const agent = new TopicExpert({
         name,
         kbContent,
@@ -181,12 +202,21 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
       const out = agent.round2({ projectId, runId, candidatesMd: candidatesResult.text });
       await writeFile(join(projectDir, `mission/round2/${name}.md`), out.text, "utf-8");
       round2Results.push({ name, text: out.text });
-      await appendEvent(projectDir, { type: "expert.round2_completed", expert: name });
+      await appendEvent(projectDir, {
+        type: "expert.round2_completed",
+        expert: name,
+        cli: expertResolved.cli,
+        model: expertResolved.model ?? null,
+      });
     }),
   );
 
   // coordinator aggregate
-  await appendEvent(projectDir, { type: "coordinator.aggregating" });
+  await appendEvent(projectDir, {
+    type: "coordinator.aggregating",
+    cli: coordResolved.cli,
+    model: coordResolved.model ?? null,
+  });
   const aggregated = coord.round2Aggregate({
     candidatesMd: candidatesResult.text,
     round2Bundle: bundle(round2Results),

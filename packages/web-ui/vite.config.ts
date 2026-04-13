@@ -10,4 +10,9 @@ export default defineConfig({
       "/api": "http://127.0.0.1:3001",
     },
   },
-});
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: ["./tests/setup.ts"],
+  },
+} as any);

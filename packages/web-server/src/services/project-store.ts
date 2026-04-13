@@ -37,6 +37,21 @@ export interface Project {
     selected_at: string | null;
     selected_by: string | null;
   };
+  overview?: {
+    images_dir: string;
+    overview_path: string;
+    generated_at: string;
+    human_edited: boolean;
+    edited_at?: string;
+  };
+  case_plan?: {
+    experts_selected: string[];
+    candidates_path: string;
+    selected_path: string | null;
+    selected_indices: number[] | null;
+    selected_count: number;
+    approved_at: string | null;
+  };
   runs: Array<{
     id: string;
     stage: string;

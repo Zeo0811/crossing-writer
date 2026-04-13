@@ -1,44 +1,104 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+
+export interface ActiveAgent {
+  agent: string;
+  cli?: string;
+  model?: string | null;
+  stage: string;
+  status?: "online" | "failed";
+}
 
 export interface StreamEvent {
   ts: string;
   type: string;
-  data: Record<string, any>;
+  agent?: string;
+  cli?: string;
+  model?: string | null;
+  data?: Record<string, any>;
+  [k: string]: any;
 }
+
+export type ConnectionState = "connecting" | "connected" | "reconnecting" | "disconnected";
+
+const STARTED_RE = /\.(started|round1_started|round2_started|synthesizing|analyzing|generating)$/;
+const ENDED_RE = /\.(completed|done|ready|round1_completed|round2_completed|failed)$/;
+
+const EVENT_TYPES = [
+  "state_changed",
+  "agent.started", "agent.completed", "agent.failed",
+  "expert.round1_started", "expert.round1_completed",
+  "expert.round2_started", "expert.round2_completed",
+  "coordinator.synthesizing", "coordinator.candidates_ready", "coordinator.aggregating",
+  "refs_pack.generated",
+  "overview.started", "overview.completed", "overview.failed",
+  "case_expert.round1_started", "case_expert.round1_completed",
+  "case_expert.round2_started", "case_expert.round2_completed",
+  "case_expert.tool_call", "case_expert.failed",
+  "case_coordinator.synthesizing", "case_coordinator.done",
+  "cases.selected",
+];
 
 export function useProjectStream(projectId: string | undefined) {
   const [events, setEvents] = useState<StreamEvent[]>([]);
+  const [activeAgents, setActiveAgents] = useState<ActiveAgent[]>([]);
+  const [connectionState, setConnectionState] = useState<ConnectionState>("connecting");
+  const [lastEventTs, setLastEventTs] = useState<number | null>(null);
+  const errorCountRef = useRef(0);
+
+  const applyEvent = useCallback((ev: StreamEvent) => {
+    setEvents((prev) => [...prev, ev]);
+    setLastEventTs(Date.now());
+    setActiveAgents((prev) => {
+      const d = (ev.data ?? {}) as any;
+      const agent = ev.agent ?? d.agent;
+      if (!agent) return prev;
+      const cli = ev.cli ?? d.cli;
+      const model = ev.model ?? d.model ?? null;
+      const stageMatch = ev.type.match(/\.([a-z_0-9]+)$/);
+      const stage = stageMatch?.[1] ?? "unknown";
+      if (STARTED_RE.test(ev.type)) {
+        const next = prev.filter((a) => a.agent !== agent);
+        next.push({ agent, cli, model, stage, status: "online" });
+        return next;
+      }
+      if (ENDED_RE.test(ev.type)) {
+        if (ev.type.endsWith("failed")) {
+          return prev.map((a) => a.agent === agent ? { ...a, status: "failed" as const } : a);
+        }
+        return prev.filter((a) => a.agent !== agent);
+      }
+      return prev;
+    });
+  }, []);
 
   useEffect(() => {
     if (!projectId) return;
-    const es = new EventSource(`/api/projects/${projectId}/stream`);
+    setConnectionState("connecting");
+    errorCountRef.current = 0;
+    const url = `/api/projects/${projectId}/stream`;
+    console.log("[SSE] opening", url);
+    const es = new EventSource(url);
+    es.onopen = () => {
+      console.log("[SSE] opened");
+      setConnectionState("connected");
+      errorCountRef.current = 0;
+    };
+    es.onerror = (e) => {
+      console.warn("[SSE] error", e);
+      errorCountRef.current += 1;
+      setConnectionState(errorCountRef.current >= 3 ? "disconnected" : "reconnecting");
+    };
     const handler = (e: MessageEvent) => {
+      console.log("[SSE] event", e.type, e.data?.slice?.(0, 120));
       try {
-        setEvents((prev) => [...prev, JSON.parse(e.data) as StreamEvent]);
-      } catch {
-        /* ignore parse failures */
+        applyEvent(JSON.parse(e.data) as StreamEvent);
+      } catch (err) {
+        console.warn("[SSE] parse fail", err);
       }
     };
-    const types = [
-      "state_changed",
-      "agent.started",
-      "agent.completed",
-      "agent.failed",
-      "expert.round1_started",
-      "expert.round1_completed",
-      "expert.round2_started",
-      "expert.round2_completed",
-      "coordinator.synthesizing",
-      "coordinator.candidates_ready",
-      "coordinator.aggregating",
-      "refs_pack.generated",
-    ];
-    types.forEach((t) => es.addEventListener(t, handler));
-    es.onerror = () => {
-      /* browser auto-reconnect */
-    };
+    EVENT_TYPES.forEach((t) => es.addEventListener(t, handler));
     return () => es.close();
-  }, [projectId]);
+  }, [projectId, applyEvent]);
 
-  return events;
+  return { events, activeAgents, connectionState, lastEventTs, __injectForTest: applyEvent };
 }

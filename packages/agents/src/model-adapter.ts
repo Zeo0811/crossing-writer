@@ -10,6 +10,7 @@ export interface InvokeOptions {
   userMessage: string;
   model?: string;
   timeout?: number;
+  images?: string[];
 }
 
 export interface AgentResult {
@@ -19,13 +20,14 @@ export interface AgentResult {
 
 export function invokeAgent(opts: InvokeOptions): AgentResult {
   const started = Date.now();
-  const timeout = opts.timeout ?? 180_000;
+  const timeout = opts.timeout ?? 600_000;
   const fullPrompt = opts.systemPrompt
     ? `${opts.systemPrompt}\n\n---\n\n${opts.userMessage}`
     : opts.userMessage;
 
   if (opts.cli === "codex") {
     const outPath = join(mkdtempSync(join(tmpdir(), "agent-")), "out.txt");
+    const imageArgs = (opts.images ?? []).map((p) => `--image=${p}`);
     const args = [
       "exec",
       "--skip-git-repo-check",
@@ -33,10 +35,11 @@ export function invokeAgent(opts: InvokeOptions): AgentResult {
       "--ephemeral",
       "--sandbox", "read-only",
       "--output-last-message", outPath,
+      ...imageArgs,
       ...(opts.model ? ["-m", opts.model] : []),
       fullPrompt,
     ];
-    const proc = spawnSync("codex", args, { encoding: "buffer", timeout });
+    const proc = spawnSync("codex", args, { encoding: "buffer", timeout, input: "" });
     if (proc.status !== 0) {
       const err = proc.stderr?.toString("utf-8") ?? "";
       try { unlinkSync(outPath); } catch {}
@@ -50,12 +53,16 @@ export function invokeAgent(opts: InvokeOptions): AgentResult {
     };
   }
 
-  // claude
+  // claude: embed images as @<abs_path> references in the prompt
+  const images = opts.images ?? [];
+  const claudePrompt = images.length
+    ? `${fullPrompt}\n\n附加图片：\n${images.map((p) => `@${p}`).join("\n")}`
+    : fullPrompt;
   const args = [
-    "-p", fullPrompt,
+    "-p", claudePrompt,
     ...(opts.model ? ["--model", opts.model] : []),
   ];
-  const proc = spawnSync("claude", args, { encoding: "buffer", timeout });
+  const proc = spawnSync("claude", args, { encoding: "buffer", timeout, input: "" });
   if (proc.status !== 0) {
     const err = proc.stderr?.toString("utf-8") ?? "";
     throw new Error(`claude exit=${proc.status}: ${err.slice(0, 500)}`);

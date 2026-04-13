@@ -61,3 +61,67 @@ describe("ExpertRegistry", () => {
     expect(r.listAll("topic-panel").map((e) => e.name).sort()).toEqual(["A", "B", "C"]);
   });
 });
+
+describe("creativity_score", () => {
+  it("reads creativity_score from index.yaml", async () => {
+    const vault = mkdtempSync(join(tmpdir(), "cs-"));
+    const panelDir = join(vault, "08_experts/topic-panel");
+    mkdirSync(panelDir, { recursive: true });
+    writeFileSync(join(panelDir, "index.yaml"), `experts:
+  - name: 数字生命卡兹克
+    file: experts/kazik.md
+    active: true
+    default_preselect: true
+    creativity_score: 9
+  - name: 赛博禅心
+    file: experts/zenx.md
+    active: true
+    default_preselect: false
+    creativity_score: 7
+  - name: 黄叔
+    file: experts/huang.md
+    active: true
+    default_preselect: false
+    creativity_score: 6
+`, "utf-8");
+    mkdirSync(join(panelDir, "experts"), { recursive: true });
+    for (const n of ["kazik.md", "zenx.md", "huang.md"]) {
+      writeFileSync(join(panelDir, "experts", n), "kb", "utf-8");
+    }
+
+    const reg = new ExpertRegistry(vault);
+    const all = await reg.listActive();
+    const k = all.find((e) => e.name === "数字生命卡兹克");
+    expect(k?.creativity_score).toBe(9);
+  });
+
+  it("topByCreativity returns top N by score desc", async () => {
+    const vault = mkdtempSync(join(tmpdir(), "cs-"));
+    const panelDir = join(vault, "08_experts/topic-panel");
+    mkdirSync(panelDir, { recursive: true });
+    writeFileSync(join(panelDir, "index.yaml"), `experts:
+  - name: 数字生命卡兹克
+    file: experts/kazik.md
+    active: true
+    default_preselect: true
+    creativity_score: 9
+  - name: 赛博禅心
+    file: experts/zenx.md
+    active: true
+    default_preselect: false
+    creativity_score: 7
+  - name: 黄叔
+    file: experts/huang.md
+    active: true
+    default_preselect: false
+    creativity_score: 6
+`, "utf-8");
+    mkdirSync(join(panelDir, "experts"), { recursive: true });
+    for (const n of ["kazik.md", "zenx.md", "huang.md"]) {
+      writeFileSync(join(panelDir, "experts", n), "kb", "utf-8");
+    }
+    const reg = new ExpertRegistry(vault);
+    const top = await reg.topByCreativity(2);
+    expect(top.map((e) => e.name)).toEqual(["数字生命卡兹克", "赛博禅心"]);
+  });
+});

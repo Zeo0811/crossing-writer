@@ -10,7 +10,17 @@ export type ProjectStatus =
   | "round2_running"
   | "round2_failed"
   | "awaiting_mission_pick"
-  | "mission_approved";
+  | "mission_approved"
+  | "overview_analyzing"
+  | "overview_ready"
+  | "overview_failed"
+  | "awaiting_overview_input"
+  | "awaiting_case_expert_selection"
+  | "case_planning_running"
+  | "case_planning_failed"
+  | "case_synthesizing"
+  | "awaiting_case_selection"
+  | "case_plan_approved";
 
 export type ProjectStage = "intake" | "mission" | "completed";
 
@@ -26,7 +36,17 @@ const TRANSITIONS: Record<ProjectStatus, ProjectStatus[]> = {
   round2_running: ["awaiting_mission_pick", "round2_failed"],
   round2_failed: ["round2_running"],
   awaiting_mission_pick: ["mission_approved", "round1_running"],
-  mission_approved: [],
+  mission_approved: ["awaiting_overview_input"],
+  awaiting_overview_input: ["overview_analyzing"],
+  overview_analyzing: ["overview_ready", "overview_failed"],
+  overview_ready: ["awaiting_case_expert_selection", "overview_analyzing"],
+  overview_failed: ["overview_analyzing"],
+  awaiting_case_expert_selection: ["case_planning_running"],
+  case_planning_running: ["case_synthesizing", "case_planning_failed"],
+  case_planning_failed: ["case_planning_running"],
+  case_synthesizing: ["awaiting_case_selection"],
+  awaiting_case_selection: ["case_plan_approved"],
+  case_plan_approved: [],
 };
 
 export function canTransition(from: ProjectStatus, to: ProjectStatus): boolean {

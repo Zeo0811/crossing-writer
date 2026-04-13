@@ -6,12 +6,14 @@
     "htmlDir": "/Users/zeoooo/Downloads/60-html"
   },
   "modelAdapter": {
-    "defaultCli": "codex",
-    "fallbackCli": "claude"
+    "defaultCli": "claude",
+    "fallbackCli": "codex"
   },
   "agents": {
     "brief_analyst":              { "cli": "claude", "model": "sonnet" },
     "coordinator":                { "cli": "claude", "model": "opus" },
+    "product_overview":           { "cli": "claude", "model": "opus" },
+    "case_coordinator":           { "cli": "claude", "model": "opus" },
     "topic_expert.赛博禅心":       { "cli": "claude", "model": "opus" },
     "topic_expert.数字生命卡兹克": { "cli": "codex" }
   }

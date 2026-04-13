@@ -23,7 +23,7 @@ function summarize(data: any): string {
 }
 
 export function AgentTimeline({ projectId }: { projectId: string }) {
-  const events = useProjectStream(projectId);
+  const { events } = useProjectStream(projectId);
   return (
     <div
       className="p-4 bg-white rounded border"
