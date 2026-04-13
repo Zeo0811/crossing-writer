@@ -1,30 +1,35 @@
-export type ProjectStatus =
-  | "created"
-  | "brief_uploaded"
-  | "brief_analyzing"
-  | "brief_ready"
-  | "awaiting_expert_selection"
-  | "round1_running"
-  | "round1_failed"
-  | "synthesizing"
-  | "round2_running"
-  | "round2_failed"
-  | "awaiting_mission_pick"
-  | "mission_approved"
-  | "overview_analyzing"
-  | "overview_ready"
-  | "overview_failed"
-  | "awaiting_overview_input"
-  | "awaiting_case_expert_selection"
-  | "case_planning_running"
-  | "case_planning_failed"
-  | "case_synthesizing"
-  | "awaiting_case_selection"
-  | "case_plan_approved";
+export const STATUSES = [
+  "created",
+  "brief_uploaded",
+  "brief_analyzing",
+  "brief_ready",
+  "awaiting_expert_selection",
+  "round1_running",
+  "round1_failed",
+  "synthesizing",
+  "round2_running",
+  "round2_failed",
+  "awaiting_mission_pick",
+  "mission_approved",
+  "overview_analyzing",
+  "overview_ready",
+  "overview_failed",
+  "awaiting_overview_input",
+  "awaiting_case_expert_selection",
+  "case_planning_running",
+  "case_planning_failed",
+  "case_synthesizing",
+  "awaiting_case_selection",
+  "case_plan_approved",
+  "evidence_collecting",
+  "evidence_ready",
+] as const;
+
+export type ProjectStatus = (typeof STATUSES)[number];
 
 export type ProjectStage = "intake" | "mission" | "completed";
 
-const TRANSITIONS: Record<ProjectStatus, ProjectStatus[]> = {
+export const TRANSITIONS: Record<ProjectStatus, ProjectStatus[]> = {
   created: ["brief_uploaded"],
   brief_uploaded: ["brief_analyzing"],
   brief_analyzing: ["brief_ready", "brief_uploaded"],
@@ -46,7 +51,9 @@ const TRANSITIONS: Record<ProjectStatus, ProjectStatus[]> = {
   case_planning_failed: ["case_planning_running"],
   case_synthesizing: ["awaiting_case_selection"],
   awaiting_case_selection: ["case_plan_approved"],
-  case_plan_approved: [],
+  case_plan_approved: ["evidence_collecting"],
+  evidence_collecting: ["evidence_ready"],
+  evidence_ready: ["evidence_collecting"],
 };
 
 export function canTransition(from: ProjectStatus, to: ProjectStatus): boolean {
