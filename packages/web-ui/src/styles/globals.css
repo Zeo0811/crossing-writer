@@ -1,18 +1,10 @@
 @import "tailwindcss";
-
-:root {
-  --green: #407600;
-  --green-dark: #356200;
-  --green-light: #f4f9ed;
-  --dark: #1a1a1a;
-  --gray: #666;
-  --gray-light: #f7f7f7;
-  --border: #e5e5e5;
-}
+@import "./tokens.css";
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
   background: #f0f2f5;
   color: var(--dark);
   margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
 }
+* { box-sizing: border-box; }

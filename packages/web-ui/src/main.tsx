@@ -1,10 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "./styles/globals.css";
-
-function App() {
-  return <div style={{ padding: 24 }}>Crossing Writer — scaffolded.</div>;
-}
+import { App } from "./App";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
