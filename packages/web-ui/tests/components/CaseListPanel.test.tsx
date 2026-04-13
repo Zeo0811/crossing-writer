@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { CaseListPanel } from "../../src/components/left/CaseListPanel";
+import { ToastProvider } from "../../src/components/ui/ToastProvider";
 
 vi.mock("../../src/api/client", () => ({
   getCaseCandidates: vi.fn(async () => `---\ntype: case_plan_candidates\n---\n
@@ -23,7 +24,7 @@ body 2
 
 describe("CaseListPanel", () => {
   it("renders parsed cases", async () => {
-    render(<CaseListPanel projectId="p1" />);
+    render(<ToastProvider><CaseListPanel projectId="p1" /></ToastProvider>);
     await waitFor(() => screen.getByText(/多宫格分镜/));
     expect(screen.getByText(/动作压测/)).toBeInTheDocument();
     expect(screen.getByText(/卡兹克/)).toBeInTheDocument();
@@ -31,7 +32,7 @@ describe("CaseListPanel", () => {
 
   it("selects checkboxes and calls selectCases", async () => {
     const { selectCases } = await import("../../src/api/client");
-    render(<CaseListPanel projectId="p1" />);
+    render(<ToastProvider><CaseListPanel projectId="p1" /></ToastProvider>);
     await waitFor(() => screen.getByText(/多宫格分镜/));
     const boxes = screen.getAllByRole("checkbox");
     fireEvent.click(boxes[0]!);
@@ -43,7 +44,7 @@ describe("CaseListPanel", () => {
   });
 
   it("shows 已选 count", async () => {
-    render(<CaseListPanel projectId="p1" />);
+    render(<ToastProvider><CaseListPanel projectId="p1" /></ToastProvider>);
     await waitFor(() => screen.getByText(/多宫格分镜/));
     expect(screen.getByText(/已选 0/)).toBeInTheDocument();
   });

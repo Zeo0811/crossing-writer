@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { listCaseExperts, startCasePlan, type CaseExpertInfo } from "../../api/client";
+import { ActionButton } from "../ui/ActionButton";
 
 export function CaseExpertSelector({ projectId }: { projectId: string }) {
   const [experts, setExperts] = useState<CaseExpertInfo[]>([]);
@@ -38,10 +39,14 @@ export function CaseExpertSelector({ projectId }: { projectId: string }) {
           </li>
         ))}
       </ul>
-      <button onClick={onStart} disabled={selected.size === 0}
-        className="mt-4 bg-blue-600 text-white px-3 py-1">
+      <ActionButton
+        onClick={onStart}
+        disabled={selected.size === 0}
+        successMsg="Case 规划已启动"
+        errorMsg={(e) => `启动失败: ${String(e)}`}
+      >
         开跑 Case 规划
-      </button>
+      </ActionButton>
     </div>
   );
 }

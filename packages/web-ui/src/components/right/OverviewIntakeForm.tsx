@@ -4,14 +4,13 @@ import {
   deleteOverviewImage, generateOverview,
 } from "../../api/client";
 import type { ProjectImage } from "../../api/types";
+import { ActionButton } from "../ui/ActionButton";
 
 export function OverviewIntakeForm({ projectId }: { projectId: string }) {
   const [images, setImages] = useState<ProjectImage[]>([]);
   const [urls, setUrls] = useState<string[]>([]);
   const [urlDraft, setUrlDraft] = useState("");
   const [desc, setDesc] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
   useEffect(() => {
     listOverviewImages(projectId).then(setImages).catch(() => {});
   }, [projectId]);
@@ -37,15 +36,10 @@ export function OverviewIntakeForm({ projectId }: { projectId: string }) {
   }
 
   async function submit() {
-    setSubmitting(true);
-    try {
-      await generateOverview(projectId, {
-        productUrls: urls,
-        userDescription: desc || undefined,
-      });
-    } finally {
-      setSubmitting(false);
-    }
+    await generateOverview(projectId, {
+      productUrls: urls,
+      userDescription: desc || undefined,
+    });
   }
 
   const briefImgs = images.filter((i) => i.source === "brief");
@@ -105,10 +99,14 @@ export function OverviewIntakeForm({ projectId }: { projectId: string }) {
           value={desc} onChange={(e) => setDesc(e.target.value)} />
       </section>
 
-      <button className="bg-blue-600 text-white px-4 py-2"
-        disabled={submitting} onClick={submit}>
+      <ActionButton
+        onClick={submit}
+        disabled={images.length === 0}
+        successMsg="已开始生成，等待 agent 返回..."
+        errorMsg={(e) => `生成失败: ${String(e)}`}
+      >
         生成产品概览
-      </button>
+      </ActionButton>
     </div>
   );
 }

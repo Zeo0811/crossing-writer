@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { ProjectWorkbench } from "../../src/pages/ProjectWorkbench";
+import { ToastProvider } from "../../src/components/ui/ToastProvider";
 
 vi.mock("../../src/api/client", () => ({
   getProject: vi.fn(),
@@ -29,7 +30,7 @@ describe("ProjectWorkbench SP-03 status routing", () => {
     vi.mocked(getProject).mockResolvedValue({
       id: "p1", name: "T", status, created_at: "", updated_at: "",
     } as any);
-    render(<ProjectWorkbench projectId="p1" />);
+    render(<ToastProvider><ProjectWorkbench projectId="p1" /></ToastProvider>);
     await waitFor(() => {
       expect(screen.getByText(pattern)).toBeInTheDocument();
     });

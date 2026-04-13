@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { CaseExpertSelector } from "../../src/components/right/CaseExpertSelector";
+import { ToastProvider } from "../../src/components/ui/ToastProvider";
 
 vi.mock("../../src/api/client", () => ({
   listCaseExperts: vi.fn(async () => [
@@ -13,7 +14,7 @@ vi.mock("../../src/api/client", () => ({
 
 describe("CaseExpertSelector", () => {
   it("renders experts with preselect checked", async () => {
-    render(<CaseExpertSelector projectId="p1" />);
+    render(<ToastProvider><CaseExpertSelector projectId="p1" /></ToastProvider>);
     await waitFor(() => screen.getByText(/卡兹克/));
     const kz = screen.getByLabelText(/卡兹克/) as HTMLInputElement;
     const hu = screen.getByLabelText(/黄叔/) as HTMLInputElement;
@@ -23,7 +24,7 @@ describe("CaseExpertSelector", () => {
 
   it("starts plan with selected experts", async () => {
     const { startCasePlan } = await import("../../src/api/client");
-    render(<CaseExpertSelector projectId="p1" />);
+    render(<ToastProvider><CaseExpertSelector projectId="p1" /></ToastProvider>);
     await waitFor(() => screen.getByText(/卡兹克/));
     fireEvent.click(screen.getByRole("button", { name: /开跑 Case 规划/ }));
     await waitFor(() => {

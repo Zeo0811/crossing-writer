@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { OverviewIntakeForm } from "../../src/components/right/OverviewIntakeForm";
+import { ToastProvider } from "../../src/components/ui/ToastProvider";
 
 vi.mock("../../src/api/client", () => ({
   uploadOverviewImage: vi.fn(async () => ({
@@ -16,7 +17,7 @@ describe("OverviewIntakeForm", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("renders brief + screenshot uploaders, URL list, description", () => {
-    render(<OverviewIntakeForm projectId="p1" />);
+    render(<ToastProvider><OverviewIntakeForm projectId="p1" /></ToastProvider>);
     expect(screen.getByText(/Brief 配图/)).toBeInTheDocument();
     expect(screen.getByText(/产品截图/)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/https:\/\//)).toBeInTheDocument();
@@ -25,7 +26,7 @@ describe("OverviewIntakeForm", () => {
   });
 
   it("adds url to list via button", () => {
-    render(<OverviewIntakeForm projectId="p1" />);
+    render(<ToastProvider><OverviewIntakeForm projectId="p1" /></ToastProvider>);
     const input = screen.getByPlaceholderText(/https:\/\//) as HTMLInputElement;
     fireEvent.change(input, { target: { value: "https://pixverse.ai" } });
     fireEvent.click(screen.getByRole("button", { name: /添加/ }));
@@ -33,8 +34,13 @@ describe("OverviewIntakeForm", () => {
   });
 
   it("calls generateOverview with urls + description when submit", async () => {
-    const { generateOverview } = await import("../../src/api/client");
-    render(<OverviewIntakeForm projectId="p1" />);
+    const { generateOverview, listOverviewImages } = await import("../../src/api/client");
+    vi.mocked(listOverviewImages).mockResolvedValueOnce([
+      { filename: "brief-fig-1.png", source: "brief", relPath: "context/images/brief-fig-1.png", absPath: "/abs/x" },
+    ]);
+    render(<ToastProvider><OverviewIntakeForm projectId="p1" /></ToastProvider>);
+    // wait for images to load so the submit button becomes enabled
+    await waitFor(() => screen.getByText(/brief-fig-1\.png/));
     const input = screen.getByPlaceholderText(/https:\/\//) as HTMLInputElement;
     fireEvent.change(input, { target: { value: "https://x.com" } });
     fireEvent.click(screen.getByRole("button", { name: /添加/ }));

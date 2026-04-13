@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useOverview } from "../../hooks/useOverview";
 import { approveOverview } from "../../api/client";
+import { ActionButton } from "../ui/ActionButton";
 
 export function ProductOverviewCard({
   projectId, status,
@@ -24,7 +25,13 @@ export function ProductOverviewCard({
           <textarea className="w-full h-80 border p-2 font-mono"
             value={draft} onChange={(e) => setDraft(e.target.value)} />
           <div className="mt-2 flex gap-2">
-            <button onClick={onSave}>保存</button>
+            <ActionButton
+              onClick={onSave}
+              successMsg="已保存"
+              errorMsg={(e) => `保存失败: ${String(e)}`}
+            >
+              保存
+            </ActionButton>
             <button onClick={() => setEditing(false)}>取消</button>
           </div>
         </>
@@ -36,10 +43,13 @@ export function ProductOverviewCard({
               编辑
             </button>
             {status === "overview_ready" && (
-              <button className="bg-blue-600 text-white px-3 py-1"
-                onClick={() => approveOverview(projectId)}>
+              <ActionButton
+                onClick={() => approveOverview(projectId)}
+                successMsg="已批准，进入 Case 规划"
+                errorMsg={(e) => `批准失败: ${String(e)}`}
+              >
                 批准进入 Case 规划
-              </button>
+              </ActionButton>
             )}
           </div>
         </>

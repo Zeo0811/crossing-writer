@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useCaseCandidates } from "../../hooks/useCaseCandidates";
 import { selectCases } from "../../api/client";
 import { CaseCardPreview } from "./CaseCardPreview";
+import { ActionButton } from "../ui/ActionButton";
 
 export function CaseListPanel({ projectId }: { projectId: string }) {
   const { cases, loading } = useCaseCandidates(projectId);
@@ -44,10 +45,14 @@ export function CaseListPanel({ projectId }: { projectId: string }) {
       </ul>
       <div className="mt-4">
         已选 {picked.size} / 4
-        <button className="ml-4 bg-blue-600 text-white px-3 py-1"
-          disabled={picked.size < 2} onClick={approve}>
+        <ActionButton
+          onClick={approve}
+          disabled={picked.size < 2}
+          successMsg="Case 已选定"
+          errorMsg={(e) => `选定失败: ${String(e)}`}
+        >
           批准这些 Case
-        </button>
+        </ActionButton>
       </div>
     </div>
   );
