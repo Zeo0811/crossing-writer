@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p .",
+    "build": "tsc -p . && pnpm run copy-prompts",
+    "copy-prompts": "mkdir -p dist/prompts && cp src/prompts/*.md dist/prompts/",
     "test": "vitest run",
     "dev": "tsc -w -p ."
   },
