@@ -6,6 +6,8 @@ import { resolve } from "node:path";
 import { ProjectStore } from "./services/project-store.js";
 import { registerProjectsRoutes } from "./routes/projects.js";
 import { registerBriefRoutes } from "./routes/brief.js";
+import { ExpertRegistry } from "./services/expert-registry.js";
+import { registerExpertsRoutes } from "./routes/experts.js";
 
 const configPath = process.env.CROSSING_CONFIG
   ?? resolve(process.cwd(), "../../config.json");
@@ -23,6 +25,10 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
   registerProjectsRoutes(app, { store });
   registerBriefRoutes(app, { store, projectsDir: cfg.projectsDir, cli: cfg.defaultCli });
 
+  const registry = new ExpertRegistry(cfg.expertsDir);
+  app.decorate("expertRegistry", registry);
+  registerExpertsRoutes(app, { registry });
+
   app.get("/api/health", async () => ({
     ok: true,
     vaultPath: cfg.vaultPath,
@@ -37,6 +43,7 @@ declare module "fastify" {
   interface FastifyInstance {
     crossingConfig: ServerConfig;
     projectStore: ProjectStore;
+    expertRegistry: ExpertRegistry;
   }
 }
 
