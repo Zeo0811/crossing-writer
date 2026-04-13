@@ -570,14 +570,18 @@ interface InvokeOptions {
 
 ### 10.3 SSE（复用 SP-02 的 stream route）
 
-新增事件类型（都 publish 到已有 broadcaster）：
+新增事件类型（都 publish 到已有 broadcaster）。**所有 agent 相关事件必须带 `cli` 和 `model` 字段**，让 UI 能展示"谁在跑用什么模型"：
 
-- `overview.started`
-- `overview.completed` / `overview.failed`
-- `case_expert.round1_started` / `case_expert.round1_completed`
+- `overview.started` — `{ agent: "product_overview", cli, model }`
+- `overview.completed` / `overview.failed` — 同上 + `durationMs` / `error`
+- `case_expert.round1_started` — `{ agent: "case_expert.<name>", expert, cli, model }`
+- `case_expert.round1_completed`
 - `case_expert.tool_call` — `{ expert, command, args }`
 - `case_expert.round2_started` / `case_expert.round2_completed`
-- `case_coordinator.synthesizing` / `case_coordinator.done`
+- `case_coordinator.synthesizing` — `{ agent: "case_coordinator", cli, model }`
+- `case_coordinator.done`
+
+**同步回溯修 SP-02 已有事件**：`agent.started` / `expert.round1_started` / `expert.round2_started` / `coordinator.synthesizing` 这些也加上 `cli` 和 `model` 字段。这是破坏性改动，SP-03 Task 1 做（影响现有 SSE 消费者只有 AgentTimeline，一次改完）。
 
 ## 11. UI 组件设计
 
@@ -622,6 +626,39 @@ case_plan_approved → CaseSelectedGuide（实测引导清单，支持导出 PDF
 ```
 
 **AgentTimeline 一直在右侧底部**，订阅新事件类型。
+
+### 11.2.1 AgentTimeline 改造（SP-03 必做）
+
+原 SP-02 的 AgentTimeline 只显示事件类型 + 时间，信息太少。SP-03 改造成这样的行结构：
+
+```
+14:32:15  ●  Brief Analyst · claude/sonnet                   开始解析
+14:33:40  ○  Brief Analyst · claude/sonnet                   完成 (85s)
+14:33:42  ●  Mission Coordinator · claude/opus               正在合成...
+14:33:45  ●  Expert 赛博禅心 · claude/opus                   Round 1 开始
+14:33:45  ●  Expert 数字生命卡兹克 · codex/gpt-5              Round 1 开始
+```
+
+约定：
+- **绿色 ● 实心圆**：该 agent 当前在线/运行中（`started` 事件到 `completed/failed` 之间）
+- **灰色 ○ 空心圆**：该 agent 已完成/闲置
+- **红色 ● 实心圆**：该 agent 失败
+
+Agent 名 + `cli/model` 排版在同一行，便于一眼看出"当前 opus 在忙 / sonnet 在忙哪步"。**同一 agent 的多条事件在 UI 层聚合**：一个 agent 从 started → completed 只显示一行，右侧用状态点表示当前态；点进去可以看这个 agent 跑的全部子事件（开始/工具调用/完成）。
+
+### 11.2.2 AgentStatusBar（新增组件，顶部活跃 agents）
+
+Workbench 顶栏右侧新增一个紧凑 pill 条，显示**当前正在跑的所有 agent**（= 有 started 事件但还没对应 completed/failed 的）：
+
+```
+顶栏: [← 列表] [项目名] [状态] ... [活跃: ● 赛博禅心 opus · ● 卡兹克 codex]
+```
+
+- 绿色脉动圆点（CSS keyframes）
+- 没有活跃 agent 时该条消失
+- hover 每个 pill 显示当前 agent 在做什么（用最近一条 started 事件的 stage）
+
+这个 bar 和 AgentTimeline 是互补的：AgentStatusBar 给"此刻正在干啥"的 glance，Timeline 给"全过程回放"。
 
 ### 11.3 OverviewIntakeForm 结构
 
@@ -745,8 +782,9 @@ case_plan_approved                 ← SP-03 终点
 
 ## 16. 实施顺序（交 writing-plans 细化）
 
-预估 24-28 个 task，大约 2-3 周：
+预估 28-32 个 task，大约 2.5-3 周：
 
+0. SSE 事件统一带 `cli/model` 字段（SP-02 已有事件回补 + 新事件格式）+ event-log.ts 签名扩展
 1. ModelAdapter 扩展 images 参数（claude + codex 两边）
 2. ImageStore service（upload/list/delete）
 3. `POST /overview/images` multipart route
@@ -771,10 +809,12 @@ case_plan_approved                 ← SP-03 终点
 22. CaseListPanel（多选 + 展开 CaseCardPreview）
 23. `POST /case-plan/select` + selected-cases.md 生成
 24. CaseSelectedGuide（SP-03 终态引导）
-25. SSE 新事件类型订阅
-26. 更新 ProjectWorkbench 状态切换逻辑
-27. 集成测试：mock agents 端到端 overview → case 批准
-28. 真机 smoke：用 MetaNovas 项目（SP-02 smoke 产出）继续走 SP-03
+25. SSE 新事件类型订阅（含 cli/model 消费）
+26. AgentTimeline 改造：行内展示 agent·cli/model + 状态点（green/gray/red），同 agent 事件 UI 层聚合
+27. AgentStatusBar 顶栏活跃 agents pill 条（绿色脉动圆点 + hover 当前阶段）
+28. 更新 ProjectWorkbench 状态切换逻辑
+29. 集成测试：mock agents 端到端 overview → case 批准
+30. 真机 smoke：用 MetaNovas 项目（SP-02 smoke 产出）继续走 SP-03
 
 ## 17. 验收与交付
 
