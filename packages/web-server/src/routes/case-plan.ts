@@ -2,9 +2,10 @@ import type { FastifyInstance } from "fastify";
 import type { ProjectStore } from "../services/project-store.js";
 import type { ExpertRegistry } from "../services/expert-registry.js";
 import { computeCasePreselect } from "../services/case-expert-preselect.js";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { runCasePlan } from "../services/case-plan-orchestrator.js";
+import { buildSelectedCasesMd } from "../services/selected-cases-writer.js";
 
 export interface CasePlanDeps {
   store: ProjectStore;
@@ -87,6 +88,57 @@ export function registerCasePlanRoutes(app: FastifyInstance, deps: CasePlanDeps)
         return reply.send(body);
       } catch (e: any) {
         if (e.code === "ENOENT") return reply.code(404).send({ error: "not ready" });
+        throw e;
+      }
+    },
+  );
+
+  app.post<{
+    Params: { id: string };
+    Body: { selectedIndices: number[] };
+  }>("/api/projects/:id/case-plan/select", async (req, reply) => {
+    const p = await deps.store.get(req.params.id);
+    if (!p) return reply.code(404).send({ error: "not found" });
+    if (p.status !== "awaiting_case_selection") {
+      return reply.code(409).send({ error: `cannot select from ${p.status}` });
+    }
+    const indices = req.body?.selectedIndices ?? [];
+    if (indices.length < 2 || indices.length > 4) {
+      return reply.code(400).send({ error: "must select 2-4 cases" });
+    }
+    const candPath = join(deps.projectsDir!, req.params.id, "mission/case-plan/candidates.md");
+    const candidatesMd = await readFile(candPath, "utf-8");
+    const selected = buildSelectedCasesMd({
+      candidatesMd, selectedIndices: indices,
+      projectId: req.params.id,
+      missionRef: "mission/selected.md",
+      overviewRef: "context/product-overview.md",
+    });
+    const selPath = join(deps.projectsDir!, req.params.id, "mission/case-plan/selected-cases.md");
+    await writeFile(selPath, selected, "utf-8");
+    await deps.store.update(req.params.id, {
+      status: "case_plan_approved",
+      case_plan: {
+        ...(p.case_plan ?? { experts_selected: [], candidates_path: "mission/case-plan/candidates.md" }),
+        selected_path: "mission/case-plan/selected-cases.md",
+        selected_indices: indices,
+        selected_count: indices.length,
+        approved_at: new Date().toISOString(),
+      },
+    });
+    return reply.code(200).send({ ok: true });
+  });
+
+  app.get<{ Params: { id: string } }>(
+    "/api/projects/:id/case-plan/selected",
+    async (req, reply) => {
+      const selPath = join(deps.projectsDir!, req.params.id, "mission/case-plan/selected-cases.md");
+      try {
+        const body = await readFile(selPath, "utf-8");
+        reply.header("content-type", "text/markdown; charset=utf-8");
+        return reply.send(body);
+      } catch (e: any) {
+        if (e.code === "ENOENT") return reply.code(404).send({ error: "not selected" });
         throw e;
       }
     },
