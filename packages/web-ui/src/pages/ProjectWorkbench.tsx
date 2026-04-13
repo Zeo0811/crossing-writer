@@ -16,6 +16,7 @@ import { OverviewIntakeForm } from "../components/right/OverviewIntakeForm";
 import { CaseExpertSelector } from "../components/right/CaseExpertSelector";
 import { CaseListPanel } from "../components/left/CaseListPanel";
 import { CaseSelectedGuide } from "../components/right/CaseSelectedGuide";
+import { SettingsDrawer } from "../components/settings/SettingsDrawer";
 
 type SecStat = "completed" | "active" | "pending";
 
@@ -147,6 +148,7 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
   const projectId = propProjectId ?? params.id ?? "";
 
   const [project, setProject] = useState<any>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const { events, activeAgents, connectionState, lastEventTs } = useProjectStream(projectId);
 
   function refetch() {
@@ -182,6 +184,14 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
           {project.status}
         </span>
         <AgentStatusBar activeAgents={activeAgents} />
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="ml-2 text-lg opacity-70 hover:opacity-100"
+          aria-label="settings"
+          title="设置"
+        >
+          ⚙
+        </button>
       </header>
 
       <div className="flex-1 flex overflow-hidden">
@@ -234,6 +244,7 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
           </div>
         </div>
       </div>
+      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }
