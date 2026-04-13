@@ -108,12 +108,8 @@ describe("invokeAgent with images", () => {
 
     const call = vi.mocked(spawnSync).mock.calls[0]!;
     const args = call[1] as string[];
-    const iIdx1 = args.indexOf("-i");
-    expect(iIdx1).toBeGreaterThan(-1);
-    expect(args[iIdx1 + 1]).toBe("/abs/img-1.png");
-    const iIdx2 = args.indexOf("-i", iIdx1 + 1);
-    expect(iIdx2).toBeGreaterThan(-1);
-    expect(args[iIdx2 + 1]).toBe("/abs/img-2.png");
+    expect(args).toContain("--image=/abs/img-1.png");
+    expect(args).toContain("--image=/abs/img-2.png");
   });
 
   it("passes --image <path> per image for claude cli", () => {
@@ -155,7 +151,7 @@ describe("invokeAgent with images", () => {
     });
     const call = vi.mocked(spawnSync).mock.calls[0]!;
     const args = call[1] as string[];
-    expect(args).not.toContain("--image");
+    expect(args.some((a: string) => a === "--image" || a.startsWith("--image="))).toBe(false);
     expect(args).not.toContain("-i");
   });
 });

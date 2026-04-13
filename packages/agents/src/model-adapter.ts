@@ -27,7 +27,7 @@ export function invokeAgent(opts: InvokeOptions): AgentResult {
 
   if (opts.cli === "codex") {
     const outPath = join(mkdtempSync(join(tmpdir(), "agent-")), "out.txt");
-    const imageArgs = (opts.images ?? []).flatMap((p) => ["-i", p]);
+    const imageArgs = (opts.images ?? []).map((p) => `--image=${p}`);
     const args = [
       "exec",
       "--skip-git-repo-check",

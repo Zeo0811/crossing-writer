@@ -25,11 +25,11 @@ const SECTION_ORDER: Array<{ key: string; activeStates: string[] }> = [
   },
   {
     key: "mission",
-    activeStates: ["awaiting_mission_pick", "mission_approved"],
+    activeStates: ["awaiting_mission_pick"],
   },
   {
     key: "overview",
-    activeStates: ["awaiting_overview_input", "overview_analyzing", "overview_ready", "overview_failed"],
+    activeStates: ["mission_approved", "awaiting_overview_input", "overview_analyzing", "overview_ready", "overview_failed"],
   },
   {
     key: "case",
@@ -74,6 +74,7 @@ function rightPanel(status: string, projectId: string, onRefetch: () => void) {
 
   // SP-03 Overview/Case panels
   switch (status) {
+    case "mission_approved":
     case "awaiting_overview_input":
     case "overview_failed":
       return <OverviewIntakeForm projectId={projectId} />;
