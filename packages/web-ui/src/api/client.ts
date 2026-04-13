@@ -138,6 +138,22 @@ export async function startCasePlan(projectId: string, experts: string[]): Promi
   if (!res.ok) throw new Error("start failed");
 }
 
+export async function getCaseCandidates(projectId: string): Promise<string | null> {
+  const res = await fetch(`/api/projects/${projectId}/case-plan/candidates`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("failed");
+  return res.text();
+}
+
+export async function selectCases(projectId: string, indices: number[]): Promise<void> {
+  const res = await fetch(`/api/projects/${projectId}/case-plan/select`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ selectedIndices: indices }),
+  });
+  if (!res.ok) throw new Error("select failed");
+}
+
 export const apiMission = {
   start: (projectId: string, experts: string[]) =>
     request<{ ok: true; status: string }>(`/api/projects/${projectId}/mission/start`, {
