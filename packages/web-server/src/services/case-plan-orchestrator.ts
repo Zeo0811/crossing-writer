@@ -2,7 +2,7 @@ import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   CasePlannerExpert, CaseCoordinator, runCaseExpert, resolveAgent,
-  type ToolCall,
+  type CaseToolCall,
 } from "@crossing/agents";
 import type { ProjectStore } from "./project-store.js";
 import { appendEvent } from "./event-log.js";
@@ -64,7 +64,7 @@ export async function runCasePlan(opts: RunCasePlanOpts): Promise<string> {
       const result = await runCaseExpert(
         expert,
         { missionSummary, productOverview, inspirationPack },
-        async (calls: ToolCall[]) => {
+        async (calls: CaseToolCall[]) => {
           for (const c of calls) {
             await appendEvent(projectDir, {
               type: "case_expert.tool_call",

@@ -19,6 +19,6 @@ export { CasePlannerExpert } from "./roles/case-planner-expert.js";
 export type { CaseExpertOpts, Round1Input as CaseRound1Input, Round2Input as CaseRound2Input, CaseResult } from "./roles/case-planner-expert.js";
 export { CaseCoordinator } from "./roles/case-coordinator.js";
 export type { SynthesizeInput } from "./roles/case-coordinator.js";
-export { runCaseExpert, parseToolCalls } from "./case-expert-runner.js";
-export type { ToolCall, ToolExecutor, RunCaseExpertResult } from "./case-expert-runner.js";
+export { runCaseExpert, parseToolCalls as parseCaseToolCalls } from "./case-expert-runner.js";
+export type { ToolCall as CaseToolCall, ToolExecutor, RunCaseExpertResult } from "./case-expert-runner.js";
 export const VERSION = "0.2.0";
