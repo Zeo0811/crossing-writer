@@ -1,8 +1,9 @@
 import { useParams, Link } from "react-router-dom";
 import { useProject } from "../hooks/useProjects";
+import { useProjectStream } from "../hooks/useProjectStream";
 import { BriefIntakeForm } from "../components/right/BriefIntakeForm";
 import { ExpertSelector } from "../components/right/ExpertSelector";
-import { AgentTimeline } from "../components/right/AgentTimeline";
+import { AgentTimeline } from "../components/status/AgentTimeline";
 import { BriefSummaryCard } from "../components/left/BriefSummaryCard";
 import { MissionCandidatesPanel } from "../components/left/MissionCandidateCard";
 import { SelectedMissionView } from "../components/left/SelectedMissionView";
@@ -41,6 +42,7 @@ function sectionStatusFor(key: string, projectStatus: string): "completed" | "ac
 export function ProjectWorkbench() {
   const { id } = useParams<{ id: string }>();
   const { data: project, refetch } = useProject(id);
+  const { events } = useProjectStream(id);
   if (!project || !id) return <div className="p-6">加载中…</div>;
 
   const status = project.status;
@@ -124,7 +126,7 @@ export function ProjectWorkbench() {
               专家评审中（见下面时间线）
             </div>
           )}
-          <AgentTimeline projectId={id} />
+          <AgentTimeline events={events} />
         </div>
       </div>
     </div>
