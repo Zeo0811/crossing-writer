@@ -9,6 +9,7 @@ import { registerBriefRoutes } from "./routes/brief.js";
 import { ExpertRegistry } from "./services/expert-registry.js";
 import { registerExpertsRoutes } from "./routes/experts.js";
 import { registerMissionRoutes } from "./routes/mission.js";
+import { registerStreamRoutes } from "./routes/stream.js";
 
 const configPath = process.env.CROSSING_CONFIG
   ?? resolve(process.cwd(), "../../config.json");
@@ -37,6 +38,8 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     cli: cfg.defaultCli,
     searchCtx: { sqlitePath: cfg.sqlitePath, vaultPath: cfg.vaultPath },
   });
+
+  registerStreamRoutes(app, { projectsDir: cfg.projectsDir });
 
   app.get("/api/health", async () => ({
     ok: true,

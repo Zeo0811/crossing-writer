@@ -1,5 +1,6 @@
 import { appendFile, readFile, mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { join, basename } from "node:path";
+import { publishEvent } from "./sse-broadcaster.js";
 
 export interface StoredEvent {
   ts: string;
@@ -16,6 +17,8 @@ export async function appendEvent(projectDir: string, event: Record<string, any>
     data,
   };
   await appendFile(join(projectDir, "events.jsonl"), JSON.stringify(stored) + "\n", "utf-8");
+  const projectId = basename(projectDir);
+  publishEvent(projectId, stored);
   return stored;
 }
 
