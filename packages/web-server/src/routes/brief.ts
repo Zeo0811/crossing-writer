@@ -1,0 +1,104 @@
+import type { FastifyInstance } from "fastify";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import type { ProjectStore } from "../services/project-store.js";
+import { extractToMarkdown } from "../services/file-extractor.js";
+import { appendEvent } from "../services/event-log.js";
+
+export interface BriefDeps {
+  store: ProjectStore;
+  projectsDir: string;
+}
+
+interface TextBody {
+  text?: string;
+  productName?: string | null;
+  productUrl?: string | null;
+  productDocsUrl?: string | null;
+  productTrialUrl?: string | null;
+  notes?: string | null;
+}
+
+export function registerBriefRoutes(app: FastifyInstance, deps: BriefDeps) {
+  app.post<{ Params: { id: string }; Body: TextBody }>(
+    "/api/projects/:id/brief",
+    async (req, reply) => {
+      const { id } = req.params;
+      const project = await deps.store.get(id);
+      if (!project) return reply.code(404).send({ error: "project not found" });
+
+      const ct = req.headers["content-type"] ?? "";
+      const projectDir = join(deps.projectsDir, id);
+      const briefDir = join(projectDir, "brief");
+      const rawDir = join(briefDir, "raw");
+      await mkdir(rawDir, { recursive: true });
+
+      let sourceType = "text";
+      let rawPath = "";
+      let markdown = "";
+      let extra: TextBody = {};
+
+      if (ct.startsWith("multipart/form-data")) {
+        const data = await (req as any).file();
+        if (!data) return reply.code(400).send({ error: "no file" });
+        const ext = data.filename.split(".").pop()!.toLowerCase();
+        sourceType = ext;
+        rawPath = join("brief/raw", data.filename);
+        const abs = join(projectDir, rawPath);
+        const buf = await data.toBuffer();
+        await writeFile(abs, buf);
+        markdown = await extractToMarkdown(buf, data.filename);
+        // multipart fields
+        extra = {
+          productName: data.fields?.productName?.value ?? null,
+          productUrl: data.fields?.productUrl?.value ?? null,
+          productDocsUrl: data.fields?.productDocsUrl?.value ?? null,
+          productTrialUrl: data.fields?.productTrialUrl?.value ?? null,
+          notes: data.fields?.notes?.value ?? null,
+        };
+      } else {
+        const body = (req.body ?? {}) as TextBody;
+        if (!body.text || typeof body.text !== "string" || !body.text.trim()) {
+          return reply.code(400).send({ error: "text required" });
+        }
+        markdown = body.text;
+        sourceType = "text";
+        rawPath = "brief/raw/brief.txt";
+        await writeFile(join(projectDir, rawPath), body.text, "utf-8");
+        extra = body;
+      }
+
+      const mdRel = "brief/brief.md";
+      await writeFile(join(projectDir, mdRel), markdown, "utf-8");
+
+      const now = new Date().toISOString();
+      const fromStatus = project.status;
+      await deps.store.update(id, {
+        status: "brief_uploaded",
+        brief: {
+          source_type: sourceType,
+          raw_path: rawPath,
+          md_path: mdRel,
+          summary_path: null,
+          uploaded_at: now,
+        },
+        product_info: {
+          name: extra.productName ?? null,
+          official_url: extra.productUrl ?? null,
+          trial_url: extra.productTrialUrl ?? null,
+          docs_url: extra.productDocsUrl ?? null,
+          fetched_path: null,
+          notes: extra.notes ?? null,
+        },
+      });
+
+      await appendEvent(projectDir, {
+        type: "state_changed",
+        from: fromStatus,
+        to: "brief_uploaded",
+      });
+
+      return reply.send({ ok: true });
+    },
+  );
+}
