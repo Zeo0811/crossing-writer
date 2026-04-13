@@ -13,6 +13,8 @@ import { ExpertRegistry } from "./services/expert-registry.js";
 import { registerExpertsRoutes } from "./routes/experts.js";
 import { registerMissionRoutes } from "./routes/mission.js";
 import { registerStreamRoutes } from "./routes/stream.js";
+import { createConfigStore } from "./services/config-store.js";
+import { registerConfigRoutes } from "./routes/config.js";
 
 const configPath = process.env.CROSSING_CONFIG
   ?? resolve(process.cwd(), "../../config.json");
@@ -84,6 +86,9 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     defaultCli: cfg.defaultCli,
     ts: Date.now(),
   }));
+
+  const configStore = createConfigStore(configPath);
+  registerConfigRoutes(app, { configStore });
 
   return app;
 }
