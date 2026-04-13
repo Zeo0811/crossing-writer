@@ -106,6 +106,21 @@ export function registerOverviewRoutes(app: FastifyInstance, deps: OverviewDeps)
     },
   );
 
+  app.post<{ Params: { id: string } }>(
+    "/api/projects/:id/overview/approve",
+    async (req, reply) => {
+      const p = await deps.store.get(req.params.id);
+      if (!p) return reply.code(404).send({ error: "not found" });
+      if (p.status !== "overview_ready") {
+        return reply.code(409).send({ error: `cannot approve from status ${p.status}` });
+      }
+      await deps.store.update(req.params.id, {
+        status: "awaiting_case_expert_selection",
+      });
+      return reply.code(200).send({ ok: true });
+    },
+  );
+
   app.post<{
     Params: { id: string };
     Body: { productUrls?: string[]; userDescription?: string };
