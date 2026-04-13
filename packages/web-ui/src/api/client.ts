@@ -100,6 +100,27 @@ export async function generateOverview(
   return res.json();
 }
 
+export async function getOverview(projectId: string): Promise<string | null> {
+  const res = await fetch(`/api/projects/${projectId}/overview`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("failed");
+  return res.text();
+}
+
+export async function patchOverview(projectId: string, markdown: string): Promise<void> {
+  const res = await fetch(`/api/projects/${projectId}/overview`, {
+    method: "PATCH",
+    headers: { "content-type": "text/markdown" },
+    body: markdown,
+  });
+  if (!res.ok) throw new Error("patch failed");
+}
+
+export async function approveOverview(projectId: string): Promise<void> {
+  const res = await fetch(`/api/projects/${projectId}/overview/approve`, { method: "POST" });
+  if (!res.ok) throw new Error("approve failed");
+}
+
 export const apiMission = {
   start: (projectId: string, experts: string[]) =>
     request<{ ok: true; status: string }>(`/api/projects/${projectId}/mission/start`, {
