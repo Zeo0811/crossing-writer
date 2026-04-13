@@ -37,12 +37,25 @@ function extractSteps(body: string): string[] {
   return out.slice(0, 2);
 }
 
+function sanitizeFtsQuery(q: string): string {
+  // FTS5: strip punctuation that acts as operators; keep CJK + alphanum
+  const cleaned = q.replace(/[^\p{L}\p{N}\s]+/gu, " ").replace(/\s+/g, " ").trim();
+  return cleaned;
+}
+
 export async function buildInspirationPack(opts: BuildInspirationOpts): Promise<string> {
   const max = opts.maxSources ?? 15;
   const hits: RefSearchResult[] = [];
   for (const q of opts.queries) {
-    const r = await searchRefs(opts.sqlitePath, q, Math.ceil(max / opts.queries.length));
-    hits.push(...r);
+    const clean = sanitizeFtsQuery(q);
+    if (!clean) continue;
+    try {
+      const r = await searchRefs(opts.sqlitePath, clean, Math.ceil(max / opts.queries.length));
+      hits.push(...r);
+    } catch (e) {
+      // skip bad query, log and continue
+      console.warn("[inspiration] searchRefs failed for query:", clean, e);
+    }
   }
   const dedupe = new Map<string, RefSearchResult>();
   for (const h of hits) if (!dedupe.has(h.mdPath)) dedupe.set(h.mdPath, h);

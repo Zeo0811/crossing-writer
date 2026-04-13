@@ -112,7 +112,7 @@ describe("invokeAgent with images", () => {
     expect(args).toContain("--image=/abs/img-2.png");
   });
 
-  it("passes --image <path> per image for claude cli", () => {
+  it("embeds @<path> references in prompt for claude cli", () => {
     vi.mocked(spawnSync).mockReturnValue({
       status: 0,
       stdout: Buffer.from("ok"),
@@ -122,23 +122,18 @@ describe("invokeAgent with images", () => {
     invokeAgent({
       agentKey: "x",
       cli: "claude",
-      systemPrompt: "",
-      userMessage: "",
+      systemPrompt: "sys",
+      userMessage: "user",
       images: ["/abs/a.png", "/abs/b.png"],
     });
 
     const call = vi.mocked(spawnSync).mock.calls[0]!;
     const args = call[1] as string[];
-    const flags = args.filter((a: string) => a === "--image");
-    expect(flags.length).toBe(2);
-    expect(args).toContain("/abs/a.png");
-    expect(args).toContain("/abs/b.png");
-
-    const pIdx = args.indexOf("-p");
-    const firstImageIdx = args.indexOf("--image");
-    expect(firstImageIdx).toBeGreaterThan(pIdx);
-    const modelIdx = args.indexOf("--model");
-    if (modelIdx !== -1) expect(firstImageIdx).toBeLessThan(modelIdx);
+    expect(args[0]).toBe("-p");
+    const prompt = args[1] as string;
+    expect(prompt).toContain("@/abs/a.png");
+    expect(prompt).toContain("@/abs/b.png");
+    expect(args).not.toContain("--image");
   });
 
   it("no-op when images is empty or undefined", () => {
@@ -153,5 +148,8 @@ describe("invokeAgent with images", () => {
     const args = call[1] as string[];
     expect(args.some((a: string) => a === "--image" || a.startsWith("--image="))).toBe(false);
     expect(args).not.toContain("-i");
+    // no image refs in prompt either
+    const prompt = args[1] as string;
+    expect(prompt).not.toMatch(/@\//);
   });
 });
