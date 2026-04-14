@@ -2,8 +2,10 @@ import type { FastifyInstance } from "fastify";
 import type { StylePanelStore } from "../services/style-panel-store.js";
 import {
   runRoleDistill as defaultRunRoleDistill,
+  runRoleDistillAll as defaultRunRoleDistillAll,
   type RoleDistillEvent,
   type RoleDistillRole,
+  type AllRolesDistillEvent,
 } from "../services/style-distill-role-orchestrator.js";
 
 export interface ConfigStylePanelsDistillDeps {
@@ -11,11 +13,17 @@ export interface ConfigStylePanelsDistillDeps {
   sqlitePath: string;
   stylePanelStore: StylePanelStore;
   runRoleDistill?: typeof defaultRunRoleDistill;
+  runRoleDistillAll?: typeof defaultRunRoleDistillAll;
 }
 
 interface DistillBody {
   account?: string;
   role?: string;
+  limit?: number;
+}
+
+interface DistillAllBody {
+  account?: string;
   limit?: number;
 }
 
@@ -26,6 +34,7 @@ export function registerConfigStylePanelsDistillRoutes(
   deps: ConfigStylePanelsDistillDeps,
 ): void {
   const runner = deps.runRoleDistill ?? defaultRunRoleDistill;
+  const runnerAll = deps.runRoleDistillAll ?? defaultRunRoleDistillAll;
 
   app.post<{ Body: DistillBody }>(
     "/api/config/style-panels/distill",
@@ -82,6 +91,66 @@ export function registerConfigStylePanelsDistillRoutes(
         send("distill.finished", { panel_path: result.panelPath, version: result.version });
       } catch (err) {
         send("distill.failed", { error: (err as Error).message });
+      } finally {
+        reply.raw.end();
+      }
+    },
+  );
+
+  app.post<{ Body: DistillAllBody }>(
+    "/api/config/style-panels/distill-all",
+    async (req, reply) => {
+      const body = req.body ?? {};
+      const account = (body.account ?? "").trim();
+      if (!account) {
+        return reply.code(400).send({ error: "account is required" });
+      }
+
+      reply.hijack();
+      reply.raw.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+      });
+      reply.raw.flushHeaders?.();
+
+      const send = (type: string, data: Record<string, unknown>) => {
+        reply.raw.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
+      };
+
+      const onEvent = (ev: AllRolesDistillEvent) => {
+        if (ev.phase === "all.started") {
+          send("distill_all.started", { account: ev.account, run_id: ev.run_id });
+        } else if (ev.phase === "slicer_progress") {
+          send("slicer_progress", { processed: ev.processed, total: ev.total });
+        } else if (ev.phase === "role_started") {
+          send("role_started", { role: ev.role });
+        } else if (ev.phase === "role_done") {
+          send("role_done", {
+            role: ev.role,
+            panel_path: ev.panel_path,
+            version: ev.version,
+          });
+        } else if (ev.phase === "role_failed") {
+          send("role_failed", { role: ev.role, error: ev.error });
+        } else if (ev.phase === "all.finished") {
+          send("distill_all.finished", { results: ev.results });
+        }
+      };
+
+      try {
+        await runnerAll(
+          { account },
+          {
+            vaultPath: deps.vaultPath,
+            sqlitePath: deps.sqlitePath,
+            limit: body.limit,
+            onEvent,
+          },
+        );
+      } catch (err) {
+        send("distill_all.failed", { error: (err as Error).message });
       } finally {
         reply.raw.end();
       }
