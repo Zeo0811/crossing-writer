@@ -95,3 +95,34 @@ describe("POST /api/projects/:id/images", () => {
     expect(res.statusCode).toBe(400);
   });
 });
+
+describe("GET /api/projects/:id/images/:filename", () => {
+  let app: FastifyInstance;
+  beforeEach(async () => {
+    const r = await mkApp();
+    app = r.app;
+  });
+
+  it("serves uploaded image bytes with correct mime", async () => {
+    const payload = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x01, 0x02, 0x03]);
+    const mp = makeMultipart({ payload });
+    const up = await app.inject({ method: "POST", url: "/api/projects/p1/images", payload: mp.body, headers: mp.headers });
+    const body = up.json();
+    const res = await app.inject({ method: "GET", url: body.url });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/image\/png/);
+    expect(Buffer.from(res.rawPayload).equals(payload)).toBe(true);
+  });
+
+  it("returns 404 for unknown filename", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/projects/p1/images/deadbeef00000000.png" });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it("rejects traversal attempt", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/projects/p1/images/..%2Fsecrets.txt" });
+    expect([400, 404]).toContain(res.statusCode);
+    const res2 = await app.inject({ method: "GET", url: "/api/projects/p1/images/foo.exe" });
+    expect(res2.statusCode).toBe(400);
+  });
+});
