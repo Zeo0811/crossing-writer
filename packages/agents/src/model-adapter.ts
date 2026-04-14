@@ -41,9 +41,11 @@ export function invokeAgent(opts: InvokeOptions): AgentResult {
     ];
     const proc = spawnSync("codex", args, { encoding: "buffer", timeout, input: "" });
     if (proc.status !== 0) {
-      const err = proc.stderr?.toString("utf-8") ?? "";
+      const stderr = proc.stderr?.toString("utf-8") ?? "";
+      const stdout = proc.stdout?.toString("utf-8") ?? "";
+      const detail = (stderr || stdout).trim();
       try { unlinkSync(outPath); } catch {}
-      throw new Error(`codex exit=${proc.status}: ${err.slice(0, 500)}`);
+      throw new Error(`codex exit=${proc.status}: ${detail.slice(0, 800) || "(no output)"}`);
     }
     const text = readFileSync(outPath, "utf-8");
     try { unlinkSync(outPath); } catch {}
@@ -63,12 +65,17 @@ export function invokeAgent(opts: InvokeOptions): AgentResult {
     ...(opts.model ? ["--model", opts.model] : []),
   ];
   const proc = spawnSync("claude", args, { encoding: "buffer", timeout, input: "" });
+  const stdout = proc.stdout?.toString("utf-8") ?? "";
+  const stderr = proc.stderr?.toString("utf-8") ?? "";
   if (proc.status !== 0) {
-    const err = proc.stderr?.toString("utf-8") ?? "";
-    throw new Error(`claude exit=${proc.status}: ${err.slice(0, 500)}`);
+    const detail = (stderr || stdout).trim();
+    throw new Error(`claude exit=${proc.status}: ${detail.slice(0, 800) || "(no output)"}`);
+  }
+  if (/^API Error:/m.test(stdout)) {
+    throw new Error(`claude API error: ${stdout.trim().slice(0, 800)}`);
   }
   return {
-    text: proc.stdout?.toString("utf-8") ?? "",
+    text: stdout,
     meta: { cli: "claude", model: opts.model, durationMs: Date.now() - started },
   };
 }
