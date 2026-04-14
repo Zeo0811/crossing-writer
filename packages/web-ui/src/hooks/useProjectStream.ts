@@ -59,7 +59,127 @@ const EVENT_TYPES = [
   "distill.finished",
   "distill.failed",
   "run.blocked",
+  // SP-12: topic-expert consult
+  "topic_consult.started",
+  "expert_started",
+  "expert_delta",
+  "expert_done",
+  "expert_failed",
+  "all_done",
 ];
+
+// ============================================================================
+// SP-12 topic-expert consult event payloads + reducer
+// ============================================================================
+
+export type TopicExpertInvokeType = "score" | "structure" | "continue";
+
+export interface TopicConsultStartedPayload {
+  invokeType: TopicExpertInvokeType;
+  selected: string[];
+}
+export interface ExpertStartedPayload { name: string }
+export interface ExpertDeltaPayload { name: string; chunk: string }
+export interface ExpertDonePayload {
+  name: string;
+  markdown: string;
+  tokens?: number | null;
+  meta?: { cli: string; model?: string | null; durationMs: number };
+}
+export interface ExpertFailedPayload { name: string; error: string }
+export interface AllDonePayload { succeeded: string[]; failed: string[] }
+
+export interface TopicConsultExpertState {
+  status: "pending" | "running" | "done" | "failed";
+  markdown: string;
+  error?: string;
+}
+
+export interface TopicConsultState {
+  status: "idle" | "running" | "done";
+  invokeType?: TopicExpertInvokeType;
+  experts: Record<string, TopicConsultExpertState>;
+  succeeded: string[];
+  failed: string[];
+}
+
+export function initialTopicConsultState(): TopicConsultState {
+  return { status: "idle", experts: {}, succeeded: [], failed: [] };
+}
+
+export function reduceTopicConsult(
+  state: TopicConsultState,
+  event: { type: string; data: Record<string, unknown> },
+): TopicConsultState {
+  const d = event.data ?? {};
+  switch (event.type) {
+    case "topic_consult.started": {
+      const p = d as unknown as TopicConsultStartedPayload;
+      const experts: Record<string, TopicConsultExpertState> = {};
+      for (const n of p.selected ?? []) {
+        experts[n] = { status: "pending", markdown: "" };
+      }
+      return {
+        status: "running",
+        invokeType: p.invokeType,
+        experts,
+        succeeded: [],
+        failed: [],
+      };
+    }
+    case "expert_started": {
+      const { name } = d as unknown as ExpertStartedPayload;
+      return {
+        ...state,
+        experts: {
+          ...state.experts,
+          [name]: { ...(state.experts[name] ?? { markdown: "" }), status: "running" },
+        },
+      };
+    }
+    case "expert_delta": {
+      const { name, chunk } = d as unknown as ExpertDeltaPayload;
+      const prev = state.experts[name] ?? { status: "running", markdown: "" };
+      return {
+        ...state,
+        experts: {
+          ...state.experts,
+          [name]: { ...prev, status: "running", markdown: prev.markdown + chunk },
+        },
+      };
+    }
+    case "expert_done": {
+      const { name, markdown } = d as unknown as ExpertDonePayload;
+      return {
+        ...state,
+        experts: {
+          ...state.experts,
+          [name]: { status: "done", markdown },
+        },
+      };
+    }
+    case "expert_failed": {
+      const { name, error } = d as unknown as ExpertFailedPayload;
+      return {
+        ...state,
+        experts: {
+          ...state.experts,
+          [name]: {
+            ...(state.experts[name] ?? { markdown: "" }),
+            status: "failed",
+            error,
+          },
+        },
+      };
+    }
+    case "all_done": {
+      const { succeeded, failed } = d as unknown as AllDonePayload;
+      return { ...state, status: "done", succeeded, failed };
+    }
+    default:
+      return state;
+  }
+}
 
 export function useProjectStream(projectId: string | undefined) {
   const [events, setEvents] = useState<StreamEvent[]>([]);

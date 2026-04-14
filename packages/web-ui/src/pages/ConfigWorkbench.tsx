@@ -2,12 +2,14 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { AgentsPanel } from "../components/config/AgentsPanel.js";
 import { StylePanelList } from "../components/config/StylePanelList.js";
+import { TopicExpertPanel } from "../components/config/TopicExpertPanel.js";
 
-type TabKey = "main" | "distill";
+type TabKey = "main" | "distill" | "topic-experts";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "main", label: "📝 主流程" },
   { key: "distill", label: "🎨 蒸馏" },
+  { key: "topic-experts", label: "🧑‍🎓 选题专家团" },
 ];
 
 export function ConfigWorkbench() {
@@ -56,6 +58,7 @@ export function ConfigWorkbench() {
       <section className="p-8">
         {active === "main" && <AgentsPanel />}
         {active === "distill" && <StylePanelList />}
+        {active === "topic-experts" && <TopicExpertPanel />}
       </section>
     </div>
   );

@@ -9,8 +9,16 @@ export { loadConfig, resolveAgent } from "./config.js";
 export type { AgentConfig, CrossingConfig } from "./config.js";
 export { BriefAnalyst } from "./roles/brief-analyst.js";
 export type { BriefAnalyzeInput } from "./roles/brief-analyst.js";
-export { TopicExpert } from "./roles/topic-expert.js";
-export type { TopicExpertOpts, Round1Input, Round2Input } from "./roles/topic-expert.js";
+export { TopicExpert, invokeTopicExpert } from "./roles/topic-expert.js";
+export type {
+  TopicExpertOpts,
+  Round1Input,
+  Round2Input,
+  Round3Input,
+  TopicExpertInvokeType,
+  InvokeTopicExpertArgs,
+  InvokeTopicExpertResult,
+} from "./roles/topic-expert.js";
 export { Coordinator } from "./roles/coordinator.js";
 export type { CoordinatorOpts, Round1SynthInput, Round2AggregateInput } from "./roles/coordinator.js";
 export { ProductOverviewAgent } from "./roles/product-overview-agent.js";

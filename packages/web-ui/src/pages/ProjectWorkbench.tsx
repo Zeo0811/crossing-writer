@@ -7,6 +7,7 @@ import { ExpertSelector } from "../components/right/ExpertSelector";
 import { AgentTimeline } from "../components/status/AgentTimeline";
 import { AgentStatusBar } from "../components/status/AgentStatusBar";
 import { BriefSummaryCard } from "../components/left/BriefSummaryCard";
+import { TopicExpertSummonButton } from "../components/project/TopicExpertSummonButton";
 import { MissionCandidatesPanel } from "../components/left/MissionCandidateCard";
 import { SelectedMissionView } from "../components/left/SelectedMissionView";
 import { ProductOverviewCard } from "../components/left/ProductOverviewCard";
@@ -281,7 +282,13 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
                 {(status === "brief_uploaded" || status === "brief_analyzing") ? (
                   <div className="text-gray-500">Brief Analyst 运行中…（稍候 1-2 分钟）</div>
                 ) : (
-                  <BriefSummaryCard projectId={projectId} />
+                  <>
+                    <BriefSummaryCard projectId={projectId} />
+                    <TopicExpertSummonButton
+                      projectId={projectId}
+                      briefSummary={project?.brief?.summary ?? undefined}
+                    />
+                  </>
                 )}
               </Section>
 
