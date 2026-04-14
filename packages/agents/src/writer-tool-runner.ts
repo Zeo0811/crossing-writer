@@ -133,7 +133,7 @@ export async function runWriterWithTools(opts: WriterRunOptions): Promise<Writer
   for (round = 1; round <= maxRounds; round++) {
     const resp = await opts.agent.invoke(messages, opts.images ? { images: opts.images } : undefined);
     lastText = resp.text;
-    lastMeta = resp.meta;
+    lastMeta = { cli: resp.meta.cli, model: resp.meta.model, durationMs: resp.meta.durationMs };
     totalMs += resp.meta.durationMs ?? 0;
 
     const calls = parseToolCalls(resp.text);
