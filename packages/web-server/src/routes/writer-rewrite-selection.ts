@@ -92,9 +92,11 @@ export function registerWriterRewriteSelectionRoutes(
       reply.raw.setHeader("cache-control", "no-cache");
       reply.raw.setHeader("connection", "keep-alive");
       reply.hijack();
-      const send = (event: string, data: unknown) => {
+      const send = (event: string, data: Record<string, unknown>) => {
         reply.raw.write(`event: ${event}\n`);
-        reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
+        reply.raw.write(
+          `data: ${JSON.stringify({ ts: Date.now(), ...data })}\n\n`,
+        );
       };
 
       try {
@@ -201,7 +203,10 @@ export function registerWriterRewriteSelectionRoutes(
             section_key: req.params.key,
           });
         } catch {}
-        send("writer.completed", { section_key: req.params.key });
+        send("writer.completed", {
+          sectionKey: req.params.key,
+          section_key: req.params.key,
+        });
       } catch (e) {
         send("writer.failed", {
           section_key: req.params.key,
