@@ -29,6 +29,7 @@ import { registerConfigStylePanelsDistillRoutes } from "./routes/config-style-pa
 import { registerConfigProjectOverridesRoutes } from "./routes/config-project-overrides.js";
 import { createCliHealthProber } from "./services/cli-health.js";
 import { registerSystemHealthRoutes } from "./routes/system-health.js";
+import { registerProjectImageRoutes } from "./routes/project-images.js";
 
 const configPath = process.env.CROSSING_CONFIG
   ?? resolve(process.cwd(), "../../config.json");
@@ -161,6 +162,8 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     projectOverrideStore,
     projectStore: store,
   });
+
+  registerProjectImageRoutes(app, { projectsRoot: configStore.current.projectsDir });
 
   const cliHealthProber = createCliHealthProber();
   registerSystemHealthRoutes(app, { prober: cliHealthProber });

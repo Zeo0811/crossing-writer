@@ -8,6 +8,7 @@ import {
   getFinal,
   getProjectOverride,
   listConfigStylePanels,
+  putSection,
   rewriteSectionStream,
   type AgentConfigEntry,
   type StylePanel,
@@ -16,6 +17,26 @@ import {
 import { mergeAllAgentConfigs } from "../../utils/merge-agent-config";
 import { SelectionBubble } from "./SelectionBubble";
 import { InlineComposer, type AnchorRect } from "./InlineComposer";
+import { ArticleSectionEditor } from "./ArticleSectionEditor";
+
+interface EditHistoryEntry { at: string; kind: string; summary?: string }
+
+function EditHistoryExpander({ history }: { history?: EditHistoryEntry[] }) {
+  if (!history || history.length === 0) return null;
+  const last = history[history.length - 1]!;
+  return (
+    <details data-testid="edit-history-expander" className="mt-2 text-xs text-gray-500">
+      <summary>📝 人工编辑 {history.length} 次 (最近: {last.at})</summary>
+      <ul className="mt-1 list-disc ml-5">
+        {history.map((h, i) => (
+          <li key={i} className="font-mono">
+            {h.at} — {h.kind}{h.summary ? ` — ${h.summary}` : ""}
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
 
 function ReferencePanel({
   toolsUsed,
@@ -157,6 +178,7 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
   const [selectionRewriteOpen, setSelectionRewriteOpen] = useState<{ key: string; text: string; rect: AnchorRect } | null>(null);
   const [effectiveAgents, setEffectiveAgents] = useState<Record<string, AgentConfigEntry>>({});
   const [stylePanels, setStylePanels] = useState<StylePanel[]>([]);
+  const [editMode, setEditMode] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -283,6 +305,25 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
           const hasSelection = selectionKey === key && selectedText.length > 0;
           const sectionMeta = sections.find((s) => s.key === key);
           const toolsUsed = (sectionMeta?.frontmatter?.tools_used ?? []) as ToolUsageFrontmatter[];
+          const isEditing = !!editMode[key];
+          const sectionFm = (sectionMeta?.frontmatter ?? {}) as Record<string, any>;
+          const editHistory = (sectionFm.edit_history ?? []) as EditHistoryEntry[];
+          const agentRunningOnSection = isBusy;
+          const handleSaveEdit = async (nextBody: string) => {
+            const now = new Date().toISOString();
+            const nextHistory = [...editHistory.slice(-19), { at: now, kind: "manual" }];
+            await putSection(projectId, key, {
+              body: nextBody,
+              frontmatter: {
+                manually_edited: true,
+                last_edited_at: now,
+                edit_history: nextHistory,
+              },
+            });
+            setBodies((b) => ({ ...b, [key]: nextBody }));
+            setEditMode((m) => ({ ...m, [key]: false }));
+            reload();
+          };
           return (
             <section key={key} className="group relative border rounded p-3 bg-white hover:border-blue-400">
               <header className="flex justify-between items-center text-xs text-gray-500 mb-2">
@@ -291,7 +332,17 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
                   <StyleBadge sectionKey={key} effective={effectiveAgents} panels={stylePanels} />
                 </span>
                 <div className="flex gap-1">
-                  {supported && !isBusy && hasSelection && (
+                  <button
+                    type="button"
+                    data-testid={`edit-toggle-${key}`}
+                    onClick={() => setEditMode((m) => ({ ...m, [key]: !m[key] }))}
+                    disabled={!isEditing && agentRunningOnSection}
+                    title={agentRunningOnSection && !isEditing ? "写作中，请稍后编辑" : undefined}
+                    className="px-2 py-0.5 border rounded text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    {isEditing ? "👁 预览" : "✏️ 编辑"}
+                  </button>
+                  {!isEditing && supported && !isBusy && hasSelection && (
                     <button
                       onClick={() => setActiveKey(isActive ? null : key)}
                       className="px-2 py-0.5 border rounded text-orange-600 hover:bg-orange-50"
@@ -300,7 +351,7 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
                       🎯 重写选中
                     </button>
                   )}
-                  {supported && !isBusy && !hasSelection && (
+                  {!isEditing && supported && !isBusy && !hasSelection && (
                     <button
                       onClick={() => setActiveKey(isActive ? null : key)}
                       className="opacity-0 group-hover:opacity-100 transition px-2 py-0.5 border rounded text-blue-600 hover:bg-blue-50"
@@ -311,6 +362,11 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
                 </div>
                 {isBusy && <span className="text-blue-600">重写中…</span>}
               </header>
+              {isEditing && agentRunningOnSection && (
+                <div data-testid={`agent-running-notice-${key}`} className="mb-2 text-xs bg-yellow-50 border border-yellow-200 rounded p-2 text-yellow-800">
+                  agent 正在写入此段
+                </div>
+              )}
               {isActive && (
                 <div className="mb-2 flex flex-col gap-2">
                   {hasSelection && (
@@ -333,13 +389,25 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
                   </div>
                 </div>
               )}
-              <article
-                className="prose prose-sm max-w-none"
-                onMouseUp={() => handleSelectionChange(key, body)}
-                onKeyUp={() => handleSelectionChange(key, body)}
-              >
-                <ReactMarkdown>{body || "_(空)_"}</ReactMarkdown>
-              </article>
+              {isEditing ? (
+                <ArticleSectionEditor
+                  initialBody={body}
+                  projectId={projectId}
+                  sectionKey={key}
+                  onSave={handleSaveEdit}
+                  onCancel={() => setEditMode((m) => ({ ...m, [key]: false }))}
+                />
+              ) : (
+                <article
+                  className="prose prose-sm max-w-none"
+                  data-testid={`section-render-${key}`}
+                  onMouseUp={() => handleSelectionChange(key, body)}
+                  onKeyUp={() => handleSelectionChange(key, body)}
+                >
+                  <ReactMarkdown>{body || "_(空)_"}</ReactMarkdown>
+                </article>
+              )}
+              <EditHistoryExpander history={editHistory} />
               <ReferencePanel toolsUsed={toolsUsed} />
               {selectionRewriteOpen?.key === key && (
                 <InlineComposer
