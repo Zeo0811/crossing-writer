@@ -14,7 +14,6 @@ import {
 import { dispatchSkill } from "@crossing/kb";
 import { readFile } from "node:fs/promises";
 import { appendEvent } from "../services/event-log.js";
-import { pendingPinsStore, type PinEntry } from "../state/pending-pins.js";
 
 export interface WriterDeps {
   store: ProjectStore;
@@ -167,7 +166,7 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
     },
   );
 
-  app.post<{ Params: { id: string; key: string }; Body: { user_hint?: string; selected_text?: string; include_pinned_skills?: boolean } }>(
+  app.post<{ Params: { id: string; key: string }; Body: { user_hint?: string; selected_text?: string } }>(
     "/api/projects/:id/writer/sections/:key/rewrite",
     async (req, reply) => {
       const project = await deps.store.get(req.params.id);
@@ -178,25 +177,6 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
       const agentKey = sectionKeyToAgentKey(req.params.key);
       if (!agentKey) return reply.code(400).send({ error: "unsupported section key" });
 
-      const includePins = req.body?.include_pinned_skills !== false;
-      const pins: PinEntry[] = includePins
-        ? pendingPinsStore.list(req.params.id, req.params.key)
-        : [];
-      const pinnedContext = pins.length === 0
-        ? undefined
-        : pins.map((p, i) => p.ok
-            ? `${i + 1}. ${p.tool} "${p.query}"\n${p.formatted}`
-            : `${i + 1}. ${p.tool} "${p.query}" (失败: ${p.error})`).join("\n\n");
-      const manualUsages = pins.map((p) => ({
-        tool: p.tool,
-        query: p.query,
-        args: p.args,
-        pinned_by: "manual:user" as const,
-        round: 0,
-        hits_count: p.ok ? p.hits_count : 0,
-        hits_summary: [] as Array<{ path?: string; title?: string; score?: number; account?: string; article_id?: string }>,
-      }));
-
       const selected = req.body?.selected_text?.trim();
       const userHint = req.body?.user_hint?.trim();
       const augmentedHintParts: string[] = [];
@@ -205,9 +185,6 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
         augmentedHintParts.push(
           `**只改写下面这段片段，保留段落其它内容逐字不变**。输出完整段落 markdown（仅把这段替换为改后的版本）：\n<<<\n${selected}\n>>>`,
         );
-      }
-      if (pinnedContext) {
-        augmentedHintParts.push(`## User-pinned references\n\n${pinnedContext}`);
       }
       const hintBlock = augmentedHintParts.length ? `\n\n${augmentedHintParts.join("\n\n")}` : "";
 
@@ -360,21 +337,15 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
 
         send("writer.rewrite_chunk", { section_key: req.params.key, chunk: newBody });
 
-        const existingTools = Array.isArray((existing.frontmatter as any).tools_used)
-          ? (existing.frontmatter as any).tools_used as unknown[]
-          : [];
-        const toolsUsed = [...existingTools, ...manualUsages];
         await as.writeSection(req.params.key as SectionKey, {
           key: existing.key,
           frontmatter: {
             ...existing.frontmatter,
             last_agent: agentKey,
             last_updated_at: new Date().toISOString(),
-            ...(toolsUsed.length > 0 ? { tools_used: toolsUsed } : {}),
           } as any,
           body: newBody,
         });
-        if (includePins) pendingPinsStore.clear(req.params.id, req.params.key);
         try { await appendEvent(pDir, { type: "writer.rewrite_completed", section_key: req.params.key, last_agent: agentKey } as any); } catch {}
         send("writer.rewrite_completed", { section_key: req.params.key, last_agent: agentKey });
         try { await appendEvent(pDir, { type: "writer.final_rebuilt", at: new Date().toISOString() } as any); } catch {}
@@ -385,51 +356,6 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
         await deps.store.update(req.params.id, { status: "writing_ready" });
         reply.raw.end();
       }
-    },
-  );
-
-  app.post<{ Params: { id: string; key: string }; Body: { tool: string; args?: Record<string, string> } }>(
-    "/api/projects/:id/writer/sections/:key/skill",
-    async (req, reply) => {
-      const { id, key } = req.params;
-      const project = await deps.store.get(id);
-      if (!project) return reply.code(404).send({ error: "project not found" });
-      const body = req.body ?? ({} as { tool: string; args?: Record<string, string> });
-      const tool = body.tool;
-      const args = body.args ?? {};
-      if (!tool || typeof tool !== "string") {
-        return reply.code(400).send({ error: "tool required" });
-      }
-
-      const argTokens: string[] = [];
-      if (args.query !== undefined) argTokens.push(`"${args.query}"`);
-      for (const [k, v] of Object.entries(args)) {
-        if (k !== "query") argTokens.push(`--${k}=${v}`);
-      }
-
-      const result = await dispatchSkill(
-        { command: tool, args: argTokens },
-        { vaultPath: deps.vaultPath, sqlitePath: deps.sqlitePath },
-      );
-
-      if (result.ok) {
-        pendingPinsStore.push(id, key, { ...result, pinned_by: "manual:user" });
-      }
-      return reply.send(result);
-    },
-  );
-
-  app.get<{ Params: { id: string; key: string } }>(
-    "/api/projects/:id/writer/sections/:key/pinned",
-    async (req) => ({ pins: pendingPinsStore.list(req.params.id, req.params.key) }),
-  );
-
-  app.delete<{ Params: { id: string; key: string; index: string } }>(
-    "/api/projects/:id/writer/sections/:key/pinned/:index",
-    async (req) => {
-      const idx = parseInt(req.params.index, 10);
-      if (Number.isFinite(idx)) pendingPinsStore.removeAt(req.params.id, req.params.key, idx);
-      return { ok: true };
     },
   );
 
