@@ -57,7 +57,7 @@ export function AgentCard({
   const isWriter = agentKey.startsWith("writer.");
   const bound = Boolean(local.styleBinding);
   const statusLabel = bound ? "● ACTIVE" : "◉ style_not_bound";
-  const statusColor = bound ? "var(--green)" : "#d4a72c";
+  const statusColor = bound ? "var(--accent)" : "var(--amber)";
 
   const grouped = useMemo(() => {
     const byAcct = new Map<string, StylePanel[]>();
@@ -111,17 +111,16 @@ export function AgentCard({
   return (
     <div
       data-testid={`agent-card-${agentKey}`}
-      className="border rounded p-4 mb-3"
-      style={{ borderColor: "var(--border)" }}
+      className="border border-l-2 border-l-accent border-hair rounded-[6px] p-4 mb-3 bg-bg-2"
     >
       <header className="flex items-center justify-between mb-3">
-        <span className="font-mono text-sm flex items-center gap-2">
+        <span className="font-mono-term text-sm flex items-center gap-2 text-heading">
+          <span className="font-pixel text-[11px] tracking-[0.08em] text-accent">AGENT:</span>
           {agentKey}
           {unconfigured && (
             <span
               data-testid="agent-unconfigured-badge"
-              className="text-[10px] px-1.5 py-0.5 rounded"
-              style={{ background: "rgba(212,167,44,0.15)", color: "#d4a72c" }}
+              className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--amber-bg)] text-amber border border-[var(--amber-hair)]"
             >
               ⚠️ 尚未配置（保存即创建）
             </span>

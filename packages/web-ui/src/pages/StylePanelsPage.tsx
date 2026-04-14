@@ -23,10 +23,10 @@ export function StylePanelsPage() {
   const distilledIds = new Set(panels.map((p) => p.id));
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-5">
-      <header className="flex items-center justify-between border-b pb-3">
-        <h1 className="text-xl font-semibold">风格面板</h1>
-        <Link to="/" className="text-sm text-gray-500 hover:text-black">← 返回项目列表</Link>
+    <div data-testid="page-style-panels" className="max-w-5xl mx-auto p-6 space-y-5 min-h-screen bg-bg-0 text-body">
+      <header className="flex items-center justify-between border-b border-hair pb-3">
+        <h1 className="text-xl font-semibold m-0 text-accent font-pixel tracking-[0.04em]">风格面板</h1>
+        <Link to="/" className="text-sm text-meta hover:text-accent no-underline">← 返回项目列表</Link>
       </header>
 
       {mode.kind === "form" ? (
@@ -45,11 +45,11 @@ export function StylePanelsPage() {
       ) : (
         <>
           <section>
-            <h2 className="text-base font-semibold mb-2">已蒸馏的面板（{panels.length}）</h2>
+            <h2 className="text-base font-semibold mb-2 text-heading">已蒸馏的面板（{panels.length}）</h2>
             <StylePanelList panels={panels} onRedistill={(id) => setMode({ kind: "form", account: id })} />
           </section>
           <section>
-            <h2 className="text-base font-semibold mb-2">待蒸馏（refs.sqlite 内账号 {accounts.filter((a) => !distilledIds.has(a.account)).length}）</h2>
+            <h2 className="text-base font-semibold mb-2 text-heading">待蒸馏（refs.sqlite 内账号 {accounts.filter((a) => !distilledIds.has(a.account)).length}）</h2>
             <AccountCandidateList accounts={accounts} distilledIds={distilledIds} onDistill={(a) => setMode({ kind: "form", account: a })} />
           </section>
         </>

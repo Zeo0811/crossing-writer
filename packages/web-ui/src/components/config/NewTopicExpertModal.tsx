@@ -16,7 +16,7 @@ export function NewTopicExpertModal({ onClose, onSubmit }: Props) {
   };
 
   return (
-    <div role="dialog" aria-label="新增专家" data-testid="te-new-modal">
+    <div role="dialog" aria-label="新增专家" data-testid="te-new-modal" data-modal-root="" className="bg-bg-1 text-body border border-hair rounded-[6px]">
       <label>
         名称
         <input

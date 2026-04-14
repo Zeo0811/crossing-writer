@@ -116,7 +116,7 @@ export function ArticleSectionEditor({
             justifyContent: "center",
             pointerEvents: "none",
             fontSize: 14,
-            color: "#1e3a8a",
+            color: "var(--accent)",
           }}
         >
           {uploading

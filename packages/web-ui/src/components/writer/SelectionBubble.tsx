@@ -19,7 +19,7 @@ export function SelectionBubble({ rect, onClick }: SelectionBubbleProps) {
       <button
         type="button"
         onClick={onClick}
-        className="px-3 py-1 rounded-md bg-slate-900 text-white text-xs shadow-lg hover:bg-slate-700"
+        className="px-3 py-1 rounded-[2px] bg-bg-2 text-body border border-hair-strong text-xs hover:text-accent hover:border-accent"
       >
         ✍️ 重写选中
       </button>

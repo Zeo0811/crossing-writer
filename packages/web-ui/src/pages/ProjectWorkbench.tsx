@@ -25,6 +25,9 @@ import { WriterConfigForm } from "../components/writer/WriterConfigForm";
 import { WriterProgressPanel } from "../components/writer/WriterProgressPanel";
 import { ArticleEditor } from "../components/writer/ArticleEditor";
 import { ProjectOverridePanel } from "../components/config/ProjectOverridePanel";
+import { TopNav } from "../components/layout/TopNav";
+import { Button } from "../components/ui/Button";
+import { Chip } from "../components/ui/Chip";
 
 type SecStat = "completed" | "active" | "pending";
 
@@ -78,18 +81,18 @@ function findLastFailure(events: any[]): { agent?: string; cli?: string; model?:
 
 function FailureCard({ title, fail, onRetry }: { title: string; fail: any; onRetry?: () => void }) {
   return (
-    <div className="p-4 bg-red-50 border border-red-300 rounded">
-      <h3 className="font-semibold text-red-700">{title}</h3>
+    <div className="p-4 bg-bg-2 border border-red rounded">
+      <h3 className="font-semibold text-red">{title}</h3>
       {fail?.agent && (
-        <p className="text-xs text-gray-600 mt-1">
+        <p className="text-xs text-meta mt-1">
           {fail.agent} · {fail.cli}/{fail.model ?? "?"}
         </p>
       )}
-      <pre className="text-xs whitespace-pre-wrap mt-2 max-h-48 overflow-auto bg-white p-2 border border-red-200">
+      <pre className="text-xs whitespace-pre-wrap mt-2 max-h-48 overflow-auto bg-bg-1 p-2 border border-hair text-body">
         {fail?.error ?? "未捕获错误（见右下时间线）"}
       </pre>
       {onRetry && (
-        <button onClick={onRetry} className="mt-2 bg-red-600 text-white px-3 py-1 text-sm">
+        <button type="button" onClick={onRetry} className="mt-2 bg-red text-accent-on px-3 py-1 text-sm border-0 rounded cursor-pointer">
           重试
         </button>
       )}
@@ -201,32 +204,37 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
   const showSelected = status === "mission_approved";
 
   return (
-    <div className="h-screen flex flex-col">
+    <div
+      data-testid="page-project-workbench"
+      className="h-screen flex flex-col bg-bg-0 text-body"
+    >
+      <div className="px-4 pt-4">
+        <TopNav breadcrumb={["projects", project.name]} />
+      </div>
       <header
-        className="p-4 border-b bg-white flex items-center gap-3"
-        style={{ borderColor: "var(--border)" }}
+        data-testid="pw-sidebar-header"
+        className="p-4 border-b bg-bg-1 flex items-center gap-3 border-hair"
       >
         {!propProjectId && (
-          <Link to="/" className="text-sm text-gray-500">
+          <Link to="/" className="text-sm text-meta hover:text-accent no-underline">
             ← 列表
           </Link>
         )}
-        <h1 className="font-semibold">{project.name}</h1>
-        <span className="text-xs px-2 py-0.5 rounded bg-gray-100">
-          {project.status}
-        </span>
+        <h1 className="font-semibold text-heading m-0">{project.name}</h1>
+        <Chip variant="active">{project.status}</Chip>
         <AgentStatusBar activeAgents={activeAgents} />
-        <button
+        <Button
+          variant="secondary"
           onClick={() => setOverrideOpen(true)}
-          className="ml-2 text-xs px-2 py-1 border rounded"
-          style={{ borderColor: "var(--border)" }}
+          className="ml-2"
           title="本项目专属配置"
         >
           🔧 本项目专属配置
-        </button>
+        </Button>
         <button
+          type="button"
           onClick={() => setSettingsOpen(true)}
-          className="ml-2 text-lg opacity-70 hover:opacity-100"
+          className="ml-2 text-lg text-meta hover:text-accent cursor-pointer bg-transparent border-0"
           aria-label="settings"
           title="设置"
         >
@@ -237,37 +245,33 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
       <div className="flex-1 flex overflow-hidden">
         {/* 左侧：各阶段内容 */}
         <div
-          className="w-3/5 border-r overflow-auto p-6"
-          style={{ borderColor: "var(--border)" }}
+          data-testid="pw-sidebar"
+          className="w-3/5 border-r overflow-auto p-6 border-hair bg-bg-0"
         >
           {missingBindings.length > 0 && (
             <div
-              className="mb-4 border rounded p-4"
-              style={{ borderColor: "var(--red, #ef4444)", background: "#fff5f5" }}
+              className="mb-4 border rounded p-4 border-red bg-[var(--bg-2)]"
               data-testid="run-blocked-card"
             >
-              <h3 className="font-semibold mb-2" style={{ color: "var(--red, #ef4444)" }}>
+              <h3 className="font-semibold mb-2 text-red">
                 ⚠️ 无法开始
               </h3>
-              <div className="text-sm mb-2">下列 agent 未绑定风格：</div>
-              <ul className="text-xs font-mono ml-4 mb-3">
+              <div className="text-sm mb-2 text-body">下列 agent 未绑定风格：</div>
+              <ul className="text-xs font-mono-term ml-4 mb-3 text-body">
                 {missingBindings.map((mb, i) => (
                   <li key={`${mb.agentKey}-${i}`}>• {mb.agentKey}{mb.reason ? ` (${mb.reason})` : ""}</li>
                 ))}
               </ul>
               <div className="flex gap-2">
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
                   onClick={() => setOverrideOpen(true)}
-                  className="text-xs px-2 py-1 border rounded"
-                  style={{ borderColor: "var(--border)" }}
                 >
                   本项目专属配置
-                </button>
+                </Button>
                 <Link
                   to="/config"
-                  className="text-xs px-2 py-1 border rounded"
-                  style={{ borderColor: "var(--border)" }}
+                  className="text-xs px-2 py-1 border border-hair rounded no-underline text-body hover:text-accent"
                 >
                   去配置工作台
                 </Link>
@@ -331,8 +335,8 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
         </div>
 
         {/* 右侧：时间线（顶部）+ 表单/专家选择 */}
-        <div className="w-2/5 flex flex-col overflow-hidden bg-[var(--gray-light)]">
-          <div className="p-3 border-b bg-white">
+        <div className="w-2/5 flex flex-col overflow-hidden bg-bg-2">
+          <div className="p-3 border-b bg-bg-1 border-hair">
             <AgentTimeline events={events} connectionState={connectionState} lastEventTs={lastEventTs} />
           </div>
           <div className="flex-1 overflow-auto p-6 space-y-4">

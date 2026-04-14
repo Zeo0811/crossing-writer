@@ -143,22 +143,21 @@ export function DistillModal({ account, role, onClose, onSuccess }: DistillModal
     : 0;
 
   const statusColor = (s: RoleStatus) => {
-    if (s === "DONE") return "var(--green, #22c55e)";
-    if (s === "FAILED") return "var(--red, #ef4444)";
-    if (s === "RUNNING") return "var(--green, #22c55e)";
-    return "#888";
+    if (s === "DONE") return "var(--accent)";
+    if (s === "FAILED") return "var(--red)";
+    if (s === "RUNNING") return "var(--accent)";
+    return "var(--faint)";
   };
 
   return (
     <div
       role="dialog"
       data-testid="distill-modal"
-      className="fixed inset-0 flex items-center justify-center z-50"
-      style={{ background: "rgba(0,0,0,0.5)" }}
+      data-modal-root=""
+      className="fixed inset-0 flex items-center justify-center z-50 bg-[rgba(0,0,0,0.55)] backdrop-blur-[6px]"
     >
       <div
-        className="p-6 rounded border w-[520px] max-w-[90vw]"
-        style={{ background: "var(--bg, #fff)", borderColor: "var(--border)" }}
+        className="p-6 rounded-[6px] border w-[520px] max-w-[90vw] bg-bg-1 border-hair"
       >
         <h3 className="text-base font-semibold mb-3">
           {isAll ? (
@@ -223,14 +222,14 @@ export function DistillModal({ account, role, onClose, onSuccess }: DistillModal
           </div>
           <div
             className="h-2 rounded overflow-hidden mb-2"
-            style={{ background: "var(--gray-light, #eee)" }}
+            style={{ background: "var(--bg-2)" }}
           >
             <div
               data-testid="distill-slicer-bar"
               style={{
                 width: `${pct}%`,
                 height: "100%",
-                background: "var(--green, #22c55e)",
+                background: "var(--accent)",
                 transition: "width 150ms linear",
               }}
             />
@@ -264,7 +263,7 @@ export function DistillModal({ account, role, onClose, onSuccess }: DistillModal
         {error && (
           <div
             className="text-xs border rounded p-2 mb-3"
-            style={{ borderColor: "var(--red, #ef4444)", color: "var(--red, #ef4444)" }}
+            style={{ borderColor: "var(--red)", color: "var(--red)" }}
           >
             {error}
           </div>
@@ -284,7 +283,7 @@ export function DistillModal({ account, role, onClose, onSuccess }: DistillModal
               type="button"
               onClick={startDistill}
               className="px-3 py-1 text-sm border rounded"
-              style={{ borderColor: "var(--border)", background: "var(--green, #22c55e)", color: "#fff" }}
+              style={{ borderColor: "var(--accent)", background: "var(--accent)", color: "var(--accent-on)" }}
             >
               开始蒸馏
             </button>

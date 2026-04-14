@@ -105,7 +105,7 @@ export function TopicExpertConsultModal(props: Props) {
 
   if (!open) return null;
   return (
-    <div role="dialog" aria-label="选题专家团咨询" data-testid="consult-modal">
+    <div role="dialog" aria-label="选题专家团咨询" data-testid="consult-modal" data-modal-root="" className="bg-bg-1 text-body">
       {state.status === "idle" ? (
         <>
           <div role="radiogroup" aria-label="invokeType">

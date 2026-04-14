@@ -63,29 +63,29 @@ export function KnowledgePage() {
   };
 
   return (
-    <div className="flex flex-col h-screen">
-      <div className="flex gap-4 border-b px-4 py-2 items-center">
-        <Link to="/" className="text-sm text-gray-500 hover:text-black">← 返回项目</Link>
-        <h1 className="text-lg font-semibold">知识库</h1>
-        <button role="tab" aria-selected={tab === "browse"} onClick={() => setTab("browse")} className={`px-3 py-1 rounded ${tab === "browse" ? "bg-gray-200 font-semibold" : ""}`}>Browse</button>
-        <button role="tab" aria-selected={tab === "ingest"} onClick={() => setTab("ingest")} className={`px-3 py-1 rounded ${tab === "ingest" ? "bg-gray-200 font-semibold" : ""}`}>Ingest</button>
-        <div className="ml-auto text-xs text-gray-500">
+    <div data-testid="page-knowledge" className="flex flex-col h-screen bg-bg-0 text-body">
+      <div className="flex gap-4 border-b border-hair px-4 py-2 items-center bg-bg-1">
+        <Link to="/" className="text-sm text-meta hover:text-accent no-underline">← 返回项目</Link>
+        <h1 className="text-lg font-semibold m-0 text-heading">知识库</h1>
+        <button type="button" role="tab" aria-selected={tab === "browse"} onClick={() => setTab("browse")} className={`px-3 py-1 rounded-[2px] cursor-pointer border-0 ${tab === "browse" ? "bg-accent-fill text-accent font-semibold" : "bg-transparent text-body hover:text-accent"}`}>Browse</button>
+        <button type="button" role="tab" aria-selected={tab === "ingest"} onClick={() => setTab("ingest")} className={`px-3 py-1 rounded-[2px] cursor-pointer border-0 ${tab === "ingest" ? "bg-accent-fill text-accent font-semibold" : "bg-transparent text-body hover:text-accent"}`}>Ingest</button>
+        <div className="ml-auto text-xs text-meta font-mono-term">
           {status && `${status.total} pages · last_ingest=${status.last_ingest_at ?? "never"}`}
         </div>
       </div>
 
       {tab === "browse" && (
         <div className="grid grid-cols-[320px_1fr] flex-1 overflow-hidden">
-          <div className="border-r flex flex-col">
-            <div className="p-2 border-b">
+          <div className="border-r border-hair flex flex-col">
+            <div className="p-2 border-b border-hair">
               <WikiSearchBox onSearch={handleSearch} />
             </div>
             {hits ? (
               <ul className="list-none m-0 p-2 overflow-auto">
                 {hits.map((h) => (
-                  <li key={h.path} onClick={() => setSelected(h.path)} className={`cursor-pointer p-1 ${selected === h.path ? "bg-blue-100" : ""}`}>
-                    <div className="font-semibold text-sm">{h.title} <span className="text-xs text-gray-500">({h.kind} · {h.score.toFixed(2)})</span></div>
-                    <div className="text-xs text-gray-700">{h.excerpt}</div>
+                  <li key={h.path} onClick={() => setSelected(h.path)} className={`cursor-pointer p-1 ${selected === h.path ? "bg-accent-fill text-accent" : "text-body"}`}>
+                    <div className="font-semibold text-sm">{h.title} <span className="text-xs text-meta">({h.kind} · {h.score.toFixed(2)})</span></div>
+                    <div className="text-xs text-meta">{h.excerpt}</div>
                   </li>
                 ))}
               </ul>

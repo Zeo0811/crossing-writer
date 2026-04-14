@@ -47,12 +47,12 @@ export function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () =
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex">
-      <div className="flex-1 bg-black/30" onClick={onClose} />
-      <aside className="w-96 bg-white shadow-xl overflow-y-auto p-4 space-y-4">
+    <div className="fixed inset-0 z-40 flex" data-modal-root="">
+      <div className="flex-1 bg-[rgba(0,0,0,0.55)] backdrop-blur-[6px]" onClick={onClose} />
+      <aside className="w-96 bg-bg-1 border-l border-hair text-body shadow-xl overflow-y-auto p-4 space-y-4">
         <header className="flex items-center justify-between">
-          <h2 className="font-semibold">设置 · Agent / CLI</h2>
-          <button onClick={onClose} className="text-xl opacity-60 hover:opacity-100">×</button>
+          <h2 className="font-semibold text-heading m-0">设置 · Agent / CLI</h2>
+          <button type="button" onClick={onClose} className="text-xl text-meta hover:text-accent bg-transparent border-0 cursor-pointer">×</button>
         </header>
 
         {loadError && (
