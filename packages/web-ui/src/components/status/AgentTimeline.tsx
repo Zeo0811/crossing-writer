@@ -51,7 +51,13 @@ const TOOL_EVENT_TYPES = new Set([
   "writer.tool_returned",
   "writer.tool_failed",
   "writer.tool_round_completed",
+  "writer.selection_rewritten",
 ]);
+
+function truncate(s: unknown, n = 30): string {
+  const str = typeof s === "string" ? s : String(s ?? "");
+  return str.length > n ? str.slice(0, n) + "…" : str;
+}
 
 function renderToolEvent(ev: StreamEvent, i: number) {
   const p = (ev.payload ?? ev.data ?? {}) as any;
@@ -78,6 +84,12 @@ function renderToolEvent(ev: StreamEvent, i: number) {
       return (
         <li key={`tool-${i}`} className="text-xs text-slate-500">
           ⟳ [{p.sectionKey}] round {p.round} 完成
+        </li>
+      );
+    case "writer.selection_rewritten":
+      return (
+        <li key={`tool-${i}`} className="text-xs text-violet-700">
+          ✂️ 改写选中片段 [{p.sectionKey}] {truncate(p.selected_text)} → {truncate(p.new_text)}
         </li>
       );
     default:
