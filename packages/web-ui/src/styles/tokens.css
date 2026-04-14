@@ -1,11 +1,72 @@
-:root {
-  --green: #407600;
-  --green-dark: #356200;
-  --green-light: #f4f9ed;
-  --green-border: #c5e0a5;
-  --dark: #1a1a1a;
-  --gray: #666;
-  --gray-light: #f7f7f7;
-  --border: #e5e5e5;
-  --danger: #d32;
+:root,
+:root[data-theme="dark"] {
+  --bg-0: #081208;
+  --bg-1: #0f1a11;
+  --bg-2: #16231a;
+  --hair: #1e2e21;
+  --hair-strong: #2a3d2e;
+  --body: #dae3d9;
+  --heading: #f0f4ec;
+  --meta: #7e8e7f;
+  --faint: #5a6a5b;
+  --accent: #40ff9f;
+  --accent-soft: #2eb878;
+  --accent-dim: #4a8a66;
+  --accent-fill: #163726;
+  --accent-on: #052612;
+  --amber: #ffd166;
+  --amber-bg: #2a2414;
+  --amber-hair: #4a3f22;
+  --red: #ff6b6b;
+  --pink: #ff6ab0;
+  --pink-shadow: rgba(255, 106, 176, 0.25);
+  --log-bg: #0a1509;
+  --kbd-bg: #132119;
+  --radius: 6px;
+  --radius-sm: 2px;
+  --font-pixel: "Press Start 2P", "VT323", monospace;
+  --font-sans: "Inter", "Noto Sans SC", "PingFang SC", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+
+  /* legacy aliases (to be removed in T23) */
+  --green: var(--accent);
+  --green-dark: var(--accent-soft);
+  --green-light: var(--accent-fill);
+  --green-border: var(--hair-strong);
+  --dark: var(--heading);
+  --gray: var(--meta);
+  --gray-light: var(--bg-2);
+  --border: var(--hair);
+  --danger: var(--red);
+}
+
+:root[data-theme="light"] {
+  --bg-0: #f5f6f7;
+  --bg-1: #ffffff;
+  --bg-2: #eceff2;
+  --hair: #d8dce0;
+  --hair-strong: #c2c7cd;
+  --body: #1d2126;
+  --heading: #0b0e12;
+  --meta: #5a6572;
+  --faint: #8a93a0;
+  --accent: #1f9e5c;
+  --accent-soft: #177a47;
+  --accent-dim: #6fb891;
+  --accent-fill: #d8f0e2;
+  --accent-on: #ffffff;
+  --amber: #a8761a;
+  --amber-bg: #faecc8;
+  --amber-hair: #e0c67a;
+  --red: #c53030;
+  --pink: #d43a8c;
+  --pink-shadow: #8a2460;
+  --log-bg: #f8f9fa;
+  --kbd-bg: #eceff2;
+}
+
+html, body {
+  background: var(--bg-0);
+  color: var(--body);
+  font-family: var(--font-sans);
 }
