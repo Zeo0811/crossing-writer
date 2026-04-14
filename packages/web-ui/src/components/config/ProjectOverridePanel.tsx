@@ -169,8 +169,8 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
 
   if (loading) {
     return (
-      <div role="dialog" className="fixed inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.5)" }}>
-        <div className="p-6 bg-white rounded">Loading…</div>
+      <div role="dialog" className="fixed inset-0 flex items-center justify-center bg-[rgba(0,0,0,0.55)] backdrop-blur-[6px]">
+        <div className="p-6 bg-bg-1 border border-hair text-body rounded-[6px]">Loading…</div>
       </div>
     );
   }
@@ -179,12 +179,11 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
     <div
       role="dialog"
       data-testid="project-override-panel"
-      className="fixed inset-0 z-50 flex items-start justify-end"
-      style={{ background: "rgba(0,0,0,0.4)" }}
+      data-modal-root=""
+      className="fixed inset-0 z-50 flex items-start justify-end bg-[rgba(0,0,0,0.55)] backdrop-blur-[6px]"
     >
       <div
-        className="h-full w-[640px] max-w-[95vw] overflow-auto shadow-xl p-5"
-        style={{ background: "var(--bg, #fff)" }}
+        className="h-full w-[640px] max-w-[95vw] overflow-auto shadow-xl p-5 bg-bg-1 border-l border-hair text-body"
       >
         <header className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold">🔧 本项目专属配置</h2>

@@ -153,12 +153,11 @@ export function DistillModal({ account, role, onClose, onSuccess }: DistillModal
     <div
       role="dialog"
       data-testid="distill-modal"
-      className="fixed inset-0 flex items-center justify-center z-50"
-      style={{ background: "rgba(0,0,0,0.5)" }}
+      data-modal-root=""
+      className="fixed inset-0 flex items-center justify-center z-50 bg-[rgba(0,0,0,0.55)] backdrop-blur-[6px]"
     >
       <div
-        className="p-6 rounded border w-[520px] max-w-[90vw]"
-        style={{ background: "var(--bg, #fff)", borderColor: "var(--border)" }}
+        className="p-6 rounded-[6px] border w-[520px] max-w-[90vw] bg-bg-1 border-hair"
       >
         <h3 className="text-base font-semibold mb-3">
           {isAll ? (

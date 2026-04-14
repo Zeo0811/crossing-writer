@@ -113,14 +113,13 @@ export function StylePanelList() {
         return (
         <section key={account} className="mb-6">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <h2 className="text-sm font-semibold" style={{ color: "var(--green)" }}>
+            <h2 className="text-sm font-semibold text-accent font-pixel tracking-[0.06em]">
               {account}
             </h2>
             {missingRoles.map((role) => (
               <button
                 key={role}
-                className="px-2 py-0.5 text-xs border rounded"
-                style={{ borderColor: "var(--border)" }}
+                className="px-2 py-0.5 text-xs border border-hair rounded bg-transparent text-body hover:text-accent hover:border-accent cursor-pointer"
                 onClick={() => setDistillTarget({ account, role })}
               >
                 + 蒸 {role}
@@ -128,12 +127,7 @@ export function StylePanelList() {
             ))}
             <button
               key="_all"
-              className="px-2 py-0.5 text-xs border rounded"
-              style={{
-                borderColor: "var(--border)",
-                background: "var(--green, #22c55e)",
-                color: "#fff",
-              }}
+              className="px-2 py-0.5 text-xs border border-accent rounded bg-accent text-accent-on cursor-pointer hover:bg-accent-soft hover:border-accent-soft"
               onClick={() => setDistillTarget({ account, role: "all" })}
             >
               + 蒸 全部
@@ -146,8 +140,7 @@ export function StylePanelList() {
               return (
                 <div
                   key={`${p.account}-${p.role}-${p.version}`}
-                  className="flex items-center gap-3 border rounded p-3 text-sm"
-                  style={{ borderColor: "var(--border)" }}
+                  className="flex items-center gap-3 border border-hair rounded-[6px] p-3 text-sm bg-bg-1 text-body"
                 >
                   <span className="font-mono min-w-[120px]">
                     {p.role} v{p.version}
@@ -164,8 +157,7 @@ export function StylePanelList() {
                   <span className="flex-1" />
                   {chip !== "legacy" && (
                     <button
-                      className="px-2 py-0.5 text-xs border rounded"
-                      style={{ borderColor: "var(--border)" }}
+                      className="px-2 py-0.5 text-xs border border-hair rounded bg-transparent text-body hover:text-accent hover:border-accent cursor-pointer"
                       onClick={() =>
                         setDistillTarget({ account: p.account, role: p.role as StyleBindingRole })
                       }
@@ -175,8 +167,7 @@ export function StylePanelList() {
                   )}
                   {chip === "deleted" && (
                     <button
-                      className="px-2 py-0.5 text-xs border rounded"
-                      style={{ borderColor: "var(--border)" }}
+                      className="px-2 py-0.5 text-xs border border-hair rounded bg-transparent text-body hover:text-accent hover:border-accent cursor-pointer"
                       onClick={() => { void handleRestore(p); }}
                     >
                       恢复
@@ -184,16 +175,14 @@ export function StylePanelList() {
                   )}
                   {chip === "active" && (
                     <button
-                      className="px-2 py-0.5 text-xs border rounded"
-                      style={{ borderColor: "var(--border)" }}
+                      className="px-2 py-0.5 text-xs border border-hair rounded bg-transparent text-body hover:text-accent hover:border-accent cursor-pointer"
                       onClick={() => { void handleDelete(p, false); }}
                     >
                       软删
                     </button>
                   )}
                   <button
-                    className="px-2 py-0.5 text-xs border rounded"
-                    style={{ borderColor: "var(--border)", color: "var(--red)" }}
+                    className="px-2 py-0.5 text-xs border border-hair rounded bg-transparent text-red hover:border-red cursor-pointer"
                     onClick={() => { void handleDelete(p, true); }}
                   >
                     硬删
