@@ -9,12 +9,13 @@ export interface ActiveAgent {
 }
 
 export interface StreamEvent {
-  ts: string;
+  ts?: string | number;
   type: string;
   agent?: string;
   cli?: string;
   model?: string | null;
   data?: Record<string, any>;
+  payload?: any;
   [k: string]: any;
 }
 
@@ -46,6 +47,11 @@ const EVENT_TYPES = [
   "writer.rewrite_failed",
   "writer.style_critic_applied",
   "writer.final_rebuilt",
+  "writer.tool_called",
+  "writer.tool_returned",
+  "writer.tool_failed",
+  "writer.tool_round_completed",
+  "writer.selection_rewritten",
 ];
 
 export function useProjectStream(projectId: string | undefined) {
@@ -98,15 +104,22 @@ export function useProjectStream(projectId: string | undefined) {
       errorCountRef.current += 1;
       setConnectionState(errorCountRef.current >= 3 ? "disconnected" : "reconnecting");
     };
-    const handler = (e: MessageEvent) => {
-      console.log("[SSE] event", e.type, e.data?.slice?.(0, 120));
-      try {
-        applyEvent(JSON.parse(e.data) as StreamEvent);
-      } catch (err) {
-        console.warn("[SSE] parse fail", err);
-      }
-    };
-    EVENT_TYPES.forEach((t) => es.addEventListener(t, handler));
+    EVENT_TYPES.forEach((t) => {
+      es.addEventListener(t, (e: MessageEvent) => {
+        console.log("[SSE] event", t, e.data?.slice?.(0, 120));
+        try {
+          const parsed = JSON.parse(e.data);
+          const ev: StreamEvent = {
+            ...(parsed && typeof parsed === "object" ? parsed : {}),
+            type: t,
+            payload: parsed,
+          };
+          applyEvent(ev);
+        } catch (err) {
+          console.warn("[SSE] parse fail", err);
+        }
+      });
+    });
     return () => es.close();
   }, [projectId, applyEvent]);
 

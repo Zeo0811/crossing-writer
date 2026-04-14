@@ -10,11 +10,29 @@
     "fallbackCli": "codex"
   },
   "agents": {
-    "brief_analyst":              { "cli": "claude", "model": "sonnet" },
-    "coordinator":                { "cli": "claude", "model": "opus" },
-    "product_overview":           { "cli": "claude", "model": "opus" },
-    "case_coordinator":           { "cli": "claude", "model": "opus" },
-    "topic_expert.赛博禅心":       { "cli": "claude", "model": "opus" },
-    "topic_expert.数字生命卡兹克": { "cli": "codex" }
+    "brief_analyst": {
+      "cli": "claude",
+      "model": "sonnet"
+    },
+    "coordinator": {
+      "cli": "claude",
+      "model": "opus"
+    },
+    "product_overview": {
+      "cli": "claude",
+      "model": "opus"
+    },
+    "case_coordinator": {
+      "cli": "claude",
+      "model": "opus"
+    },
+    "topic_expert.赛博禅心": {
+      "cli": "claude",
+      "model": "opus"
+    },
+    "topic_expert.数字生命卡兹克": {
+      "cli": "claude",
+      "model": "sonnet"
+    }
   }
 }

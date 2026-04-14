@@ -35,7 +35,7 @@ export function AgentTimeline({ projectId }: { projectId: string }) {
         {events.map((e, i) => (
           <li key={i} className="flex gap-2">
             <span className="text-gray-400">
-              {new Date(e.ts).toLocaleTimeString()}
+              {new Date(e.ts ?? Date.now()).toLocaleTimeString()}
             </span>
             <span
               className={`font-medium ${e.type === "agent.failed" ? "text-red-600" : ""}`}

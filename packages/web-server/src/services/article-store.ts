@@ -82,7 +82,7 @@ export class ArticleStore {
     if (!existsSync(p)) return null;
     const raw = await readFile(p, "utf-8");
     const { frontmatter, body } = parseFile(raw);
-    return { key, frontmatter: frontmatter as SectionFrontmatter, body };
+    return { key, frontmatter: frontmatter as unknown as SectionFrontmatter, body };
   }
 
   async listSections(): Promise<ArticleSectionFile[]> {

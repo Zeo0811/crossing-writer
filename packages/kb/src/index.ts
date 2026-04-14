@@ -18,3 +18,12 @@ export type {
   IngestMode, IngestOptions, IngestResult, IngestStepEvent,
   SearchWikiInput, SearchWikiResult,
 } from "./wiki/types.js";
+export { searchRaw } from "./skills/search-raw.js";
+export type {
+  SearchRawInput,
+  SearchRawHit,
+  SkillResult,
+  ToolCall,
+  SkillContext,
+} from "./skills/types.js";
+export { dispatchSkill, parseSkillArgs } from "./skills/dispatcher.js";

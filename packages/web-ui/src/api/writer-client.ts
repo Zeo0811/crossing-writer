@@ -2,6 +2,19 @@ export type WriterAgentKey =
   | "writer.opening" | "writer.practice" | "writer.closing"
   | "practice.stitcher" | "style_critic";
 
+export interface ToolUsageFrontmatter {
+  tool: string;
+  round: number;
+  hits_count?: number;
+  query?: string;
+  args?: Record<string, string>;
+  pinned_by?: string;
+  ok?: boolean;
+  summary?: string;
+  toolName?: string;
+  [k: string]: unknown;
+}
+
 export interface SectionFrontmatter {
   section: string;
   last_agent: string;
@@ -9,6 +22,7 @@ export interface SectionFrontmatter {
   reference_accounts?: string[];
   cli?: string;
   model?: string;
+  tools_used?: ToolUsageFrontmatter[];
 }
 
 export interface SectionListItem {
@@ -81,6 +95,99 @@ export async function getFinal(projectId: string): Promise<string> {
 export async function listStylePanels(): Promise<StylePanelEntry[]> {
   const res = await throwingFetch(`/api/kb/style-panels`);
   return res.json();
+}
+
+export interface SuggestItem {
+  kind: "wiki" | "raw";
+  id: string;
+  title: string;
+  excerpt: string;
+  account?: string;
+  published_at?: string;
+}
+
+export async function suggestRefs(q: string, limit = 12): Promise<SuggestItem[]> {
+  const url = `/api/writer/suggest?q=${encodeURIComponent(q)}&limit=${encodeURIComponent(String(limit))}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`suggest failed: ${res.status}`);
+  const json = (await res.json()) as { items?: SuggestItem[] };
+  return json.items ?? [];
+}
+
+export interface RewriteReference {
+  kind: "wiki" | "raw";
+  id: string;
+  title: string;
+  excerpt: string;
+}
+
+export interface RewriteSelectionBody {
+  selected_text: string;
+  user_prompt: string;
+  references: RewriteReference[];
+}
+
+export interface RewriteSelectionStream {
+  onEvent: (cb: (ev: { type: string; error?: string; data?: any }) => void) => void;
+  close: () => void;
+}
+
+export function rewriteSelection(
+  projectId: string,
+  sectionKey: string,
+  body: RewriteSelectionBody,
+): RewriteSelectionStream {
+  const controller = new AbortController();
+  let callback: ((ev: { type: string; error?: string; data?: any }) => void) | null = null;
+  const emit = (ev: { type: string; error?: string; data?: any }) => {
+    if (callback) callback(ev);
+  };
+  (async () => {
+    try {
+      const res = await fetch(
+        `/api/projects/${projectId}/writer/sections/${encodeURIComponent(sectionKey)}/rewrite-selection`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        },
+      );
+      if (!res.ok || !res.body) {
+        emit({ type: "writer.failed", error: `rewrite-selection HTTP ${res.status}` });
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buf.indexOf("\n\n")) >= 0) {
+          const raw = buf.slice(0, idx);
+          buf = buf.slice(idx + 2);
+          const eventMatch = /^event:\s*(.+)$/m.exec(raw);
+          const dataMatch = /^data:\s*(.*)$/m.exec(raw);
+          if (eventMatch) {
+            const type = eventMatch[1]!.trim();
+            let data: any = undefined;
+            if (dataMatch) {
+              try { data = JSON.parse(dataMatch[1]!); } catch { data = dataMatch[1]!; }
+            }
+            emit({ type, data, error: data?.error });
+          }
+        }
+      }
+    } catch (err: unknown) {
+      emit({ type: "writer.failed", error: err instanceof Error ? err.message : String(err) });
+    }
+  })();
+  return {
+    onEvent: (cb) => { callback = cb; },
+    close: () => controller.abort(),
+  };
 }
 
 export async function rewriteSectionStream(

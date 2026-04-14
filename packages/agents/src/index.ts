@@ -21,16 +21,16 @@ export { CaseCoordinator } from "./roles/case-coordinator.js";
 export type { SynthesizeInput } from "./roles/case-coordinator.js";
 export { runCaseExpert, parseToolCalls as parseCaseToolCalls } from "./case-expert-runner.js";
 export type { ToolCall as CaseToolCall, ToolExecutor, RunCaseExpertResult } from "./case-expert-runner.js";
-export { WriterOpeningAgent } from "./roles/writer-opening-agent.js";
-export type { WriterOpeningInput, WriterOutput, ReferenceAccountKb } from "./roles/writer-opening-agent.js";
-export { WriterPracticeAgent } from "./roles/writer-practice-agent.js";
-export type { WriterPracticeInput } from "./roles/writer-practice-agent.js";
+export { WriterOpeningAgent, runWriterOpening } from "./roles/writer-opening-agent.js";
+export type { WriterOpeningInput, WriterOutput, ReferenceAccountKb, RunWriterOpeningOpts } from "./roles/writer-opening-agent.js";
+export { WriterPracticeAgent, runWriterPractice } from "./roles/writer-practice-agent.js";
+export type { WriterPracticeInput, RunWriterPracticeOpts } from "./roles/writer-practice-agent.js";
 export { PracticeStitcherAgent } from "./roles/practice-stitcher-agent.js";
 export type { StitcherInput, StitcherOutput, StitcherCase } from "./roles/practice-stitcher-agent.js";
-export { WriterClosingAgent } from "./roles/writer-closing-agent.js";
-export type { WriterClosingInput } from "./roles/writer-closing-agent.js";
-export { StyleCriticAgent } from "./roles/style-critic-agent.js";
-export type { StyleCriticInput, StyleCriticOutput } from "./roles/style-critic-agent.js";
+export { WriterClosingAgent, runWriterClosing } from "./roles/writer-closing-agent.js";
+export type { WriterClosingInput, RunWriterClosingOpts } from "./roles/writer-closing-agent.js";
+export { StyleCriticAgent, runStyleCritic } from "./roles/style-critic-agent.js";
+export type { StyleCriticInput, StyleCriticOutput, RunStyleCriticOpts } from "./roles/style-critic-agent.js";
 export { StyleDistillerStructureAgent } from "./roles/style-distiller-structure-agent.js";
 export type { StructureSample, StructureDistillInput, StructureDistillOutput } from "./roles/style-distiller-structure-agent.js";
 export { StyleDistillerSnippetsAgent } from "./roles/style-distiller-snippets-agent.js";
@@ -39,4 +39,18 @@ export { StyleDistillerComposerAgent } from "./roles/style-distiller-composer-ag
 export type { ComposerInput, ComposerOutput } from "./roles/style-distiller-composer-agent.js";
 export { WikiIngestorAgent, parseNdjsonOps } from "./roles/wiki-ingestor-agent.js";
 export type { IngestorInput, IngestorOp, IngestorOutput, IngestArticle, ExistingPageSnapshot } from "./roles/wiki-ingestor-agent.js";
+export {
+  runWriterWithTools,
+  parseToolCalls as parseWriterToolCalls,
+} from "./writer-tool-runner.js";
+export type {
+  ChatMessage,
+  AgentInvoker,
+  ToolUsage,
+  WriterToolEvent,
+  WriterRunOptions,
+  WriterRunResult,
+  SkillResult,
+  ToolCall as WriterToolCall,
+} from "./writer-tool-runner.js";
 export const VERSION = "0.2.0";

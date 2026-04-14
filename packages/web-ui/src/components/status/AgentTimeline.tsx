@@ -19,11 +19,11 @@ function aggregate(events: StreamEvent[]): AggRow[] {
     if (!a) continue;
     const cli = ev.cli ?? d.cli;
     const model = ev.model ?? d.model;
-    const row = map.get(a) ?? {
+    const row: AggRow = map.get(a) ?? {
       agent: a,
       cli, model,
-      state: "online" as const,
-      firstTs: ev.ts,
+      state: "online",
+      firstTs: String(ev.ts ?? ""),
       lastStage: "",
       events: [],
     };
@@ -46,6 +46,57 @@ function dotClass(state: AggRow["state"]): string {
   return "inline-block w-2 h-2 rounded-full bg-gray-400";
 }
 
+const TOOL_EVENT_TYPES = new Set([
+  "writer.tool_called",
+  "writer.tool_returned",
+  "writer.tool_failed",
+  "writer.tool_round_completed",
+  "writer.selection_rewritten",
+]);
+
+function truncate(s: unknown, n = 30): string {
+  const str = typeof s === "string" ? s : String(s ?? "");
+  return str.length > n ? str.slice(0, n) + "…" : str;
+}
+
+function renderToolEvent(ev: StreamEvent, i: number) {
+  const p = (ev.payload ?? ev.data ?? {}) as any;
+  switch (ev.type) {
+    case "writer.tool_called":
+      return (
+        <li key={`tool-${i}`} className="text-xs text-sky-700">
+          🔧 [{p.sectionKey}·r{p.round}] → {p.toolName}({JSON.stringify(p.args ?? {})})
+        </li>
+      );
+    case "writer.tool_returned":
+      return (
+        <li key={`tool-${i}`} className="text-xs text-emerald-700">
+          ✅ [{p.sectionKey}·r{p.round}] ← {p.toolName} {p.ok ? "ok" : "fail"}
+        </li>
+      );
+    case "writer.tool_failed":
+      return (
+        <li key={`tool-${i}`} className="text-xs text-red-600">
+          ❌ [{p.sectionKey}·r{p.round}] ✗ {p.toolName}: {p.error}
+        </li>
+      );
+    case "writer.tool_round_completed":
+      return (
+        <li key={`tool-${i}`} className="text-xs text-slate-500">
+          ⟳ [{p.sectionKey}] round {p.round} 完成
+        </li>
+      );
+    case "writer.selection_rewritten":
+      return (
+        <li key={`tool-${i}`} className="text-xs text-violet-700">
+          ✂️ 改写选中片段 [{p.sectionKey}] {truncate(p.selected_text)} → {truncate(p.new_text)}
+        </li>
+      );
+    default:
+      return null;
+  }
+}
+
 export function AgentTimeline({
   events,
   connectionState,
@@ -57,6 +108,7 @@ export function AgentTimeline({
 }) {
   const rows = aggregate(events);
   const recent = events.slice(-20).reverse();
+  const toolEvents = events.filter((e) => TOOL_EVENT_TYPES.has(e.type));
   return (
     <div className="border rounded bg-white">
       <div className="px-3 py-2 border-b bg-gray-50 text-xs font-semibold flex items-center justify-between">
@@ -90,6 +142,11 @@ export function AgentTimeline({
               ))}
             </ul>
           )}
+          {toolEvents.length > 0 && (
+            <ul data-testid="tool-events" className="px-3 py-2 space-y-1 border-b">
+              {toolEvents.map((ev, i) => renderToolEvent(ev, i))}
+            </ul>
+          )}
           <details className="px-3 py-1">
             <summary className="cursor-pointer text-[10px] text-gray-500">
               原始事件 ({events.length})
@@ -97,7 +154,7 @@ export function AgentTimeline({
             <ul className="text-[10px] font-mono space-y-0.5 mt-1 max-h-32 overflow-auto">
               {recent.map((ev, i) => (
                 <li key={i} className="text-gray-600 truncate" title={JSON.stringify(ev)}>
-                  {ev.ts?.slice(11, 19)} · {ev.type}
+                  {typeof ev.ts === "string" ? ev.ts.slice(11, 19) : ev.ts} · {ev.type}
                   {ev.agent ? ` · ${ev.agent}` : ""}
                 </li>
               ))}

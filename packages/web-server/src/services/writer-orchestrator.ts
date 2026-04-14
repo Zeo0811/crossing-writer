@@ -2,10 +2,16 @@ import { readFile, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import {
-  WriterOpeningAgent, WriterPracticeAgent, PracticeStitcherAgent,
-  WriterClosingAgent, StyleCriticAgent,
+  runWriterOpening, runWriterPractice, runWriterClosing, runStyleCritic,
+  PracticeStitcherAgent,
+  invokeAgent,
   type ReferenceAccountKb,
+  type ChatMessage,
+  type WriterToolEvent,
+  type WriterRunResult,
+  type ToolUsage,
 } from "@crossing/agents";
+import { dispatchSkill } from "@crossing/kb";
 import yaml from "js-yaml";
 import type { ProjectStore } from "./project-store.js";
 import { appendEvent } from "./event-log.js";
@@ -37,7 +43,6 @@ interface ParsedCase {
 }
 
 function parseSelectedCases(md: string): ParsedCase[] {
-  // Strip frontmatter if present
   const body = md.replace(/^---\n[\s\S]*?\n---\n?/, "");
   const re = /^# Case (\d+)\s*[—\-]?\s*(.+?)$([\s\S]*?)(?=^# Case \d+|$)/gm;
   const out: ParsedCase[] = [];
@@ -83,6 +88,94 @@ function firstLast(text: string, lines = 3): { first: string; last: string } {
   };
 }
 
+function refsBlock(refs: ReferenceAccountKb[]): string {
+  return refs.length === 0
+    ? "(无参考账号)"
+    : refs.map((r) => `## 参考账号：${r.id}\n${r.text}`).join("\n\n");
+}
+
+function buildOpeningUserMessage(briefSummary: string, missionSummary: string, productOverview: string, refs: ReferenceAccountKb[]): string {
+  return [
+    "# Brief 摘要", briefSummary || "(无)", "",
+    "# Mission 摘要", missionSummary || "(无)", "",
+    "# 产品概览", productOverview || "(无)", "",
+    "# 参考账号风格素材", refsBlock(refs), "",
+    "请按 system prompt 要求产出开头段正文。",
+  ].join("\n");
+}
+
+function buildPracticeUserMessage(c: ParsedCase, notesFm: Record<string, unknown>, notesBody: string, shots: string[], refs: ReferenceAccountKb[]): string {
+  return [
+    `# Case 编号：${c.caseId}`,
+    `# Case 名：${c.name}`, "",
+    "# Case 详细描述", c.description || "(无)", "",
+    "# 实测笔记 frontmatter",
+    "```yaml", JSON.stringify(notesFm, null, 2), "```", "",
+    "# 实测笔记正文", notesBody || "(无)", "",
+    "# 截图清单",
+    shots.length === 0 ? "(无)" : shots.map((p, i) => `- screenshot-${i + 1}: ${p}`).join("\n"), "",
+    "# 参考账号风格素材", refsBlock(refs), "",
+    "请按 system prompt 要求产出该 case 实测小节。",
+  ].join("\n");
+}
+
+function buildClosingUserMessage(openingText: string, stitchedPracticeText: string, refs: ReferenceAccountKb[]): string {
+  return [
+    "# 开头段", openingText, "",
+    "# 实测主体（含过渡）", stitchedPracticeText, "",
+    "# 参考账号风格素材", refsBlock(refs), "",
+    "请按 system prompt 要求产出结尾段。",
+  ].join("\n");
+}
+
+function buildCriticUserMessage(fullArticle: string, sectionKeys: string[], refs: ReferenceAccountKb[]): string {
+  return [
+    "# 当前 section_keys",
+    sectionKeys.map((k) => `- ${k}`).join("\n"), "",
+    "# 整篇首拼稿", fullArticle, "",
+    "# 参考账号风格素材", refsBlock(refs), "",
+    "按 system prompt 格式输出。",
+  ].join("\n");
+}
+
+function invokerFor(agentKey: string, cli: "claude" | "codex", model?: string) {
+  return async (messages: ChatMessage[], opts?: { images?: string[] }) => {
+    const sys = messages.find((m) => m.role === "system")?.content ?? "";
+    const userParts = messages
+      .filter((m) => m.role !== "system")
+      .map((m) => `[${m.role}]\n${m.content}`)
+      .join("\n\n");
+    const result = invokeAgent({
+      agentKey,
+      cli,
+      model,
+      systemPrompt: sys,
+      userMessage: userParts,
+      images: opts?.images,
+    });
+    return {
+      text: result.text,
+      meta: {
+        cli: result.meta.cli,
+        model: result.meta.model ?? undefined,
+        durationMs: result.meta.durationMs,
+      },
+    };
+  };
+}
+
+function parseCriticRewrites(text: string, allowedKeys: string[]): Record<string, string> {
+  const rewrites: Record<string, string> = {};
+  if (text.trim() === "NO_CHANGES") return rewrites;
+  const re = /##\s+REWRITE\s+section:([^\s\n]+)\s*\n([\s\S]*?)(?=(\n##\s+REWRITE\s+section:)|$)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    const key = m[1]!.trim();
+    if (allowedKeys.includes(key)) rewrites[key] = m[2]!.trim();
+  }
+  return rewrites;
+}
+
 export async function runWriter(opts: RunWriterOpts): Promise<void> {
   const pDir = join(opts.projectsDir, opts.projectId);
   const articleStore = new ArticleStore(pDir);
@@ -99,8 +192,6 @@ export async function runWriter(opts: RunWriterOpts): Promise<void> {
 
   await opts.store.update(opts.projectId, { status: "writing_running", writer_failed_sections: [] });
 
-  // Auto-expand sectionsToRun: include any expected section missing from disk.
-  // This ensures retry-failed covers sections that were never attempted (e.g. closing skipped because upstream failed).
   if (opts.sectionsToRun) {
     const expected = ["opening", ...cases.map((c) => `practice.${c.caseId}`), "closing"];
     const expanded = new Set(opts.sectionsToRun);
@@ -118,6 +209,14 @@ export async function runWriter(opts: RunWriterOpts): Promise<void> {
     try { await appendEvent(pDir, { type, ...data } as any); } catch { /* ignore */ }
   };
 
+  const toolEventBridge = (sectionKey: string) => (ev: WriterToolEvent) => {
+    const { type, ...rest } = ev;
+    void publish(`writer.${type}`, { ...rest, section_key: sectionKey });
+  };
+
+  const dispatchTool = (call: { command: string; args: string[] }) =>
+    dispatchSkill(call, { vaultPath: opts.vaultPath, sqlitePath: opts.sqlitePath });
+
   const openingResolved = resolve("writer.opening", opts.writerConfig);
   const practiceResolved = resolve("writer.practice", opts.writerConfig);
 
@@ -131,9 +230,14 @@ export async function runWriter(opts: RunWriterOpts): Promise<void> {
           cli: openingResolved.cli, model: openingResolved.model ?? null,
         });
         const refs = await loadReferenceAccountKb(opts.vaultPath, openingResolved.referenceAccounts);
-        const agent = new WriterOpeningAgent({ cli: openingResolved.cli, model: openingResolved.model });
         const t0 = Date.now();
-        const out = await agent.write({ briefSummary, missionSummary, productOverview, referenceAccountsKb: refs });
+        const result: WriterRunResult = await runWriterOpening({
+          invokeAgent: invokerFor("writer.opening", openingResolved.cli, openingResolved.model),
+          userMessage: buildOpeningUserMessage(briefSummary, missionSummary, productOverview, refs),
+          dispatchTool,
+          onEvent: toolEventBridge("opening"),
+          sectionKey: "opening",
+        });
         await articleStore.writeSection("opening", {
           key: "opening",
           frontmatter: {
@@ -141,12 +245,13 @@ export async function runWriter(opts: RunWriterOpts): Promise<void> {
             last_updated_at: new Date().toISOString(),
             reference_accounts: openingResolved.referenceAccounts,
             cli: openingResolved.cli, model: openingResolved.model,
-          },
-          body: out.text,
+            ...(result.toolsUsed.length > 0 ? { tools_used: result.toolsUsed as unknown as ToolUsage[] } : {}),
+          } as any,
+          body: result.finalText,
         });
         await publish("writer.section_completed", {
           section_key: "opening", agent: "writer.opening",
-          duration_ms: Date.now() - t0, chars: out.text.length,
+          duration_ms: Date.now() - t0, chars: result.finalText.length,
         });
       } catch (err) {
         failed.push("opening");
@@ -185,12 +290,14 @@ export async function runWriter(opts: RunWriterOpts): Promise<void> {
         const shots: string[] = existsSync(shotsDir)
           ? (await readdir(shotsDir)).map((f) => join(shotsDir, f))
           : [];
-        const agent = new WriterPracticeAgent({ cli: practiceResolved.cli, model: practiceResolved.model });
         const t0 = Date.now();
-        const out = await agent.write({
-          caseId: c.caseId, caseName: c.name, caseDescription: c.description,
-          notesBody, notesFrontmatter: notesFm,
-          screenshotPaths: shots, referenceAccountsKb: refs,
+        const result: WriterRunResult = await runWriterPractice({
+          invokeAgent: invokerFor("writer.practice", practiceResolved.cli, practiceResolved.model),
+          userMessage: buildPracticeUserMessage(c, notesFm, notesBody, shots, refs),
+          images: shots,
+          dispatchTool,
+          onEvent: toolEventBridge(sectionKey),
+          sectionKey,
         });
         await articleStore.writeSection(sectionKey, {
           key: sectionKey,
@@ -199,12 +306,13 @@ export async function runWriter(opts: RunWriterOpts): Promise<void> {
             last_updated_at: new Date().toISOString(),
             reference_accounts: practiceResolved.referenceAccounts,
             cli: practiceResolved.cli, model: practiceResolved.model,
-          },
-          body: out.text,
+            ...(result.toolsUsed.length > 0 ? { tools_used: result.toolsUsed as unknown as ToolUsage[] } : {}),
+          } as any,
+          body: result.finalText,
         });
         await publish("writer.section_completed", {
           section_key: sectionKey, agent: "writer.practice",
-          duration_ms: Date.now() - t0, chars: out.text.length,
+          duration_ms: Date.now() - t0, chars: result.finalText.length,
         });
       } catch (err) {
         failed.push(sectionKey);
@@ -223,7 +331,7 @@ export async function runWriter(opts: RunWriterOpts): Promise<void> {
     throw new Error(`writer stage1 failed: ${failed.join(",")}`);
   }
 
-  // Stage 2: stitcher
+  // Stage 2: stitcher (still via class — no tool use)
   const stitcherResolved = resolve("practice.stitcher", opts.writerConfig);
   const practiceTexts = await Promise.all(
     cases.map(async (c) => ({
@@ -233,7 +341,6 @@ export async function runWriter(opts: RunWriterOpts): Promise<void> {
   );
   let transitions: Record<string, string> = {};
 
-  // If retry scoped away from practice/transitions, reuse existing transitions.md
   const retryScoped = opts.sectionsToRun
     && !opts.sectionsToRun.some((k) => k === "transitions" || k.startsWith("practice."));
 
@@ -305,9 +412,14 @@ export async function runWriter(opts: RunWriterOpts): Promise<void> {
         cli: closingResolved.cli, model: closingResolved.model ?? null,
       });
       const refs = await loadReferenceAccountKb(opts.vaultPath, closingResolved.referenceAccounts);
-      const agent = new WriterClosingAgent({ cli: closingResolved.cli, model: closingResolved.model });
       const t0 = Date.now();
-      const out = await agent.write({ openingText: openingBody, stitchedPracticeText: stitchedPractice, referenceAccountsKb: refs });
+      const result: WriterRunResult = await runWriterClosing({
+        invokeAgent: invokerFor("writer.closing", closingResolved.cli, closingResolved.model),
+        userMessage: buildClosingUserMessage(openingBody, stitchedPractice, refs),
+        dispatchTool,
+        onEvent: toolEventBridge("closing"),
+        sectionKey: "closing",
+      });
       await articleStore.writeSection("closing", {
         key: "closing",
         frontmatter: {
@@ -315,12 +427,13 @@ export async function runWriter(opts: RunWriterOpts): Promise<void> {
           last_updated_at: new Date().toISOString(),
           reference_accounts: closingResolved.referenceAccounts,
           cli: closingResolved.cli, model: closingResolved.model,
-        },
-        body: out.text,
+          ...(result.toolsUsed.length > 0 ? { tools_used: result.toolsUsed as unknown as ToolUsage[] } : {}),
+        } as any,
+        body: result.finalText,
       });
       await publish("writer.section_completed", {
         section_key: "closing", agent: "writer.closing",
-        duration_ms: Date.now() - t0, chars: out.text.length,
+        duration_ms: Date.now() - t0, chars: result.finalText.length,
       });
     } catch (err) {
       failed.push("closing");
@@ -333,16 +446,22 @@ export async function runWriter(opts: RunWriterOpts): Promise<void> {
     }
   }
 
-  // Stage 4: style critic — non-fatal
+  // Stage 4: style critic — non-fatal, via runner
   const criticResolved = resolve("style_critic", opts.writerConfig);
   try {
     const sectionKeys = ["opening", ...cases.map((c) => `practice.${c.caseId}`), "closing"];
     const fullArticle = await articleStore.mergeFinal();
     const refs = await loadReferenceAccountKb(opts.vaultPath, criticResolved.referenceAccounts);
-    const critic = new StyleCriticAgent({ cli: criticResolved.cli, model: criticResolved.model });
-    const out = await critic.critique({ fullArticle, sectionKeys, referenceAccountsKb: refs });
+    const result: WriterRunResult = await runStyleCritic({
+      invokeAgent: invokerFor("style_critic", criticResolved.cli, criticResolved.model),
+      userMessage: buildCriticUserMessage(fullArticle, sectionKeys, refs),
+      dispatchTool,
+      onEvent: toolEventBridge("style_critic"),
+      sectionKey: "style_critic",
+    });
+    const rewrites = parseCriticRewrites(result.finalText, sectionKeys);
     const changed: string[] = [];
-    for (const [key, newBody] of Object.entries(out.rewrites)) {
+    for (const [key, newBody] of Object.entries(rewrites)) {
       const current = await articleStore.readSection(key as SectionKey);
       if (!current) continue;
       await articleStore.writeSection(key as SectionKey, {
