@@ -1,8 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { mkdtempSync, readdirSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { SlicerCache } from "../src/services/slicer-cache.js";
+import { join, resolve } from "node:path";
+import { createHash } from "node:crypto";
+import {
+  SlicerCache,
+  SLICER_PROMPT_HASH,
+  computeSlicerPromptHash,
+} from "../src/services/slicer-cache.js";
 
 const freshVault = () => mkdtempSync(join(tmpdir(), "slicer-cache-"));
 
@@ -64,6 +69,17 @@ describe("SlicerCache", () => {
     writeFileSync(join(dir, `${key}.json`), "{ not json");
     const r = await cache.get(key);
     expect(r).toBeUndefined();
+  });
+
+  it("SP-15 T5: SLICER_PROMPT_HASH is a 16-char hex prefix of the slicer prompt file", () => {
+    expect(SLICER_PROMPT_HASH).toMatch(/^[a-f0-9]{16}$/);
+    const promptPath = resolve(
+      __dirname,
+      "../../agents/src/prompts/section-slicer.md",
+    );
+    const expected = createHash("sha256").update(readFileSync(promptPath)).digest("hex").slice(0, 16);
+    expect(SLICER_PROMPT_HASH).toBe(expected);
+    expect(computeSlicerPromptHash(promptPath)).toBe(expected);
   });
 
   it("creates the cache dir lazily on first set", async () => {
