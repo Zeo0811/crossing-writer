@@ -4,7 +4,7 @@
 **前置：** crossing-kb 的 `ref_articles` 表已导入足够文章（生产环境已有 `~/CrossingVault/.index/refs.sqlite` ~45+ 账号/百万级文章）；SP-05 Writer 已上线并已识别内容质量问题需要更细致的风格参考
 **目标：** 从 `refs.sqlite` 里某账号的历史文章中自动蒸馏出"可被 Writer agent 直接当 few-shot 使用"的结构化风格卡（`08_experts/style-panel/<account>_kb.md` v2），替代手工 v1 的 `十字路口_kb.md` 同类产物
 **范围：** 4 步 pipeline（量化分析 / 结构提炼 / 片段采集 / 合成）+ CLI + 最小 UI + 可选参数（样本数 / 时间范围）
-**非目标：** 多账号批量蒸馏、增量蒸馏（v2→v3）、蒸馏质量评估、自动 refresh、手工 v1 内容融合；skill 定义（暂缓，看 SP-06 跑完质量是否还需要）
+**非目标：** 多账号批量蒸馏、增量蒸馏（v2→v3）、蒸馏质量评估、自动 refresh、手工 v1 内容融合；skill 定义（暂缓，看 SP-06 跑完质量是否还需要）；**主题专家蒸馏**（`08_experts/topic-panel/experts/*.md`，SP-02 topic_expert 用，指纹是"会怎么想"而非"怎么写得像"）——留给 SP-07，可复用本期的采样/量化基础件
 
 ---
 
@@ -396,6 +396,7 @@ packages/web-ui/src/
 - **自动 refresh** —— 定时蒸馏 / 新文章触发
 - **v1 内容融合** —— 自动合并手工 v1 的"待补/声明"节进 v2；用户自己 diff 改
 - **skill 定义**（SP-06B，暂缓）—— 看 SP-06 跑完 Writer 输出质量是否仍不够、再决定要不要加 agent skill 层
+- **主题专家蒸馏**（SP-07）—— 把同一套 4 步 pipeline 改造成"思维指纹"蒸馏，输出到 `08_experts/topic-panel/experts/`，给 SP-02 topic_expert 用。采样器 / 量化器 / orchestrator 框架可复用；Step 2-4 换不同 prompt 和输出格式
 - **断连重连** —— 蒸馏中途断 SSE 继续订阅；MVP 不做
 - **蒸馏资源限流** —— 同时最多跑 N 个蒸馏；MVP 单实例顺序跑
 
