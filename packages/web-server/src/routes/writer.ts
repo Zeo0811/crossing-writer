@@ -334,6 +334,52 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
     },
   );
 
+  app.post<{ Params: { id: string; key: string }; Body: { tool: string; args?: Record<string, string> } }>(
+    "/api/projects/:id/writer/sections/:key/skill",
+    async (req, reply) => {
+      const { id, key } = req.params;
+      const project = await deps.store.get(id);
+      if (!project) return reply.code(404).send({ error: "project not found" });
+      const body = req.body ?? ({} as { tool: string; args?: Record<string, string> });
+      const tool = body.tool;
+      const args = body.args ?? {};
+      if (!tool || typeof tool !== "string") {
+        return reply.code(400).send({ error: "tool required" });
+      }
+
+      const argTokens: string[] = [];
+      if (args.query !== undefined) argTokens.push(`"${args.query}"`);
+      for (const [k, v] of Object.entries(args)) {
+        if (k !== "query") argTokens.push(`--${k}=${v}`);
+      }
+
+      const { dispatchSkill } = await import("@crossing/kb");
+      const result = await dispatchSkill(
+        { command: tool, args: argTokens },
+        { vaultPath: deps.vaultPath, sqlitePath: deps.sqlitePath },
+      );
+
+      if (result.ok) {
+        pendingPinsStore.push(id, key, { ...result, pinned_by: "manual:user" });
+      }
+      return reply.send(result);
+    },
+  );
+
+  app.get<{ Params: { id: string; key: string } }>(
+    "/api/projects/:id/writer/sections/:key/pinned",
+    async (req) => ({ pins: pendingPinsStore.list(req.params.id, req.params.key) }),
+  );
+
+  app.delete<{ Params: { id: string; key: string; index: string } }>(
+    "/api/projects/:id/writer/sections/:key/pinned/:index",
+    async (req) => {
+      const idx = parseInt(req.params.index, 10);
+      if (Number.isFinite(idx)) pendingPinsStore.removeAt(req.params.id, req.params.key, idx);
+      return { ok: true };
+    },
+  );
+
   app.get<{ Params: { id: string } }>(
     "/api/projects/:id/writer/final",
     async (req, reply) => {
