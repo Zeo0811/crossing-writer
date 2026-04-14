@@ -67,12 +67,38 @@ export async function getSection(projectId: string, key: string): Promise<Articl
   return res.json();
 }
 
-export async function putSection(projectId: string, key: string, body: string): Promise<void> {
+export async function putSection(
+  projectId: string,
+  key: string,
+  bodyOrPayload: string | { body: string; frontmatter?: Record<string, unknown> },
+): Promise<void> {
+  const payload = typeof bodyOrPayload === "string" ? { body: bodyOrPayload } : bodyOrPayload;
   await throwingFetch(`/api/projects/${projectId}/writer/sections/${encodeURIComponent(key)}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ body }),
+    body: JSON.stringify(payload),
   });
+}
+
+export interface UploadImageResult {
+  url: string;
+  filename: string;
+  bytes: number;
+  mime: string;
+}
+
+export async function uploadImage(projectId: string, file: File): Promise<UploadImageResult> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/images`, {
+    method: "POST",
+    body: fd,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`uploadImage ${res.status}: ${text}`);
+  }
+  return res.json() as Promise<UploadImageResult>;
 }
 
 export async function startWriter(projectId: string, body: StartWriterBody): Promise<void> {
