@@ -51,6 +51,7 @@ const EVENT_TYPES = [
   "writer.tool_returned",
   "writer.tool_failed",
   "writer.tool_round_completed",
+  "writer.selection_rewritten",
 ];
 
 export function useProjectStream(projectId: string | undefined) {
