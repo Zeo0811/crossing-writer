@@ -112,6 +112,7 @@ export async function runRoleDistill(
 
     // Slicer phase (concurrency-bound)
     let processed = 0;
+    emit({ phase: "slicer_progress", processed: 0, total: articles.length });
     const slicerOpts = ctx.cliModelPerStep?.slicer ?? { cli: "claude" as const };
     const slicerResults = await mapWithConcurrency(
       articles,
@@ -122,9 +123,7 @@ export async function runRoleDistill(
       },
       () => {
         processed += 1;
-        if (processed % 5 === 0 || processed === articles.length) {
-          emit({ phase: "slicer_progress", processed, total: articles.length });
-        }
+        emit({ phase: "slicer_progress", processed, total: articles.length });
       },
     );
 
