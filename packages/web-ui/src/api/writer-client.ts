@@ -83,6 +83,73 @@ export async function listStylePanels(): Promise<StylePanelEntry[]> {
   return res.json();
 }
 
+export type SkillResult =
+  | {
+      ok: true;
+      tool: string;
+      query: string;
+      args: Record<string, string>;
+      hits: unknown[];
+      hits_count: number;
+      formatted: string;
+    }
+  | {
+      ok: false;
+      tool: string;
+      query: string;
+      args: Record<string, string>;
+      error: string;
+    };
+
+export async function callSkill(
+  projectId: string,
+  sectionKey: string,
+  tool: string,
+  args: Record<string, string>,
+): Promise<SkillResult> {
+  const res = await fetch(
+    `/api/projects/${projectId}/writer/sections/${encodeURIComponent(sectionKey)}/skill`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tool, args }),
+    },
+  );
+  if (!res.ok) {
+    return {
+      ok: false,
+      tool,
+      query: args.query ?? "",
+      args,
+      error: `HTTP ${res.status}`,
+    };
+  }
+  return (await res.json()) as SkillResult;
+}
+
+export async function getPinned(
+  projectId: string,
+  sectionKey: string,
+): Promise<{ pins: unknown[] }> {
+  const res = await fetch(
+    `/api/projects/${projectId}/writer/sections/${encodeURIComponent(sectionKey)}/pinned`,
+  );
+  if (!res.ok) throw new Error(`getPinned HTTP ${res.status}`);
+  return (await res.json()) as { pins: unknown[] };
+}
+
+export async function deletePin(
+  projectId: string,
+  sectionKey: string,
+  index: number,
+): Promise<void> {
+  const res = await fetch(
+    `/api/projects/${projectId}/writer/sections/${encodeURIComponent(sectionKey)}/pinned/${index}`,
+    { method: "DELETE" },
+  );
+  if (!res.ok) throw new Error(`deletePin HTTP ${res.status}`);
+}
+
 export async function rewriteSectionStream(
   projectId: string,
   key: string,
