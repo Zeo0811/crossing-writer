@@ -31,7 +31,6 @@ vi.mock("../../../api/writer-client", async () => {
     ...actual,
     getSections: (...args: any[]) => getSectionsMock(...args),
     getFinal: (...args: any[]) => getFinalMock(...args),
-    getPinned: vi.fn(async () => ({ pins: [] })),
     rewriteSectionStream: vi.fn(),
     suggestRefs: vi.fn(async () => []),
     rewriteSelection: vi.fn(() => ({

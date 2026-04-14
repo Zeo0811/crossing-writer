@@ -5,48 +5,19 @@ import { useProjectStream } from "../../hooks/useProjectStream";
 import { useTextSelection } from "../../hooks/useTextSelection";
 import {
   getFinal,
-  getPinned,
   rewriteSectionStream,
-  type SkillResult,
   type ToolUsageFrontmatter,
 } from "../../api/writer-client";
 import { SelectionBubble } from "./SelectionBubble";
 import { InlineComposer } from "./InlineComposer";
 
-type PinEntry = SkillResult & { pinned_by?: string };
-
-function pinLabel(p: PinEntry): string {
-  if ((p as any).formatted && typeof (p as any).formatted === "string") {
-    const f = (p as any).formatted as string;
-    return f.length > 120 ? f.slice(0, 120) + "…" : f;
-  }
-  if ((p as any).query) return `[${p.tool}] ${(p as any).query}`;
-  return p.tool;
-}
-
 function ReferencePanel({
-  projectId,
-  sectionKey,
   toolsUsed,
 }: {
-  projectId: string;
-  sectionKey: string;
   toolsUsed: ToolUsageFrontmatter[];
 }) {
   const [open, setOpen] = useState(false);
-  const [pinned, setPinned] = useState<PinEntry[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    setLoading(true);
-    getPinned(projectId, sectionKey)
-      .then((r) => setPinned((r.pins ?? []) as PinEntry[]))
-      .catch(() => setPinned([]))
-      .finally(() => setLoading(false));
-  }, [open, projectId, sectionKey]);
-
-  const total = (toolsUsed?.length ?? 0) + pinned.length;
+  const total = toolsUsed?.length ?? 0;
 
   return (
     <div className="mt-2 border-t pt-2 text-sm">
@@ -59,8 +30,7 @@ function ReferencePanel({
       </button>
       {open && (
         <div className="mt-2 space-y-1">
-          {loading && <div className="text-slate-400">加载中...</div>}
-          {!loading && total === 0 && <div className="text-slate-400">暂无引用</div>}
+          {total === 0 && <div className="text-slate-400">暂无引用</div>}
           {toolsUsed?.map((u, i) => {
             const name = u.toolName ?? u.tool;
             const okLabel = u.ok === false ? "fail" : "ok";
@@ -71,11 +41,6 @@ function ReferencePanel({
               </div>
             );
           })}
-          {pinned.map((p, i) => (
-            <div key={`pin-${i}`} className="text-slate-700">
-              <span className="text-xs text-amber-600">[📌]</span> {pinLabel(p)}
-            </div>
-          ))}
         </div>
       )}
     </div>
@@ -293,7 +258,7 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
               >
                 <ReactMarkdown>{body || "_(空)_"}</ReactMarkdown>
               </article>
-              <ReferencePanel projectId={projectId} sectionKey={key} toolsUsed={toolsUsed} />
+              <ReferencePanel toolsUsed={toolsUsed} />
               {selectionRewriteOpen?.key === key && (
                 <InlineComposer
                   projectId={projectId}
