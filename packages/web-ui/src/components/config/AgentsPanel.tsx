@@ -156,7 +156,7 @@ export function AgentsPanel() {
         const hasTopicExpert = step.agentKeys.includes("topic_expert");
         return (
           <section key={step.label} className="mb-6">
-            <h2 className="text-sm font-semibold mb-2" style={{ color: "var(--green)" }}>
+            <h2 className="text-sm font-semibold mb-2 text-accent font-pixel tracking-[0.06em]">
               {step.label}
             </h2>
             {keys.map((key) => {
@@ -180,8 +180,7 @@ export function AgentsPanel() {
               <button
                 type="button"
                 onClick={handleAddTopicExpert}
-                className="mt-1 px-2 py-0.5 text-xs border rounded"
-                style={{ borderColor: "var(--border)" }}
+                className="mt-1 px-2 py-0.5 text-xs border rounded border-hair text-body hover:text-accent hover:border-accent bg-transparent cursor-pointer"
                 data-testid="add-topic-expert-btn"
               >
                 + 新增 topic_expert
