@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import { useWriterSections } from "../../hooks/useWriterSections";
 import { useProjectStream } from "../../hooks/useProjectStream";
+import { useTextSelection } from "../../hooks/useTextSelection";
 import {
   getFinal,
   getPinned,
@@ -9,7 +10,8 @@ import {
   type SkillResult,
   type ToolUsageFrontmatter,
 } from "../../api/writer-client";
-import { SkillForm } from "./SkillForm";
+import { SelectionBubble } from "./SelectionBubble";
+import { InlineComposer } from "./InlineComposer";
 
 type PinEntry = SkillResult & { pinned_by?: string };
 
@@ -129,7 +131,9 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [selectedText, setSelectedText] = useState<string>("");
   const [selectionKey, setSelectionKey] = useState<string | null>(null);
-  const [skillOpenKey, setSkillOpenKey] = useState<string | null>(null);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const selection = useTextSelection(bodyRef);
+  const [selectionRewriteOpen, setSelectionRewriteOpen] = useState<{ key: string; text: string } | null>(null);
 
   const reload = useCallback(async () => {
     if (status === "evidence_ready" || status === "writing_configuring" || status === "writing_running") return;
@@ -205,6 +209,14 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
     setSelectionKey(key);
   };
 
+  const openSelectionComposer = () => {
+    const text = selection.text;
+    if (!text) return;
+    const hitKey = renderOrder.find((k) => (bodies[k] ?? "").includes(text)) ?? renderOrder[0];
+    if (!hitKey) return;
+    setSelectionRewriteOpen({ key: hitKey, text });
+  };
+
   return (
     <div className="p-3 flex flex-col gap-3 text-sm">
       <div className="flex flex-col gap-0.5 border-b pb-2">
@@ -218,7 +230,7 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
         <a href={`/api/projects/${projectId}/writer/final`} download="final.md" className="mt-2 px-2 py-1 bg-gray-200 rounded text-center">导出 final.md</a>
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div ref={bodyRef} className="flex flex-col gap-3">
         {renderOrder.map((key) => {
           const body = bodies[key] ?? "";
           const supported = rewriteSupported(key);
@@ -247,15 +259,6 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
                       className="opacity-0 group-hover:opacity-100 transition px-2 py-0.5 border rounded text-blue-600 hover:bg-blue-50"
                     >
                       🤖 重写整段
-                    </button>
-                  )}
-                  {!isBusy && (
-                    <button
-                      type="button"
-                      onClick={() => setSkillOpenKey(key)}
-                      className="opacity-0 group-hover:opacity-100 transition px-2 py-0.5 border rounded text-slate-700 hover:bg-slate-100"
-                    >
-                      🔧 @skill
                     </button>
                   )}
                 </div>
@@ -291,16 +294,26 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
                 <ReactMarkdown>{body || "_(空)_"}</ReactMarkdown>
               </article>
               <ReferencePanel projectId={projectId} sectionKey={key} toolsUsed={toolsUsed} />
+              {selectionRewriteOpen?.key === key && (
+                <InlineComposer
+                  projectId={projectId}
+                  sectionKey={key}
+                  selectedText={selectionRewriteOpen.text}
+                  onCancel={() => setSelectionRewriteOpen(null)}
+                  onCompleted={() => {
+                    setSelectionRewriteOpen(null);
+                    reload();
+                  }}
+                />
+              )}
             </section>
           );
         })}
       </div>
-      {skillOpenKey && (
-        <SkillForm
-          projectId={projectId}
-          sectionKey={skillOpenKey}
-          onClose={() => setSkillOpenKey(null)}
-          onResult={() => { /* ReferencePanel re-fetches on next open */ }}
+      {!selectionRewriteOpen && (
+        <SelectionBubble
+          rect={selection.isActive ? selection.rect : null}
+          onClick={openSelectionComposer}
         />
       )}
     </div>
