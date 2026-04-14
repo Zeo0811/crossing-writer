@@ -1,3 +1,7 @@
+import { WikiStore } from "@crossing/kb";
+import Database from "better-sqlite3";
+import { existsSync } from "node:fs";
+
 export interface SelectionRef {
   kind: "wiki" | "raw";
   id: string;
@@ -54,4 +58,66 @@ export function buildSelectionRewriteUserMessage(args: BuildArgs): string {
     "",
     "仅输出改写后的新文本（纯文本，不要 markdown 围栏、不要重复原文、不要解释）",
   ].join("\n");
+}
+
+export interface RefInput {
+  kind: "wiki" | "raw";
+  id: string;
+  title: string;
+  account?: string;
+  published_at?: string;
+}
+
+export interface FetchCtx {
+  vaultPath: string;
+  sqlitePath: string;
+}
+
+export async function fetchReferenceBodies(
+  refs: RefInput[],
+  ctx: FetchCtx,
+  logger?: { warn: (msg: string) => void },
+): Promise<SelectionRef[]> {
+  const out: SelectionRef[] = [];
+  let db: Database.Database | null = null;
+  try {
+    for (const r of refs) {
+      try {
+        if (r.kind === "wiki") {
+          const store = new WikiStore(ctx.vaultPath);
+          const page = store.readPage(r.id);
+          if (!page) {
+            logger?.warn(`wiki not found: ${r.id}`);
+            continue;
+          }
+          out.push({ ...r, content: page.body ?? "" });
+        } else {
+          if (!existsSync(ctx.sqlitePath)) {
+            logger?.warn(`sqlite missing: ${ctx.sqlitePath}`);
+            continue;
+          }
+          if (!db)
+            db = new Database(ctx.sqlitePath, {
+              readonly: true,
+              fileMustExist: true,
+            });
+          const row = db
+            .prepare("SELECT body_plain FROM ref_articles WHERE id = ?")
+            .get(r.id) as { body_plain?: string } | undefined;
+          if (!row) {
+            logger?.warn(`raw not found: ${r.id}`);
+            continue;
+          }
+          out.push({ ...r, content: row.body_plain ?? "" });
+        }
+      } catch (e) {
+        logger?.warn(
+          `fetchRef failed ${r.kind}:${r.id}: ${(e as Error).message}`,
+        );
+      }
+    }
+  } finally {
+    if (db) db.close();
+  }
+  return out;
 }

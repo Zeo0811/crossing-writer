@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { buildSelectionRewriteUserMessage } from "../src/services/selection-rewrite-builder.js";
+import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import Database from "better-sqlite3";
+import {
+  buildSelectionRewriteUserMessage,
+  fetchReferenceBodies,
+} from "../src/services/selection-rewrite-builder.js";
 
 describe("buildSelectionRewriteUserMessage", () => {
   it("assembles all sections in order", () => {
@@ -67,5 +74,54 @@ describe("buildSelectionRewriteUserMessage", () => {
       references: [],
     });
     expect(msg).toContain("[引用素材]\n(无)");
+  });
+});
+
+describe("fetchReferenceBodies", () => {
+  it("reads wiki body and raw body_plain; skips missing", async () => {
+    const vault = mkdtempSync(join(tmpdir(), "sp09-fetch-"));
+    mkdirSync(join(vault, "entities"), { recursive: true });
+    writeFileSync(
+      join(vault, "entities", "AI.Talk.md"),
+      "---\ntitle: AI.Talk\ntype: entity\nsources: []\nlast_ingest: ''\n---\nHELLO",
+    );
+    const sqlitePath = join(vault, "kb.sqlite");
+    const db = new Database(sqlitePath);
+    db.exec("CREATE TABLE ref_articles (id TEXT PRIMARY KEY, body_plain TEXT)");
+    db.prepare("INSERT INTO ref_articles (id, body_plain) VALUES (?, ?)").run(
+      "a1",
+      "RAWTEXT",
+    );
+    db.close();
+    const warnings: string[] = [];
+    const refs = await fetchReferenceBodies(
+      [
+        { kind: "wiki", id: "entities/AI.Talk.md", title: "AI.Talk" },
+        { kind: "raw", id: "a1", title: "T" },
+        { kind: "raw", id: "missing", title: "X" },
+      ],
+      { vaultPath: vault, sqlitePath },
+      { warn: (m) => warnings.push(m) },
+    );
+    expect(refs).toHaveLength(2);
+    expect(refs[0]!.content).toContain("HELLO");
+    expect(refs[1]!.content).toBe("RAWTEXT");
+    expect(warnings.some((w) => w.includes("missing"))).toBe(true);
+  });
+
+  it("warns and skips wiki page that does not exist", async () => {
+    const vault = mkdtempSync(join(tmpdir(), "sp09-fetch-miss-"));
+    const sqlitePath = join(vault, "kb.sqlite");
+    const db = new Database(sqlitePath);
+    db.exec("CREATE TABLE ref_articles (id TEXT PRIMARY KEY, body_plain TEXT)");
+    db.close();
+    const warnings: string[] = [];
+    const refs = await fetchReferenceBodies(
+      [{ kind: "wiki", id: "entities/Nope.md", title: "Nope" }],
+      { vaultPath: vault, sqlitePath },
+      { warn: (m) => warnings.push(m) },
+    );
+    expect(refs).toHaveLength(0);
+    expect(warnings.length).toBe(1);
   });
 });
