@@ -26,3 +26,4 @@ export type {
   ToolCall,
   SkillContext,
 } from "./skills/types.js";
+export { dispatchSkill, parseSkillArgs } from "./skills/dispatcher.js";
