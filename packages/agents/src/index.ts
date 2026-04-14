@@ -39,4 +39,18 @@ export { StyleDistillerComposerAgent } from "./roles/style-distiller-composer-ag
 export type { ComposerInput, ComposerOutput } from "./roles/style-distiller-composer-agent.js";
 export { WikiIngestorAgent, parseNdjsonOps } from "./roles/wiki-ingestor-agent.js";
 export type { IngestorInput, IngestorOp, IngestorOutput, IngestArticle, ExistingPageSnapshot } from "./roles/wiki-ingestor-agent.js";
+export {
+  runWriterWithTools,
+  parseToolCalls as parseWriterToolCalls,
+} from "./writer-tool-runner.js";
+export type {
+  ChatMessage,
+  AgentInvoker,
+  ToolUsage,
+  WriterToolEvent,
+  WriterRunOptions,
+  WriterRunResult,
+  SkillResult,
+  ToolCall as WriterToolCall,
+} from "./writer-tool-runner.js";
 export const VERSION = "0.2.0";
