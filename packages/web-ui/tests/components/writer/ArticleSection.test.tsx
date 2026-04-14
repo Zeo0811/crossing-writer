@@ -7,6 +7,8 @@ vi.mock("../../../src/api/writer-client", () => ({
     { key: "practice.case-01", frontmatter: { section: "practice.case-01", last_agent: "human", last_updated_at: "t" }, preview: "q" },
     { key: "closing", frontmatter: { section: "closing", last_agent: "writer.closing", last_updated_at: "t" }, preview: "r" },
   ]})),
+  getFinal: vi.fn(async () => "---\n---\n<!-- section:opening -->\n开头 body\n<!-- section:practice.case-01 -->\ncase1 body\n<!-- section:closing -->\n结尾 body"),
+  rewriteSectionStream: vi.fn(),
 }));
 vi.mock("../../../src/hooks/useProjectStream", () => ({ useProjectStream: () => ({ events: [] }) }));
 
@@ -19,10 +21,10 @@ describe("ArticleSection left panel", () => {
   });
 
   it("writing_ready shows section tree with opening / practice / closing", async () => {
-    render(<ArticleSection projectId="pid" status="writing_ready" />);
-    expect(await screen.findByText(/开头/)).toBeTruthy();
-    expect(await screen.findByText(/case-01/)).toBeTruthy();
-    expect(await screen.findByText(/结尾/)).toBeTruthy();
-    expect(screen.getByText(/human/)).toBeTruthy();
+    const { findAllByText, getByText } = render(<ArticleSection projectId="pid" status="writing_ready" />);
+    expect((await findAllByText(/开头/)).length).toBeGreaterThan(0);
+    expect((await findAllByText(/case-01/)).length).toBeGreaterThan(0);
+    expect((await findAllByText(/结尾/)).length).toBeGreaterThan(0);
+    expect(getByText(/human/)).toBeTruthy();
   });
 });
