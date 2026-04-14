@@ -11,6 +11,7 @@ export interface StylePanelFrontmatter {
   source_article_count: number;
   slicer_run_id?: string;
   composer_duration_ms?: number;
+  migrated_from_sp06?: boolean;
 }
 
 export interface StylePanel {

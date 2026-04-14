@@ -121,6 +121,57 @@ export class StylePanelStore {
     return true;
   }
 
+  /**
+   * One-time migration pass for SP-06 legacy panels.
+   * Rewrites old flat `<vault>/08_experts/style-panel/*.md` files that have no
+   * frontmatter, injecting legacy-tagged frontmatter while preserving body.
+   * Idempotent: files already carrying a `role:` are skipped.
+   * Returns the number of files physically rewritten.
+   */
+  migrateLegacy(): number {
+    const base = this.baseDir;
+    if (!existsSync(base)) return 0;
+    let migrated = 0;
+    for (const entry of readdirSync(base)) {
+      if (!entry.endsWith(".md")) continue;
+      const full = join(base, entry);
+      let st;
+      try {
+        st = statSync(full);
+      } catch {
+        continue;
+      }
+      if (!st.isFile()) continue;
+      const raw = readFileSync(full, "utf-8");
+      // Skip if already has frontmatter with a role
+      try {
+        const parsed = parsePanel(full, raw);
+        if (parsed.frontmatter && parsed.frontmatter.role) {
+          continue;
+        }
+      } catch {
+        // no frontmatter → migrate
+      }
+      const rawAccount = basename(entry, ".md");
+      const account = rawAccount.endsWith("_kb")
+        ? rawAccount.slice(0, -3)
+        : rawAccount;
+      const createdAt = st.mtime.toISOString();
+      const fm: StylePanelFrontmatter = {
+        account,
+        role: "legacy",
+        version: 1,
+        status: "active",
+        created_at: createdAt,
+        source_article_count: 0,
+        migrated_from_sp06: true,
+      };
+      writeFileSync(full, serializePanel(fm, raw), "utf-8");
+      migrated += 1;
+    }
+    return migrated;
+  }
+
   markLegacy(absPath: string): void {
     const raw = readFileSync(absPath, "utf-8");
     let fm: StylePanelFrontmatter;

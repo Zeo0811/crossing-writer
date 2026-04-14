@@ -130,6 +130,18 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
   // SP-10 config workbench
   const agentConfigStore = createAgentConfigStore(configStore);
   const stylePanelStore = new StylePanelStore(configStore.current.vaultPath);
+  try {
+    const migrated = stylePanelStore.migrateLegacy();
+    if (migrated > 0) {
+      console.log(
+        `[server] migrated ${migrated} legacy SP-06 style panel(s) to sp10 frontmatter`,
+      );
+    }
+  } catch (err) {
+    console.warn(
+      `[server] style-panel legacy migration failed: ${(err as Error).message}`,
+    );
+  }
   const projectOverrideStore = new ProjectOverrideStore(configStore.current.projectsDir);
   registerConfigAgentsRoutes(app, { agentConfigStore });
   registerConfigStylePanelsRoutes(app, { stylePanelStore });
