@@ -17,6 +17,8 @@ import { CaseExpertSelector } from "../components/right/CaseExpertSelector";
 import { CaseListPanel } from "../components/left/CaseListPanel";
 import { CaseSelectedGuide } from "../components/right/CaseSelectedGuide";
 import { SettingsDrawer } from "../components/settings/SettingsDrawer";
+import { EvidenceSection } from "../components/evidence/EvidenceSection";
+import { EvidenceIntakeForm } from "../components/evidence/EvidenceIntakeForm";
 
 type SecStat = "completed" | "active" | "pending";
 
@@ -36,6 +38,10 @@ const SECTION_ORDER: Array<{ key: string; activeStates: string[] }> = [
   {
     key: "case",
     activeStates: ["awaiting_case_expert_selection", "case_planning_running", "case_planning_failed", "case_synthesizing", "awaiting_case_selection", "case_plan_approved"],
+  },
+  {
+    key: "evidence",
+    activeStates: ["evidence_collecting", "evidence_ready"],
   },
 ];
 
@@ -149,6 +155,7 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
 
   const [project, setProject] = useState<any>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [selectedEvidenceCase, setSelectedEvidenceCase] = useState<string | null>(null);
   const { events, activeAgents, connectionState, lastEventTs } = useProjectStream(projectId);
 
   function refetch() {
@@ -230,6 +237,18 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
               <Section title={<>Case 列表 <SectionStatusBadge sectionKey="case" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("case", status)}>
                 <CaseListPanel projectId={projectId} />
               </Section>
+
+              <Section title={<>Evidence <SectionStatusBadge sectionKey="evidence" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("evidence", status)}>
+                {(status === "evidence_collecting" || status === "evidence_ready" || status === "case_plan_approved") ? (
+                  <EvidenceSection
+                    projectId={projectId}
+                    selectedCaseId={selectedEvidenceCase}
+                    onSelectCase={setSelectedEvidenceCase}
+                  />
+                ) : (
+                  <div className="text-xs text-gray-400">case_plan_approved 后启用</div>
+                )}
+              </Section>
             </SectionAccordion>
           )}
         </div>
@@ -240,7 +259,11 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
             <AgentTimeline events={events} connectionState={connectionState} lastEventTs={lastEventTs} />
           </div>
           <div className="flex-1 overflow-auto p-6 space-y-4">
-            {rightPanel(status, projectId, refetch, events)}
+            {(status === "evidence_collecting" || status === "evidence_ready") ? (
+              selectedEvidenceCase
+                ? <EvidenceIntakeForm projectId={projectId} caseId={selectedEvidenceCase} />
+                : <div className="p-4 text-sm text-gray-500">← 左侧选一个 Case 开始上传 evidence</div>
+            ) : rightPanel(status, projectId, refetch, events)}
           </div>
         </div>
       </div>
