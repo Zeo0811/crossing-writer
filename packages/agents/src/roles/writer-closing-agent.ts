@@ -4,6 +4,14 @@ import { dirname, join } from "node:path";
 import { invokeAgent } from "../model-adapter.js";
 import { TOOL_PROTOCOL_PROMPT } from "../prompts/load.js";
 import type { ReferenceAccountKb, WriterOutput } from "./writer-opening-agent.js";
+import {
+  runWriterWithTools,
+  type ChatMessage,
+  type WriterRunResult,
+  type ToolCall,
+  type SkillResult,
+  type WriterToolEvent,
+} from "../writer-tool-runner.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SYSTEM_PROMPT = readFileSync(
@@ -19,6 +27,32 @@ export interface WriterClosingInput {
   openingText: string;
   stitchedPracticeText: string;
   referenceAccountsKb: ReferenceAccountKb[];
+}
+
+export interface RunWriterClosingOpts {
+  invokeAgent: (messages: ChatMessage[], opts?: { images?: string[] }) => Promise<{ text: string; meta: { cli: string; model?: string; durationMs: number } }>;
+  userMessage: string;
+  images?: string[];
+  pinnedContext?: string;
+  dispatchTool: (call: ToolCall) => Promise<SkillResult>;
+  onEvent?: (ev: WriterToolEvent) => void;
+  sectionKey?: string;
+  maxRounds?: number;
+}
+
+export async function runWriterClosing(opts: RunWriterClosingOpts): Promise<WriterRunResult> {
+  return runWriterWithTools({
+    agent: { invoke: opts.invokeAgent },
+    agentName: "writer.closing",
+    sectionKey: opts.sectionKey,
+    systemPrompt: getSystemPrompt(),
+    initialUserMessage: opts.userMessage,
+    pinnedContext: opts.pinnedContext,
+    dispatchTool: opts.dispatchTool,
+    onEvent: opts.onEvent,
+    images: opts.images,
+    maxRounds: opts.maxRounds,
+  });
 }
 
 export class WriterClosingAgent {
