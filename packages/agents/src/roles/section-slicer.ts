@@ -28,6 +28,14 @@ export interface SectionSlicerOpts {
   model?: string;
 }
 
+/**
+ * SP-15: slicer defaults to sonnet-4.5 because the task (structural boundary
+ * detection + role tagging) is pattern-heavy and doesn't benefit from opus.
+ * Sonnet is ~3x faster and ~5x cheaper with negligible quality loss here.
+ * Users can override via Config Workbench (Agents panel -> section_slicer).
+ */
+export const DEFAULT_SECTION_SLICER_MODEL = "claude-sonnet-4-5";
+
 export interface SectionSlicerResult {
   slices: SectionSlice[];
   meta: { cli: string; model?: string | null; durationMs: number };
@@ -91,7 +99,7 @@ export async function runSectionSlicer(
   const result = invokeAgent({
     agentKey: "section_slicer",
     cli: opts.cli,
-    model: opts.model,
+    model: opts.model ?? DEFAULT_SECTION_SLICER_MODEL,
     systemPrompt: SYSTEM_PROMPT,
     userMessage,
   });
