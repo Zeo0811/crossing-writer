@@ -165,12 +165,12 @@ export function InlineComposer(props: InlineComposerProps) {
       style={anchorStyle}
       className={
         anchorStyle
-          ? "rounded-md border border-slate-300 bg-white p-3 shadow-lg"
-          : "mt-2 rounded-md border border-slate-300 bg-white p-3 shadow"
+          ? "rounded-[6px] border border-hair-strong bg-bg-1 p-3 shadow-lg"
+          : "mt-2 rounded-[6px] border border-hair bg-bg-1 p-3"
       }
     >
-      <div className="mb-2 text-xs text-slate-500" data-testid="composer-preview">
-        选中：<span className="text-slate-800">{preview}</span>
+      <div className="mb-2 text-xs text-meta" data-testid="composer-preview">
+        选中：<span className="text-body">{preview}</span>
       </div>
       <div className="relative">
         <textarea
@@ -181,7 +181,7 @@ export function InlineComposer(props: InlineComposerProps) {
           onKeyDown={handleKeyDown}
           rows={4}
           placeholder="描述怎么改它，@ 引用素材..."
-          className="w-full resize-y rounded-md border border-slate-200 p-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+          className="w-full resize-y rounded-[2px] border border-hair bg-bg-2 text-body p-2 text-sm focus:outline-none focus:border-accent focus:shadow-[0_0_0_2px_var(--accent-dim)]"
         />
         {mention.active && (
           <MentionDropdown
@@ -193,15 +193,15 @@ export function InlineComposer(props: InlineComposerProps) {
         )}
       </div>
       {error && (
-        <div className="mt-1 text-xs text-red-600" data-testid="composer-error">
+        <div className="mt-1 text-xs text-red" data-testid="composer-error">
           {error}
         </div>
       )}
-      <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
-        <span>
+      <div className="mt-2 flex items-center justify-between text-xs text-meta">
+        <span className="font-mono-term">
           Esc 取消 · ↵ 提交 · ⇧↵ 换行{submitting ? "（提交中…）" : ""}
         </span>
-        <button type="button" className="text-slate-700 underline" onClick={onCancel}>
+        <button type="button" className="text-meta hover:text-accent underline bg-transparent border-0 cursor-pointer" onClick={onCancel}>
           取消
         </button>
       </div>

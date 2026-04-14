@@ -325,9 +325,9 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
             reload();
           };
           return (
-            <section key={key} className="group relative border rounded p-3 bg-white hover:border-blue-400">
-              <header className="flex justify-between items-center text-xs text-gray-500 mb-2">
-                <span className="font-mono">
+            <section key={key} data-testid={`article-section-card-${key}`} className="group relative border border-hair rounded-[10px] p-4 bg-bg-1 hover:border-accent transition-colors">
+              <header className="flex justify-between items-center text-xs text-meta mb-2">
+                <span className="font-mono-term">
                   {sectionTitle(key)}
                   <StyleBadge sectionKey={key} effective={effectiveAgents} panels={stylePanels} />
                 </span>
