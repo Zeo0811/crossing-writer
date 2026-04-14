@@ -77,4 +77,36 @@ export function registerKbWikiRoutes(app: FastifyInstance, deps: KbWikiDeps) {
       reply.raw.end();
     }
   });
+
+  app.get<{ Querystring: { kind?: string } }>("/api/kb/wiki/pages", async (req, reply) => {
+    const { WikiStore } = await import("@crossing/kb");
+    const store = new WikiStore(deps.vaultPath);
+    const pages = store.listPages();
+    const kind = req.query.kind;
+    const out = pages
+      .filter((p) => (kind ? p.frontmatter.type === kind : true))
+      .map((p) => ({
+        path: p.path,
+        kind: p.frontmatter.type,
+        title: p.frontmatter.title,
+        aliases: p.frontmatter.aliases ?? [],
+        sources_count: (p.frontmatter.sources ?? []).length,
+        backlinks_count: (p.frontmatter.backlinks ?? []).length,
+        last_ingest: p.frontmatter.last_ingest,
+      }));
+    return reply.send(out);
+  });
+
+  app.get<{ Params: { "*": string } }>("/api/kb/wiki/pages/*", async (req, reply) => {
+    const rel = (req.params as { "*": string })["*"];
+    if (!rel || rel.includes("..")) return reply.code(400).send({ error: "invalid path" });
+    const { WikiStore } = await import("@crossing/kb");
+    const store = new WikiStore(deps.vaultPath);
+    let abs: string;
+    try { abs = store.absPath(rel); } catch { return reply.code(400).send({ error: "invalid path" }); }
+    const { existsSync, readFileSync } = await import("node:fs");
+    if (!existsSync(abs)) return reply.code(404).send({ error: "not found" });
+    reply.header("Content-Type", "text/markdown; charset=utf-8");
+    return reply.send(readFileSync(abs, "utf-8"));
+  });
 }
