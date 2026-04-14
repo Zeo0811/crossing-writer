@@ -2,6 +2,19 @@ export type WriterAgentKey =
   | "writer.opening" | "writer.practice" | "writer.closing"
   | "practice.stitcher" | "style_critic";
 
+export interface ToolUsageFrontmatter {
+  tool: string;
+  round: number;
+  hits_count?: number;
+  query?: string;
+  args?: Record<string, string>;
+  pinned_by?: string;
+  ok?: boolean;
+  summary?: string;
+  toolName?: string;
+  [k: string]: unknown;
+}
+
 export interface SectionFrontmatter {
   section: string;
   last_agent: string;
@@ -9,6 +22,7 @@ export interface SectionFrontmatter {
   reference_accounts?: string[];
   cli?: string;
   model?: string;
+  tools_used?: ToolUsageFrontmatter[];
 }
 
 export interface SectionListItem {

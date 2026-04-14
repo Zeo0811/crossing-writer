@@ -2,7 +2,82 @@ import { useEffect, useState, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import { useWriterSections } from "../../hooks/useWriterSections";
 import { useProjectStream } from "../../hooks/useProjectStream";
-import { getFinal, rewriteSectionStream } from "../../api/writer-client";
+import {
+  getFinal,
+  getPinned,
+  rewriteSectionStream,
+  type SkillResult,
+  type ToolUsageFrontmatter,
+} from "../../api/writer-client";
+
+type PinEntry = SkillResult & { pinned_by?: string };
+
+function pinLabel(p: PinEntry): string {
+  if ((p as any).formatted && typeof (p as any).formatted === "string") {
+    const f = (p as any).formatted as string;
+    return f.length > 120 ? f.slice(0, 120) + "…" : f;
+  }
+  if ((p as any).query) return `[${p.tool}] ${(p as any).query}`;
+  return p.tool;
+}
+
+function ReferencePanel({
+  projectId,
+  sectionKey,
+  toolsUsed,
+}: {
+  projectId: string;
+  sectionKey: string;
+  toolsUsed: ToolUsageFrontmatter[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [pinned, setPinned] = useState<PinEntry[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    getPinned(projectId, sectionKey)
+      .then((r) => setPinned((r.pins ?? []) as PinEntry[]))
+      .catch(() => setPinned([]))
+      .finally(() => setLoading(false));
+  }, [open, projectId, sectionKey]);
+
+  const total = (toolsUsed?.length ?? 0) + pinned.length;
+
+  return (
+    <div className="mt-2 border-t pt-2 text-sm">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="text-slate-500 hover:text-slate-800"
+      >
+        {open ? "▼" : "▶"} 📚 本段引用 ({total})
+      </button>
+      {open && (
+        <div className="mt-2 space-y-1">
+          {loading && <div className="text-slate-400">加载中...</div>}
+          {!loading && total === 0 && <div className="text-slate-400">暂无引用</div>}
+          {toolsUsed?.map((u, i) => {
+            const name = u.toolName ?? u.tool;
+            const okLabel = u.ok === false ? "fail" : "ok";
+            const summary = u.summary ?? (typeof u.hits_count === "number" ? `hits: ${u.hits_count}` : okLabel);
+            return (
+              <div key={`tu-${i}`} className="text-slate-700">
+                <span className="font-mono text-xs">[{name}·r{u.round}]</span> {summary}
+              </div>
+            );
+          })}
+          {pinned.map((p, i) => (
+            <div key={`pin-${i}`} className="text-slate-700">
+              <span className="text-xs text-amber-600">[📌]</span> {pinLabel(p)}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export interface ArticleSectionProps {
   projectId: string;
@@ -148,6 +223,8 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
           const isActive = activeKey === key;
           const isBusy = busyKey === key;
           const hasSelection = selectionKey === key && selectedText.length > 0;
+          const sectionMeta = sections.find((s) => s.key === key);
+          const toolsUsed = (sectionMeta?.frontmatter?.tools_used ?? []) as ToolUsageFrontmatter[];
           return (
             <section key={key} className="group relative border rounded p-3 bg-white hover:border-blue-400">
               <header className="flex justify-between items-center text-xs text-gray-500 mb-2">
@@ -202,6 +279,7 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
               >
                 <ReactMarkdown>{body || "_(空)_"}</ReactMarkdown>
               </article>
+              <ReferencePanel projectId={projectId} sectionKey={key} toolsUsed={toolsUsed} />
             </section>
           );
         })}
