@@ -11,6 +11,10 @@ vi.mock("@crossing/agents", async () => {
     WriterOpeningAgent: vi.fn().mockImplementation(() => ({
       write: vi.fn(async () => ({ text: "rewritten", meta: { cli: "claude", model: "opus", durationMs: 10 } })),
     })),
+    runWriterOpening: vi.fn(async () => ({
+      finalText: "rewritten", toolsUsed: [], rounds: 1,
+      meta: { cli: "claude", model: "opus", durationMs: 10, total_duration_ms: 10 },
+    })),
   };
 });
 

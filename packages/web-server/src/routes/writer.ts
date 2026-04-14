@@ -7,8 +7,11 @@ import { runWriter, type WriterAgentKey, type WriterConfig } from "../services/w
 import { ArticleStore, type SectionKey } from "../services/article-store.js";
 import {
   WriterOpeningAgent, WriterPracticeAgent, WriterClosingAgent,
-  PracticeStitcherAgent, invokeAgent, type ReferenceAccountKb,
+  PracticeStitcherAgent, invokeAgent,
+  runWriterOpening, runWriterPractice, runWriterClosing,
+  type ReferenceAccountKb, type ChatMessage, type WriterToolEvent,
 } from "@crossing/agents";
+import { dispatchSkill } from "@crossing/kb";
 import { readFile } from "node:fs/promises";
 import { appendEvent } from "../services/event-log.js";
 import { pendingPinsStore, type PinEntry } from "../state/pending-pins.js";
@@ -259,37 +262,88 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
             userMessage,
           });
           newBody = out.text;
-        } else if (agentKey === "writer.opening") {
-          const brief = existsSync(join(pDir, "brief/brief.md")) ? await readFile(join(pDir, "brief/brief.md"), "utf-8") : "";
-          const mission = existsSync(join(pDir, "mission/selected.md")) ? await readFile(join(pDir, "mission/selected.md"), "utf-8") : "";
-          const po = existsSync(join(pDir, "context/product-overview.md")) ? await readFile(join(pDir, "context/product-overview.md"), "utf-8") : "";
-          const agent = new WriterOpeningAgent({ cli: cliModel.cli as "claude" | "codex", model: cliModel.model });
-          const out = await agent.write({ briefSummary: brief + hintBlock, missionSummary: mission, productOverview: po, referenceAccountsKb: refs });
-          newBody = out.text;
-        } else if (agentKey === "writer.closing") {
-          const openingBody = (await as.readSection("opening"))?.body ?? "";
-          const list = await as.listSections();
-          const practiceText = list.filter((s) => s.key.startsWith("practice.case-")).map((s) => s.body).join("\n\n");
-          const agent = new WriterClosingAgent({ cli: cliModel.cli as "claude" | "codex", model: cliModel.model });
-          const out = await agent.write({ openingText: openingBody + hintBlock, stitchedPracticeText: practiceText, referenceAccountsKb: refs });
-          newBody = out.text;
-        } else if (agentKey === "writer.practice") {
-          const caseId = req.params.key.slice("practice.".length);
-          const notesPath = join(pDir, "evidence", caseId, "notes.md");
-          let notesBody = "";
-          if (existsSync(notesPath)) {
-            const raw = await readFile(notesPath, "utf-8");
-            const m = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/.exec(raw);
-            notesBody = m ? m[2]! : raw;
+        } else if (agentKey === "writer.opening" || agentKey === "writer.practice" || agentKey === "writer.closing") {
+          const invoker = async (messages: ChatMessage[], invokeOpts?: { images?: string[] }) => {
+            const sys = messages.find((m) => m.role === "system")?.content ?? "";
+            const userParts = messages.filter((m) => m.role !== "system")
+              .map((m) => `[${m.role}]\n${m.content}`).join("\n\n");
+            const r = invokeAgent({
+              agentKey,
+              cli: cliModel.cli as "claude" | "codex",
+              model: cliModel.model,
+              systemPrompt: sys,
+              userMessage: userParts,
+              images: invokeOpts?.images,
+            });
+            return { text: r.text, meta: { cli: r.meta.cli, model: r.meta.model ?? undefined, durationMs: r.meta.durationMs } };
+          };
+          const dispatchTool = (call: { command: string; args: string[] }) =>
+            dispatchSkill(call, { vaultPath: deps.vaultPath, sqlitePath: deps.sqlitePath });
+          const onEvent = (ev: WriterToolEvent) => {
+            const { type, ...rest } = ev;
+            send(`writer.${type}`, { ...rest, section_key: req.params.key });
+          };
+
+          const refBlock = refs.length === 0
+            ? "(无参考账号)"
+            : refs.map((r) => `## 参考账号：${r.id}\n${r.text}`).join("\n\n");
+
+          if (agentKey === "writer.opening") {
+            const brief = existsSync(join(pDir, "brief/brief.md")) ? await readFile(join(pDir, "brief/brief.md"), "utf-8") : "";
+            const mission = existsSync(join(pDir, "mission/selected.md")) ? await readFile(join(pDir, "mission/selected.md"), "utf-8") : "";
+            const po = existsSync(join(pDir, "context/product-overview.md")) ? await readFile(join(pDir, "context/product-overview.md"), "utf-8") : "";
+            const userMessage = [
+              "# Brief 摘要", (brief + hintBlock) || "(无)", "",
+              "# Mission 摘要", mission || "(无)", "",
+              "# 产品概览", po || "(无)", "",
+              "# 参考账号风格素材", refBlock, "",
+              "请按 system prompt 要求产出开头段正文。",
+            ].join("\n");
+            const out = await runWriterOpening({
+              invokeAgent: invoker, userMessage, dispatchTool, onEvent, sectionKey: req.params.key,
+            });
+            newBody = out.finalText;
+          } else if (agentKey === "writer.closing") {
+            const openingBody = (await as.readSection("opening"))?.body ?? "";
+            const list = await as.listSections();
+            const practiceText = list.filter((s) => s.key.startsWith("practice.case-")).map((s) => s.body).join("\n\n");
+            const userMessage = [
+              "# 开头段", openingBody + hintBlock, "",
+              "# 实测主体（含过渡）", practiceText, "",
+              "# 参考账号风格素材", refBlock, "",
+              "请按 system prompt 要求产出结尾段。",
+            ].join("\n");
+            const out = await runWriterClosing({
+              invokeAgent: invoker, userMessage, dispatchTool, onEvent, sectionKey: req.params.key,
+            });
+            newBody = out.finalText;
+          } else {
+            const caseId = req.params.key.slice("practice.".length);
+            const notesPath = join(pDir, "evidence", caseId, "notes.md");
+            let notesBody = "";
+            if (existsSync(notesPath)) {
+              const raw = await readFile(notesPath, "utf-8");
+              const m = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/.exec(raw);
+              notesBody = m ? m[2]! : raw;
+            }
+            const shotsDir = join(pDir, "evidence", caseId, "screenshots");
+            const shots = existsSync(shotsDir) ? readdirSync(shotsDir).map((f) => join(shotsDir, f)) : [];
+            const userMessage = [
+              `# Case 编号：${caseId}`,
+              `# Case 名：${caseId}`, "",
+              "# Case 详细描述", existing.body + hintBlock, "",
+              "# 实测笔记 frontmatter", "```yaml", "{}", "```", "",
+              "# 实测笔记正文", notesBody || "(无)", "",
+              "# 截图清单",
+              shots.length === 0 ? "(无)" : shots.map((p, i) => `- screenshot-${i + 1}: ${p}`).join("\n"), "",
+              "# 参考账号风格素材", refBlock, "",
+              "请按 system prompt 要求产出该 case 实测小节。",
+            ].join("\n");
+            const out = await runWriterPractice({
+              invokeAgent: invoker, userMessage, images: shots, dispatchTool, onEvent, sectionKey: req.params.key,
+            });
+            newBody = out.finalText;
           }
-          const shotsDir = join(pDir, "evidence", caseId, "screenshots");
-          const shots = existsSync(shotsDir) ? readdirSync(shotsDir).map((f) => join(shotsDir, f)) : [];
-          const agent = new WriterPracticeAgent({ cli: cliModel.cli as "claude" | "codex", model: cliModel.model });
-          const out = await agent.write({
-            caseId, caseName: caseId, caseDescription: existing.body + hintBlock,
-            notesBody, notesFrontmatter: {}, screenshotPaths: shots, referenceAccountsKb: refs,
-          });
-          newBody = out.text;
         } else if (agentKey === "practice.stitcher") {
           const list = await as.listSections();
           const cases = list.filter((s) => s.key.startsWith("practice.case-"));
@@ -353,7 +407,6 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
         if (k !== "query") argTokens.push(`--${k}=${v}`);
       }
 
-      const { dispatchSkill } = await import("@crossing/kb");
       const result = await dispatchSkill(
         { command: tool, args: argTokens },
         { vaultPath: deps.vaultPath, sqlitePath: deps.sqlitePath },
