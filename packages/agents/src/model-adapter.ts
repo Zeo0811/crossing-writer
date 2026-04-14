@@ -64,7 +64,7 @@ export function invokeAgent(opts: InvokeOptions): AgentResult {
     "-p", "-",
     ...(opts.model ? ["--model", opts.model] : []),
   ];
-  const proc = spawnSync("claude", args, { encoding: "buffer", timeout, input: claudePrompt });
+  const proc = spawnSync("claude", args, { encoding: "buffer", timeout, input: Buffer.from(claudePrompt, "utf-8") });
   const stdout = proc.stdout?.toString("utf-8") ?? "";
   const stderr = proc.stderr?.toString("utf-8") ?? "";
   if (proc.status !== 0) {
