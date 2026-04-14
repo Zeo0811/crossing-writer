@@ -30,6 +30,10 @@ import { registerConfigProjectOverridesRoutes } from "./routes/config-project-ov
 import { createCliHealthProber } from "./services/cli-health.js";
 import { registerSystemHealthRoutes } from "./routes/system-health.js";
 import { registerProjectImageRoutes } from "./routes/project-images.js";
+import { TopicExpertStore } from "./services/topic-expert-store.js";
+import { registerTopicExpertsRoutes } from "./routes/topic-experts.js";
+import { registerTopicExpertConsultRoutes } from "./routes/topic-expert-consult.js";
+import { invokeTopicExpert } from "@crossing/agents";
 
 const configPath = process.env.CROSSING_CONFIG
   ?? resolve(process.cwd(), "../../config.json");
@@ -165,6 +169,14 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
 
   registerProjectImageRoutes(app, { projectsRoot: configStore.current.projectsDir });
 
+  const topicExpertStore = new TopicExpertStore(cfg.vaultPath);
+  app.decorate("topicExpertStore", topicExpertStore);
+  registerTopicExpertsRoutes(app, { store: topicExpertStore });
+  registerTopicExpertConsultRoutes(app, {
+    store: topicExpertStore,
+    invoke: invokeTopicExpert,
+  });
+
   const cliHealthProber = createCliHealthProber();
   registerSystemHealthRoutes(app, { prober: cliHealthProber });
 
@@ -184,6 +196,7 @@ declare module "fastify" {
     projectStore: ProjectStore;
     expertRegistry: ExpertRegistry;
     imageStore: ImageStore;
+    topicExpertStore: TopicExpertStore;
   }
 }
 
