@@ -3,6 +3,12 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { ProjectWorkbench } from "../../src/pages/ProjectWorkbench";
 import { ToastProvider } from "../../src/components/ui/ToastProvider";
 
+// Helper: matches if at least one element in the document matches the pattern
+function expectAny(pattern: RegExp) {
+  const matches = screen.queryAllByText(pattern);
+  expect(matches.length).toBeGreaterThan(0);
+}
+
 vi.mock("../../src/api/client", () => ({
   getProject: vi.fn(),
   getOverview: vi.fn(async () => null),
@@ -25,6 +31,17 @@ vi.mock("../../src/api/evidence-client", () => ({
   submitEvidence: vi.fn(),
 }));
 
+vi.mock("../../src/api/writer-client", () => ({
+  getSections: vi.fn(async () => ({ sections: [] })),
+  getSection: vi.fn(),
+  putSection: vi.fn(),
+  startWriter: vi.fn(),
+  retryFailed: vi.fn(),
+  getFinal: vi.fn(async () => ""),
+  listStylePanels: vi.fn(async () => []),
+  rewriteSectionStream: vi.fn(),
+}));
+
 describe("ProjectWorkbench SP-03 status routing", () => {
   it.each([
     ["awaiting_overview_input", /Brief 配图|拖拽/],
@@ -35,7 +52,9 @@ describe("ProjectWorkbench SP-03 status routing", () => {
     ["awaiting_case_selection", /左侧选 2-4/],
     ["case_plan_approved", /Case Plan 已批准/],
     ["evidence_collecting", /左侧选一个 Case/],
-    ["evidence_ready", /左侧选一个 Case/],
+    ["evidence_ready", /开始写作|配置/],
+    ["writing_running", /运行中|等待/],
+    ["writing_ready", /@agent 重写|导出 final/],
   ])("status=%s renders expected panel", async (status, pattern) => {
     const { getProject } = await import("../../src/api/client");
     vi.mocked(getProject).mockResolvedValue({
@@ -43,7 +62,7 @@ describe("ProjectWorkbench SP-03 status routing", () => {
     } as any);
     render(<ToastProvider><ProjectWorkbench projectId="p1" /></ToastProvider>);
     await waitFor(() => {
-      expect(screen.getByText(pattern)).toBeInTheDocument();
+      expectAny(pattern);
     });
   });
 });
