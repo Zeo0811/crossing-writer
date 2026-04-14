@@ -28,7 +28,7 @@ export function StylePanelList() {
   const [agents, setAgents] = useState<Record<string, AgentConfigEntry>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [distillTarget, setDistillTarget] = useState<{ account: string; role: StyleBindingRole } | null>(null);
+  const [distillTarget, setDistillTarget] = useState<{ account: string; role: StyleBindingRole | "all" } | null>(null);
 
   const refresh = useCallback(async () => {
     const [pl, cfgs] = await Promise.all([
@@ -126,6 +126,18 @@ export function StylePanelList() {
                 + 蒸 {role}
               </button>
             ))}
+            <button
+              key="_all"
+              className="px-2 py-0.5 text-xs border rounded"
+              style={{
+                borderColor: "var(--border)",
+                background: "var(--green, #22c55e)",
+                color: "#fff",
+              }}
+              onClick={() => setDistillTarget({ account, role: "all" })}
+            >
+              + 蒸 全部
+            </button>
           </div>
           <div className="flex flex-col gap-2">
             {rows.map((p) => {

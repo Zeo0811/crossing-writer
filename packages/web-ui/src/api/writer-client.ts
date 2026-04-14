@@ -323,6 +323,62 @@ export function distillStylePanel(
   };
 }
 
+export function distillAllRoles(
+  account: string,
+  limit?: number,
+): DistillStylePanelStream {
+  const controller = new AbortController();
+  let callback: ((ev: { type: string; error?: string; data?: any }) => void) | null = null;
+  const emit = (ev: { type: string; error?: string; data?: any }) => {
+    if (callback) callback(ev);
+  };
+  (async () => {
+    try {
+      const body: Record<string, unknown> = { account };
+      if (limit !== undefined) body.limit = limit;
+      const res = await fetch(`/api/config/style-panels/distill-all`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      if (!res.ok || !res.body) {
+        emit({ type: "distill_all.failed", error: `distill-all HTTP ${res.status}` });
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buf.indexOf("\n\n")) >= 0) {
+          const raw = buf.slice(0, idx);
+          buf = buf.slice(idx + 2);
+          const eventMatch = /^event:\s*(.+)$/m.exec(raw);
+          const dataMatch = /^data:\s*(.*)$/m.exec(raw);
+          if (eventMatch) {
+            const type = eventMatch[1]!.trim();
+            let data: any = undefined;
+            if (dataMatch) {
+              try { data = JSON.parse(dataMatch[1]!); } catch { data = dataMatch[1]!; }
+            }
+            emit({ type, data, error: data?.error });
+          }
+        }
+      }
+    } catch (err: unknown) {
+      emit({ type: "distill_all.failed", error: err instanceof Error ? err.message : String(err) });
+    }
+  })();
+  return {
+    onEvent: (cb) => { callback = cb; },
+    close: () => controller.abort(),
+  };
+}
+
 export async function getProjectOverride(projectId: string): Promise<ProjectOverride> {
   const res = await throwingFetch(`/api/projects/${projectId}/override`);
   return res.json();

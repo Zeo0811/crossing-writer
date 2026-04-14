@@ -92,6 +92,14 @@ describe("StylePanelList", () => {
     expect(args[3]).toBeFalsy();
   });
 
+  it("renders '+ 蒸 全部' button per account", async () => {
+    render(<StylePanelList />);
+    await waitFor(() => expect(screen.getByText(/acctA/)).toBeInTheDocument());
+    const allBtns = screen.getAllByRole("button", { name: /\+ 蒸 全部/ });
+    // One per account (acctA, acctB) — since account-level button is always present
+    expect(allBtns.length).toBeGreaterThanOrEqual(2);
+  });
+
   it("legacy panel exposes 硬删 button and no 软删", async () => {
     render(<StylePanelList />);
     await waitFor(() => expect(screen.getByText(/acctB/)).toBeInTheDocument());

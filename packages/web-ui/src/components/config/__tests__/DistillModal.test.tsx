@@ -3,10 +3,11 @@ import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 
 vi.mock("../../../api/writer-client.js", () => ({
   distillStylePanel: vi.fn(),
+  distillAllRoles: vi.fn(),
 }));
 
 import { DistillModal } from "../DistillModal.js";
-import { distillStylePanel } from "../../../api/writer-client.js";
+import { distillStylePanel, distillAllRoles } from "../../../api/writer-client.js";
 
 type EventCb = (ev: { type: string; error?: string; data?: any }) => void;
 
@@ -25,6 +26,7 @@ function makeStream() {
 
 beforeEach(() => {
   vi.mocked(distillStylePanel).mockReset();
+  vi.mocked(distillAllRoles).mockReset();
 });
 
 describe("DistillModal", () => {
@@ -104,5 +106,104 @@ describe("DistillModal", () => {
     vi.mocked(distillStylePanel).mockReturnValueOnce(s2.stream as any);
     fireEvent.click(screen.getByRole("button", { name: /重试/ }));
     expect(distillStylePanel).toHaveBeenCalledTimes(2);
+  });
+
+  describe("role='all' mode", () => {
+    it("renders 全部 title and WAITING rows for 3 roles", () => {
+      render(
+        <DistillModal
+          account="acctA"
+          role="all"
+          onClose={() => {}}
+          onSuccess={() => {}}
+        />,
+      );
+      expect(screen.getByText(/全部 \(opening \+ practice \+ closing\)/)).toBeInTheDocument();
+      const statusEl = screen.getByTestId("distill-roles-status");
+      expect(statusEl.textContent).toMatch(/opening:\s*WAITING/);
+      expect(statusEl.textContent).toMatch(/practice:\s*WAITING/);
+      expect(statusEl.textContent).toMatch(/closing:\s*WAITING/);
+    });
+
+    it("subscribes distillAllRoles and updates per-role status on events", async () => {
+      const s = makeStream();
+      vi.mocked(distillAllRoles).mockReturnValue(s.stream as any);
+
+      render(
+        <DistillModal
+          account="acctA"
+          role="all"
+          onClose={() => {}}
+          onSuccess={() => {}}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: /开始蒸馏/ }));
+      expect(distillAllRoles).toHaveBeenCalledWith("acctA", 10);
+
+      act(() => s.emit({ type: "distill_all.started" }));
+      act(() => s.emit({ type: "slicer_progress", data: { processed: 7, total: 10 } }));
+      await waitFor(() => expect(screen.getByText(/7\/10/)).toBeInTheDocument());
+
+      act(() => s.emit({ type: "role_started", data: { role: "opening" } }));
+      await waitFor(() => {
+        const statusEl = screen.getByTestId("distill-roles-status");
+        expect(statusEl.textContent).toMatch(/opening:\s*RUNNING/);
+      });
+
+      act(() => s.emit({ type: "role_done", data: { role: "opening", version: 1, panel_path: "/x/o.md" } }));
+      await waitFor(() => {
+        const statusEl = screen.getByTestId("distill-roles-status");
+        expect(statusEl.textContent).toMatch(/opening:\s*DONE/);
+      });
+
+      act(() =>
+        s.emit({
+          type: "role_failed",
+          data: { role: "practice", error: "no slices" },
+        }),
+      );
+      await waitFor(() => {
+        const statusEl = screen.getByTestId("distill-roles-status");
+        expect(statusEl.textContent).toMatch(/practice:\s*FAILED/);
+      });
+    });
+
+    it("fires onSuccess with results summary on distill_all.finished", async () => {
+      const s = makeStream();
+      vi.mocked(distillAllRoles).mockReturnValue(s.stream as any);
+      const onSuccess = vi.fn();
+
+      render(
+        <DistillModal
+          account="acctA"
+          role="all"
+          onClose={() => {}}
+          onSuccess={onSuccess}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: /开始蒸馏/ }));
+      act(() =>
+        s.emit({
+          type: "distill_all.finished",
+          data: {
+            results: [
+              { role: "opening", panel_path: "/x/o.md", version: 1 },
+              { role: "practice", panel_path: "/x/p.md", version: 2 },
+              { role: "closing", error: "no slices" },
+            ],
+          },
+        }),
+      );
+      await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+      const arg = onSuccess.mock.calls[0]![0];
+      expect(arg.results).toHaveLength(3);
+      expect(arg.results[0]).toEqual({
+        role: "opening",
+        version: 1,
+        path: "/x/o.md",
+        error: undefined,
+      });
+      expect(arg.results[2].error).toBe("no slices");
+    });
   });
 });
