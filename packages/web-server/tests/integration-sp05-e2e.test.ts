@@ -8,20 +8,42 @@ vi.mock("@crossing/agents", async () => {
   const actual = await vi.importActual<any>("@crossing/agents");
   return {
     ...actual,
+    // Class-based mocks for rewrite route (surgical & section-level)
     WriterOpeningAgent: vi.fn().mockImplementation(() => ({
       write: vi.fn(async () => ({ text: "OPEN", meta: { cli: "claude", model: "opus", durationMs: 1 } })),
     })),
     WriterPracticeAgent: vi.fn().mockImplementation(() => ({
       write: vi.fn(async (i: any) => ({ text: `## Case ${i.caseId}`, meta: { cli: "claude", model: "sonnet", durationMs: 1 } })),
     })),
-    PracticeStitcherAgent: vi.fn().mockImplementation(() => ({
-      stitch: vi.fn(async () => ({ transitions: {}, meta: null })),
-    })),
     WriterClosingAgent: vi.fn().mockImplementation(() => ({
       write: vi.fn(async () => ({ text: "CLOSE", meta: { cli: "claude", model: "opus", durationMs: 1 } })),
     })),
+    PracticeStitcherAgent: vi.fn().mockImplementation(() => ({
+      stitch: vi.fn(async () => ({ transitions: {}, meta: null })),
+    })),
     StyleCriticAgent: vi.fn().mockImplementation(() => ({
       critique: vi.fn(async () => ({ rewrites: {}, meta: { cli: "claude", model: "opus", durationMs: 1 } })),
+    })),
+    // Runner-based mocks for orchestrator
+    runWriterOpening: vi.fn(async () => ({
+      finalText: "OPEN", toolsUsed: [], rounds: 1,
+      meta: { cli: "claude", model: "opus", durationMs: 1, total_duration_ms: 1 },
+    })),
+    runWriterPractice: vi.fn(async (opts: any) => {
+      const m = /Case 编号：(case-\d+)/.exec(opts.userMessage);
+      const caseId = m ? m[1] : "case-??";
+      return {
+        finalText: `## Case ${caseId}`, toolsUsed: [], rounds: 1,
+        meta: { cli: "claude", model: "sonnet", durationMs: 1, total_duration_ms: 1 },
+      };
+    }),
+    runWriterClosing: vi.fn(async () => ({
+      finalText: "CLOSE", toolsUsed: [], rounds: 1,
+      meta: { cli: "claude", model: "opus", durationMs: 1, total_duration_ms: 1 },
+    })),
+    runStyleCritic: vi.fn(async () => ({
+      finalText: "NO_CHANGES", toolsUsed: [], rounds: 1,
+      meta: { cli: "claude", model: "opus", durationMs: 1, total_duration_ms: 1 },
     })),
   };
 });
