@@ -1545,4 +1545,359 @@ git commit -m "sp14(T12): restyle ProjectList with new primitives + TopNav"
 
 ---
 
-<!-- PART2_MARKER -->
+## Task 13 — Restyle `ProjectWorkbench.tsx`
+
+- [ ] **Step 1: Read `packages/web-ui/src/pages/ProjectWorkbench.tsx`** and its existing test `tests/pages/project-workbench.test.tsx`. Identify current layout containers, section/tab classes, hardcoded colors.
+- [ ] **Step 2: Write failing test** — assert TopNav renders, left sidebar uses `Card variant="panel"`, active tab underline uses `border-accent` class, "Open Writer" button is `Button variant="primary"`.
+
+```ts
+// tests/pages/project-workbench.test.tsx (add)
+it('renders TopNav + Card-based sidebar + primary action', () => {
+  render(<ProjectWorkbench id="demo" />);
+  expect(screen.getByTestId('topnav')).toBeInTheDocument();
+  expect(screen.getByTestId('pw-sidebar')).toHaveClass('bg-bg-2');
+  expect(screen.getByRole('button', { name: /open writer/i })).toHaveClass('bg-accent');
+});
+```
+
+- [ ] **Step 3: Run — FAIL.**
+- [ ] **Step 4: Implement.** Replace root `<div className="flex">` with `<div className="min-h-screen bg-bg-0 text-fg-body">`. Insert `<TopNav breadcrumb={['projects', project.name]} />`. Wrap sidebar nav in `<Card variant="panel" data-testid="pw-sidebar">`. Tab underline: `data-active` → `border-b-2 border-accent`. Replace "Open Writer" anchor with `<Button variant="primary" onClick={...}>OPEN WRITER</Button>`. Chips for project status use `<Chip variant="status">`. Strip hardcoded hex colors.
+- [ ] **Step 5: Run — PASS. Commit.**
+
+```bash
+git add packages/web-ui/src/pages/ProjectWorkbench.tsx packages/web-ui/tests/pages/project-workbench.test.tsx
+git commit -m "sp14(T13): restyle ProjectWorkbench with TopNav + Card primitives"
+```
+
+---
+
+## Task 14 — Restyle `ArticleSection` + `SelectionBubble` + `InlineComposer`
+
+Covers spec §5.3 Writer page. Body text stays sans; pixel font limited to `ROUND N/M`, `[TOOL]`, `READY` chips.
+
+- [ ] **Step 1: Read** `packages/web-ui/src/components/writer/ArticleSection.tsx`, `SelectionBubble.tsx`, `InlineComposer.tsx` + tests.
+- [ ] **Step 2: Write failing tests** — `article-section.test.tsx` asserts render mode paragraph card has `bg-bg-1` and hovers to `border-accent`; meta line (`ROUND 2 / 5 · DRIFT +0.08`) uses `font-pixel` with `text-[11px]`. `selection-bubble.test.tsx` asserts floating panel uses `bg-bg-2` + `border-hair`, buttons are `Button variant="ghost"`. `inline-composer.test.tsx` asserts textarea is `Input` primitive, send button is `Button variant="primary"`.
+
+```tsx
+// ArticleSection render mode
+<article
+  data-testid="article-section"
+  className="group rounded-[10px] bg-bg-1 border border-hair p-4 hover:border-accent transition-colors"
+>
+  <header className="flex justify-between items-center mb-2">
+    <h3 className="text-fg-heading text-[15px] font-semibold m-0">{title}</h3>
+    <span className="font-pixel text-[11px] tracking-[0.08em] text-meta">
+      ROUND {round} / {totalRounds} · DRIFT {drift}
+    </span>
+  </header>
+  <div className="font-sans text-[14px] leading-[1.55] text-fg-body">{body}</div>
+</article>
+```
+
+- [ ] **Step 3: Run — FAIL.**
+- [ ] **Step 4: Implement.** `SelectionBubble` container → `absolute ... bg-bg-2 border border-hair-strong rounded-md p-1 flex gap-1`, each action `<Button variant="ghost" size="sm">`. `InlineComposer`: wrap textarea with shared `<Input as="textarea">`, send becomes primary Button; Esc cancel becomes secondary. Remove all inline `#2c8a5a` / `rgb(...)`.
+- [ ] **Step 5: Run — PASS. Commit.**
+
+```bash
+git add packages/web-ui/src/components/writer packages/web-ui/tests/components/writer
+git commit -m "sp14(T14): restyle ArticleSection + SelectionBubble + InlineComposer"
+```
+
+---
+
+## Task 15 — Restyle `ConfigWorkbench` + `AgentsPanel` + `AgentCard`
+
+Mockup layout per §4 "AGENT: writer.opening" card shape: left `--accent` stripe, pixel-label `MODEL` / `STYLE` / `TOOLS` aligned in a 3-col meta grid.
+
+- [ ] **Step 1: Read** `packages/web-ui/src/pages/ConfigWorkbench.tsx`, `components/config/AgentsPanel.tsx`, `AgentCard.tsx` + existing tests.
+- [ ] **Step 2: Write failing tests** for each. `agent-card.test.tsx` asserts root has `Card variant="agent"` (→ `border-l-2 border-l-accent`), labels `MODEL`/`STYLE`/`TOOLS` each render with `font-pixel text-[11px] text-meta`, values use `font-mono-term text-[12px]`. `agents-panel.test.tsx` asserts panel uses section Card + filter chips use `Chip variant="kind"`. `config-workbench.test.tsx` asserts 4-column layout (`agent`/`tool`/`style`/`wiki`) each with TopNav breadcrumb segment.
+- [ ] **Step 3: Run — FAIL.**
+- [ ] **Step 4: Implement.**
+
+```tsx
+// AgentCard.tsx
+<Card variant="agent" data-testid="agent-card">
+  <div className="flex justify-between items-start gap-3">
+    <div>
+      <div className="font-pixel text-[11px] tracking-[0.08em] text-accent">
+        AGENT: {agent.id}
+      </div>
+      <div className="text-fg-heading text-[14px] font-semibold mt-1">{agent.name}</div>
+    </div>
+    <Chip variant="status" tone={agent.enabled ? 'active' : 'muted'}>
+      {agent.enabled ? 'READY' : 'OFF'}
+    </Chip>
+  </div>
+  <dl className="grid grid-cols-3 gap-2 mt-3">
+    {(['MODEL', 'STYLE', 'TOOLS'] as const).map((k) => (
+      <div key={k}>
+        <dt className="font-pixel text-[11px] text-meta tracking-[0.08em]">{k}</dt>
+        <dd className="font-mono-term text-[12px] text-fg-body m-0 mt-0.5">
+          {k === 'MODEL' ? agent.model : k === 'STYLE' ? agent.styleId : agent.tools.join(', ')}
+        </dd>
+      </div>
+    ))}
+  </dl>
+</Card>
+```
+
+Replace `AgentsPanel` container with `<Card variant="section">` + `<div className="flex flex-wrap gap-2">` of filter chips. `ConfigWorkbench` root: `min-h-screen bg-bg-0` + `<TopNav breadcrumb={['config']}/>` + 4-col grid on md+.
+
+- [ ] **Step 5: Run — PASS. Commit.**
+
+```bash
+git add packages/web-ui/src/pages/ConfigWorkbench.tsx packages/web-ui/src/components/config packages/web-ui/tests
+git commit -m "sp14(T15): restyle ConfigWorkbench + AgentsPanel + AgentCard"
+```
+
+---
+
+## Task 16 — Restyle `StylePanelList` + `DistillModal` + `ProjectOverridePanel`
+
+- [ ] **Step 1: Read** the three files + tests.
+- [ ] **Step 2: Write failing tests** — `style-panel-list.test.tsx` asserts rows render with `Chip variant="status"` whose tone varies `ACTIVE` (accent) / `DELETED` (red) / `LEGACY` (amber). `distill-modal.test.tsx` asserts modal shell uses new `<Modal>` component, primary button uses `Button variant="primary"`. `project-override-panel.test.tsx` asserts form fields use shared `Input`/`Select` primitives and save button is primary.
+- [ ] **Step 3: Run — FAIL.**
+- [ ] **Step 4: Implement.** Status chip map:
+
+```tsx
+const toneMap = { active: 'accent', deleted: 'red', legacy: 'amber' } as const;
+<Chip variant="status" tone={toneMap[panel.status]}>{panel.status.toUpperCase()}</Chip>
+```
+
+Migrate all hardcoded `bg-green-*`, `text-red-500` to tokens.
+
+- [ ] **Step 5: Run — PASS. Commit.**
+
+```bash
+git add packages/web-ui/src/components/style packages/web-ui/src/components/config packages/web-ui/tests
+git commit -m "sp14(T16): restyle StylePanelList + DistillModal + ProjectOverridePanel"
+```
+
+---
+
+## Task 17 — Restyle `AgentTimeline` — mono tool lines + pixel `[TOOL]`
+
+Mockup log excerpt:
+
+```
+[14:22:07] [TOOL]   quote.pull(source="sources.md", n=4)
+[14:22:15] [TOOL]   style.lint() →  2 warnings
+```
+
+- [ ] **Step 1: Read** `components/writer/AgentTimeline.tsx` + test.
+- [ ] **Step 2: Write failing test** — each event row has `font-mono-term`; `[TOOL]` prefix span has class `font-pixel text-accent`; warn/error status uses `text-amber` / `text-red`.
+- [ ] **Step 3: Run — FAIL.**
+- [ ] **Step 4: Implement.**
+
+```tsx
+<div className="bg-log-bg rounded-md p-3 font-mono-term text-[12px] leading-[1.6]">
+  {events.map((e) => (
+    <div key={e.id} className="flex gap-2">
+      <span className="text-faint">[{e.ts}]</span>
+      <span className={`font-pixel text-[11px] ${toneClass(e.kind)}`}>[{e.kind.toUpperCase()}]</span>
+      <span className="text-fg-body">{e.message}</span>
+    </div>
+  ))}
+</div>
+```
+
+- [ ] **Step 5: Run — PASS. Commit.**
+
+```bash
+git add packages/web-ui/src/components/writer/AgentTimeline.tsx packages/web-ui/tests
+git commit -m "sp14(T17): restyle AgentTimeline with pixel [TOOL] prefix"
+```
+
+---
+
+## Task 18 — Restyle `TopicExpertPanel` + `TopicExpertConsultModal`
+
+If SP-12 merged, these files exist; otherwise skip gracefully (task body acknowledges the branch dep).
+
+- [ ] **Step 1: Check if files exist.** If not, record the skip in `/tmp/sp14-t18-skip.log` and jump to Step 5 with no-op commit (`--allow-empty` not used; simply note in PR and move on).
+- [ ] **Step 2: Write failing tests** — panel root is `Card variant="agent"` with pixel label `EXPERT: {id}`; modal shell uses shared `Modal` with `Button variant="primary"` as "Consult" action.
+- [ ] **Step 3: Run — FAIL.**
+- [ ] **Step 4: Implement.** Mirror AgentCard layout; consult transcript area reuses `AgentTimeline` styling tokens (`bg-log-bg`, `font-mono-term`).
+- [ ] **Step 5: Run — PASS. Commit.**
+
+```bash
+git add packages/web-ui/src/components/expert packages/web-ui/tests
+git commit -m "sp14(T18): restyle TopicExpertPanel + TopicExpertConsultModal"
+```
+
+> **Cross-SP risk**: if SP-12 reshaped these components after SP-14 branched, rebase conflicts are likely in this file. Resolve by keeping SP-14 className changes + SP-12 behavior.
+
+---
+
+## Task 19 — Restyle wiki / kb pages
+
+Covers `WikiSearchBox`, `WikiList`, `KbDetail` (and any page under `src/pages/wiki/` or `src/pages/kb/`).
+
+- [ ] **Step 1: Read** each file + tests.
+- [ ] **Step 2: Write failing tests** — search box uses `Input` primitive with `icon="wiki"` pixel icon; list rows are `Card variant="section"` with `Chip variant="kind" tone="wiki"`; KB detail body uses `prose` + `font-sans text-fg-body`, meta row `font-mono-term text-meta`.
+- [ ] **Step 3: Run — FAIL.**
+- [ ] **Step 4: Implement.** Swap containers, drop hardcoded `bg-neutral-*`, add `<TopNav breadcrumb={['config','wiki']}/>` on list page.
+- [ ] **Step 5: Run — PASS. Commit.**
+
+```bash
+git add packages/web-ui/src/pages/wiki packages/web-ui/src/pages/kb packages/web-ui/src/components/wiki packages/web-ui/tests
+git commit -m "sp14(T19): restyle wiki + kb pages"
+```
+
+---
+
+## Task 20 — Sweep remaining `SkillForm`-descendant modals
+
+SP-09 removed most; confirm which remain (import/delete confirm/error). Each must use new `<Modal>` + Button primitives.
+
+- [ ] **Step 1:** `grep -R "className=\"modal" packages/web-ui/src/` — enumerate legacy modals.
+- [ ] **Step 2: Write failing tests** per remaining modal asserting `data-testid="modal-root"` + backdrop uses `bg-black/55` + `backdrop-blur-sm` and container is `bg-bg-1 border border-hair`.
+- [ ] **Step 3: Run — FAIL.**
+- [ ] **Step 4: Implement** — replace legacy shell with shared `<Modal>`. Remove `.modal-old` CSS from `index.css` (queue for T23).
+- [ ] **Step 5: Run — PASS. Commit.**
+
+```bash
+git add packages/web-ui/src packages/web-ui/tests
+git commit -m "sp14(T20): migrate legacy modals to shared Modal"
+```
+
+---
+
+## Task 21 — Health dot final pixel style (SP-11 integration)
+
+- [ ] **Step 1: Read** `components/topnav/HealthDot.tsx` (introduced in SP-11) + test.
+- [ ] **Step 2: Write failing test** — dot is a 10×10 `span` with `pixel-dot` class (CSS: `image-rendering: pixelated`, square corners), not a circle; color mapped via tone prop `green|amber|red` → `--accent` / `--amber` / `--red`.
+- [ ] **Step 3: Run — FAIL.**
+- [ ] **Step 4: Implement.** Replace `rounded-full` with a 2-pixel step-edged SVG (8×8 square with 4-corner trim for pixel look) or a `clip-path: polygon(...)` square. Reuse token vars.
+- [ ] **Step 5: Run — PASS. Commit.**
+
+```bash
+git add packages/web-ui/src/components/topnav/HealthDot.tsx packages/web-ui/tests
+git commit -m "sp14(T21): pixel-style health dot"
+```
+
+> **Cross-SP risk**: SP-11 owns health polling contract; only restyle here — do not touch polling hook.
+
+---
+
+## Task 22 — Sweep hardcoded colors in `packages/web-ui/src/`
+
+- [ ] **Step 1: Grep audit.**
+
+```bash
+grep -RInE '#[0-9a-fA-F]{3,8}\b' packages/web-ui/src/ | grep -v styles/tokens.css | grep -v '.svg' > /tmp/sp14-hex.txt
+grep -RInE 'bg-(green|red|amber|yellow|blue|slate|neutral|gray|zinc)-[0-9]+' packages/web-ui/src/ > /tmp/sp14-tw.txt
+grep -RInE 'text-(green|red|amber|yellow|blue|slate|neutral|gray|zinc)-[0-9]+' packages/web-ui/src/ >> /tmp/sp14-tw.txt
+```
+
+- [ ] **Step 2: Write failing lint test** `tests/lint/no-hardcoded-colors.test.ts` that globs all `.tsx`/`.ts` under `src/` (excluding `styles/tokens.css` and a declared SVG whitelist), fails if any `#[0-9a-fA-F]{3,8}` or `bg-(green|red|amber|...)-\d+` class appears.
+
+```ts
+const ALLOW = new Set(['src/styles/tokens.css', 'src/components/ui/icons/sprite.svg']);
+```
+
+- [ ] **Step 3: Run — FAIL** (shows remaining offenders).
+- [ ] **Step 4: Fix each offender** by mapping to `var(--...)` or token class (`bg-bg-1`, `text-accent`, `border-hair`). Accept inline hex only inside explicitly whitelisted SVG icon files.
+- [ ] **Step 5: Run — PASS. Commit.**
+
+```bash
+git add packages/web-ui/src packages/web-ui/tests/lint
+git commit -m "sp14(T22): replace hardcoded colors with design tokens"
+```
+
+---
+
+## Task 23 — Global CSS cleanup (`index.css`)
+
+- [ ] **Step 1: Read** `packages/web-ui/src/styles/index.css` (and `main.css` if present). Identify legacy rules (`.modal-old`, `.btn-old`, old body bg).
+- [ ] **Step 2: Write failing test** `tests/styles/index-css.test.ts` reads the file and asserts:
+  - no occurrence of `.modal-old`, `.btn-old`, `.panel-old`
+  - `body` rule declares `background: var(--bg-0)` and `color: var(--fg-body)`
+  - `html` rule declares `font-family: var(--font-sans)`
+- [ ] **Step 3: Run — FAIL.**
+- [ ] **Step 4: Implement** — delete legacy rules; ensure body/html rules use tokens; keep `@tailwind base/components/utilities` directives.
+- [ ] **Step 5: Run — PASS. Commit.**
+
+```bash
+git add packages/web-ui/src/styles/index.css packages/web-ui/tests/styles
+git commit -m "sp14(T23): prune legacy index.css, apply tokens to body+html"
+```
+
+---
+
+## Task 24 — E2E visual smoke test (both themes)
+
+- [ ] **Step 1: Scaffold** `packages/web-ui/tests/e2e/visual-smoke.test.tsx` using `@testing-library/react` + `MemoryRouter`. No Playwright — JSDOM-level assertions only.
+- [ ] **Step 2: Write failing test.**
+
+```ts
+const PAGES = [
+  { path: '/', testid: 'page-project-list' },
+  { path: '/projects/demo', testid: 'page-project-workbench' },
+  { path: '/projects/demo/writer', testid: 'page-writer' },
+  { path: '/config', testid: 'page-config-workbench' },
+  { path: '/config/styles', testid: 'page-style-panels' },
+];
+
+describe.each(['dark', 'light'] as const)('visual smoke (%s)', (theme) => {
+  beforeEach(() => {
+    if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    else document.documentElement.removeAttribute('data-theme');
+  });
+  it.each(PAGES)('$path renders with tokens applied', async ({ path, testid }) => {
+    render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>);
+    expect(await screen.findByTestId(testid)).toBeInTheDocument();
+    expect(screen.getByTestId('topnav')).toBeInTheDocument();
+    const body = getComputedStyle(document.body).backgroundColor;
+    expect(body).not.toBe('rgba(0, 0, 0, 0)'); // token var resolved
+  });
+});
+```
+
+- [ ] **Step 3: Run — FAIL** (missing `data-testid="page-*"` on pages).
+- [ ] **Step 4: Implement** — add `data-testid` to each page root (one line per page). Ensure router wires the routes used.
+- [ ] **Step 5: Run — PASS. Commit.**
+
+```bash
+git add packages/web-ui/src/pages packages/web-ui/tests/e2e
+git commit -m "sp14(T24): e2e visual smoke across 5 pages x 2 themes"
+```
+
+---
+
+## Self-Review
+
+**Task count**: Part 1 delivered T1–T12; Part 2 adds T13–T24 → total **24 tasks**, within the required `[18, 26]` band.
+
+**Spec coverage cross-check** (against SP-14 §4, §5, §7, §8):
+
+| Spec item | Task(s) |
+| --- | --- |
+| §4 TopNav / Card / Button / Chip / Input / ProgressBar / Modal / Pixel icons | T5–T11 (part 1) + reused across T13–T20 |
+| §5.1 ProjectList | T12 (part 1) |
+| §5.2 ProjectWorkbench | **T13** |
+| §5.3 Writer (ArticleSection, SelectionBubble, InlineComposer) | **T14**, timeline in **T17** |
+| §5.4 ConfigWorkbench (agent/tool/style/wiki columns) | **T15**, **T16**, **T19** |
+| §5.5 StylePanels + wiki pages | **T16**, **T19** |
+| §5.6 All Modals unified | **T16** (DistillModal, ProjectOverridePanel) + **T20** (remaining legacy) |
+| §6 Theme switching | T4 useTheme + T24 e2e across both themes |
+| §7.3 Token migration (grep sweep) | **T22** |
+| §7 Legacy CSS removal | **T23** |
+| §8 Acceptance "grep returns 0 hex" | **T22** (lint test) |
+| §8 Acceptance "pixel font whitelist" | enforced via T14/T15/T17 + T22 lint |
+| §8 Acceptance "no `.modal-old` residue" | **T20** + **T23** |
+| SP-11 health dot pixel polish | **T21** |
+| SP-12 Topic Expert restyle (if merged) | **T18** |
+
+**Gaps vs spec** (explicitly acknowledged):
+- §8 "Storybook全variant展示" — not a separate task; covered implicitly by component-level tests in T5–T11. If reviewer insists on a Storybook page, add as T25 follow-up.
+- §8 "首屏 CSS gzip < 15KB 增量" — measured in PR CI summary, not a test task.
+- SP-13 new components (if any beyond SP-11/SP-12) may need one-off patches during T22 sweep; call out in PR if encountered.
+
+**Cross-SP dependency risks**:
+- T18 assumes SP-12 merged to main before SP-14 part 2 execution; if not, skip gracefully (documented in step 1).
+- T21 assumes SP-11 HealthDot exists; same fallback.
+- T13–T17 touch components SP-13 may have reshaped (Writer tool-use wiring). Rebase onto latest main before executing; resolve conflicts by **keeping SP-14 classNames + SP-13 logic**.
+
+Plan is complete and ready to execute.
+
