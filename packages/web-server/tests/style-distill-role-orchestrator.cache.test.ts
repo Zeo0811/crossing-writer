@@ -17,6 +17,7 @@ vi.mock("@crossing/agents", () => {
 import * as agents from "@crossing/agents";
 import {
   runRoleDistill,
+  runRoleDistillAll,
   type RoleDistillEvent,
 } from "../src/services/style-distill-role-orchestrator.js";
 import { SlicerCache, SLICER_PROMPT_HASH } from "../src/services/slicer-cache.js";
@@ -165,6 +166,48 @@ describe("orchestrator cache integration — SP-15 T6", () => {
     }
 
     expect(vi.mocked(agents.runSectionSlicer)).toHaveBeenCalledTimes(1);
+  });
+
+  it("SP-15 T8: runRoleDistillAll reuses cached slicer across runs", async () => {
+    const body = "intro. practice. closing.";
+    setupDb([
+      { id: "a1", account: "acc", body, published_at: "2026-04-01" },
+      { id: "a2", account: "acc", body: body + " extra", published_at: "2026-04-02" },
+    ]);
+    vi.mocked(agents.runSectionSlicer).mockResolvedValue({
+      slices: [
+        { start_char: 0, end_char: 6, role: "opening" },
+        { start_char: 7, end_char: 15, role: "practice" },
+        { start_char: 16, end_char: 24, role: "closing" },
+      ],
+      meta: { cli: "claude", model: null, durationMs: 1 },
+    });
+
+    await runRoleDistillAll(
+      { account: "acc" },
+      {
+        sqlitePath,
+        vaultPath: vault,
+        cliModelPerStep: { slicer: { cli: "claude", model: "claude-sonnet-4-5" } },
+      },
+    );
+    const firstCallCount = vi.mocked(agents.runSectionSlicer).mock.calls.length;
+    expect(firstCallCount).toBe(2); // both articles sliced once
+
+    vi.mocked(agents.runSectionSlicer).mockClear();
+    const events: any[] = [];
+    await runRoleDistillAll(
+      { account: "acc" },
+      {
+        sqlitePath,
+        vaultPath: vault,
+        cliModelPerStep: { slicer: { cli: "claude", model: "claude-sonnet-4-5" } },
+        onEvent: (ev) => events.push(ev),
+      },
+    );
+    expect(vi.mocked(agents.runSectionSlicer)).not.toHaveBeenCalled();
+    const hits = events.filter((e) => e.phase === "slicer_cache_hit");
+    expect(hits.length).toBe(2);
   });
 
   it("cache write failures do not throw (warn and continue)", async () => {
