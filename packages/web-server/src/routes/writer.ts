@@ -184,7 +184,10 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
     },
   );
 
-  app.put<{ Params: { id: string; key: string }; Body: { body?: string } }>(
+  app.put<{
+    Params: { id: string; key: string };
+    Body: { body?: string; frontmatter?: Record<string, unknown> };
+  }>(
     "/api/projects/:id/writer/sections/:key",
     async (req, reply) => {
       if (typeof req.body?.body !== "string") {
@@ -193,13 +196,15 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
       const as = new ArticleStore(join(deps.projectsDir, req.params.id));
       const existing = await as.readSection(req.params.key as SectionKey);
       if (!existing) return reply.code(404).send({ error: "section not found" });
+      const extra = req.body.frontmatter ?? {};
       await as.writeSection(req.params.key as SectionKey, {
         key: existing.key,
         frontmatter: {
           ...existing.frontmatter,
+          ...extra,
           last_agent: "human",
           last_updated_at: new Date().toISOString(),
-        },
+        } as any,
         body: req.body.body,
       });
       return reply.send({ ok: true });

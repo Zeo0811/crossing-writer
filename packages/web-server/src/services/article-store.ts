@@ -9,13 +9,34 @@ export type SectionKey =
   | "transitions"
   | `practice.case-${string}`;
 
-export interface SectionFrontmatter {
+export interface EditHistoryEntry {
+  at: string;
+  kind: string;
+  summary?: string;
+}
+
+export interface SectionImageRef {
+  url: string;
+  alt?: string;
+  inserted_at?: string;
+}
+
+/** SP-13: optional frontmatter fields carried verbatim through write/read. */
+export interface SectionFrontmatterExtras {
+  manually_edited?: boolean;
+  last_edited_at?: string;
+  edit_history?: EditHistoryEntry[];
+  images?: SectionImageRef[];
+}
+
+export interface SectionFrontmatter extends SectionFrontmatterExtras {
   section: SectionKey;
   last_agent: string;
   last_updated_at: string;
   reference_accounts?: string[];
   cli?: string;
   model?: string;
+  [k: string]: unknown;
 }
 
 export interface ArticleSectionFile {
