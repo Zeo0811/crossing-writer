@@ -52,6 +52,13 @@ const EVENT_TYPES = [
   "writer.tool_failed",
   "writer.tool_round_completed",
   "writer.selection_rewritten",
+  // SP-10: role-scoped distill + run gating
+  "distill.started",
+  "distill.slicer_progress",
+  "distill.composer_done",
+  "distill.finished",
+  "distill.failed",
+  "run.blocked",
 ];
 
 export function useProjectStream(projectId: string | undefined) {
