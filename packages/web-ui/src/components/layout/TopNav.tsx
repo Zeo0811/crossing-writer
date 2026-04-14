@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useInRouterContext } from "react-router-dom";
 import { useTheme } from "../../hooks/useTheme";
 
 interface TopNavProps {
@@ -14,6 +14,7 @@ const LINKS = [
 
 export function TopNav({ version = "v0.14", breadcrumb }: TopNavProps) {
   const { theme, toggle } = useTheme();
+  const inRouter = useInRouterContext();
   return (
     <nav
       data-testid="topnav"
@@ -44,18 +45,28 @@ export function TopNav({ version = "v0.14", breadcrumb }: TopNavProps) {
         />
       </div>
       <div className="flex items-center gap-[22px] text-[13px] text-meta">
-        {LINKS.map((l) => (
-          <NavLink
-            key={l.to}
-            to={l.to}
-            end={l.end}
-            className={({ isActive }) =>
-              `no-underline ${isActive ? "text-heading relative after:content-[''] after:absolute after:left-0 after:right-0 after:-bottom-1 after:h-[2px] after:bg-accent after:rounded-[2px]" : "text-meta hover:text-body"}`
-            }
-          >
-            {l.label}
-          </NavLink>
-        ))}
+        {LINKS.map((l) =>
+          inRouter ? (
+            <NavLink
+              key={l.to}
+              to={l.to}
+              end={l.end}
+              className={({ isActive }) =>
+                `no-underline ${isActive ? "text-heading relative after:content-[''] after:absolute after:left-0 after:right-0 after:-bottom-1 after:h-[2px] after:bg-accent after:rounded-[2px]" : "text-meta hover:text-body"}`
+              }
+            >
+              {l.label}
+            </NavLink>
+          ) : (
+            <a
+              key={l.to}
+              href={l.to}
+              className="no-underline text-meta hover:text-body"
+            >
+              {l.label}
+            </a>
+          )
+        )}
       </div>
       <div className="flex items-center gap-3">
         <span className="inline-flex items-center gap-1.5 text-[11px] px-2 py-[3px] bg-bg-2 border border-hair rounded-[2px]">
