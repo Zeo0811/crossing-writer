@@ -14,13 +14,19 @@ import { registerExpertsRoutes } from "./routes/experts.js";
 import { registerMissionRoutes } from "./routes/mission.js";
 import { registerStreamRoutes } from "./routes/stream.js";
 import { createConfigStore } from "./services/config-store.js";
-import { registerConfigRoutes } from "./routes/config.js";
 import { registerEvidenceRoutes } from "./routes/evidence.js";
 import { registerKbStylePanelsRoutes } from "./routes/kb-style-panels.js";
 import { registerKbAccountsRoutes } from "./routes/kb-accounts.js";
 import { registerKbWikiRoutes } from "./routes/kb-wiki.js";
 import { registerWriterRoutes } from "./routes/writer.js";
 import { registerWriterRewriteSelectionRoutes } from "./routes/writer-rewrite-selection.js";
+import { createAgentConfigStore } from "./services/agent-config-store.js";
+import { StylePanelStore } from "./services/style-panel-store.js";
+import { ProjectOverrideStore } from "./services/project-override-store.js";
+import { registerConfigAgentsRoutes } from "./routes/config-agents.js";
+import { registerConfigStylePanelsRoutes } from "./routes/config-style-panels.js";
+import { registerConfigStylePanelsDistillRoutes } from "./routes/config-style-panels-distill.js";
+import { registerConfigProjectOverridesRoutes } from "./routes/config-project-overrides.js";
 
 const configPath = process.env.CROSSING_CONFIG
   ?? resolve(process.cwd(), "../../config.json");
@@ -65,7 +71,7 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
   registerStreamRoutes(app, { projectsDir: cfg.projectsDir });
 
   const configStore = createConfigStore(configPath);
-  registerConfigRoutes(app, { configStore });
+  // NOTE: legacy registerConfigRoutes superseded by SP-10 config-agents + config-project-overrides routes.
 
   const vaultRegistry = new ExpertRegistry(cfg.vaultPath);
   registerCasePlanRoutes(app, {
@@ -119,6 +125,22 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
       sqlitePath: configStore.current.sqlitePath,
       configStore,
     },
+  });
+
+  // SP-10 config workbench
+  const agentConfigStore = createAgentConfigStore(configStore);
+  const stylePanelStore = new StylePanelStore(configStore.current.vaultPath);
+  const projectOverrideStore = new ProjectOverrideStore(configStore.current.projectsDir);
+  registerConfigAgentsRoutes(app, { agentConfigStore });
+  registerConfigStylePanelsRoutes(app, { stylePanelStore });
+  registerConfigStylePanelsDistillRoutes(app, {
+    vaultPath: configStore.current.vaultPath,
+    sqlitePath: configStore.current.sqlitePath,
+    stylePanelStore,
+  });
+  registerConfigProjectOverridesRoutes(app, {
+    projectOverrideStore,
+    projectStore: store,
   });
 
   app.get("/api/health", async () => ({
