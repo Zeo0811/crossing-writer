@@ -100,12 +100,17 @@ export function TopicExpertPanel({ api }: Props = {}) {
   return (
     <div data-testid="te-panel">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold">🧑‍🎓 选题专家团</h2>
-        <button onClick={() => setModalOpen(true)} data-testid="te-new-btn">
+        <h2 className="text-lg font-semibold text-heading m-0 font-pixel tracking-[0.06em] text-accent">🧑‍🎓 选题专家团</h2>
+        <button
+          type="button"
+          onClick={() => setModalOpen(true)}
+          data-testid="te-new-btn"
+          className="px-3 py-1 text-xs bg-accent text-accent-on border border-accent rounded-[2px] cursor-pointer hover:bg-accent-soft hover:border-accent-soft"
+        >
           + 新增专家
         </button>
       </div>
-      {err && <div role="alert" className="text-red-500">{err}</div>}
+      {err && <div role="alert" className="text-red">{err}</div>}
       {experts.length === 0 ? (
         <div>暂无专家</div>
       ) : (
