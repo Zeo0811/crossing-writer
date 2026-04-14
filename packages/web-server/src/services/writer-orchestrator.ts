@@ -16,6 +16,7 @@ import yaml from "js-yaml";
 import type { ProjectStore } from "./project-store.js";
 import { appendEvent } from "./event-log.js";
 import { ArticleStore, type SectionKey } from "./article-store.js";
+import type { StylePanel } from "./style-panel-types.js";
 
 export type WriterAgentKey =
   | "writer.opening" | "writer.practice" | "writer.closing"
@@ -26,6 +27,39 @@ export interface WriterConfig {
   reference_accounts_per_agent: Partial<Record<WriterAgentKey, string[]>>;
 }
 
+export interface ResolvedStyle {
+  panel: StylePanel;
+  bodyContent: string;
+}
+
+/**
+ * Higher-order resolver supplied by the route layer (which has access to
+ * AgentConfigStore + ProjectOverrideStore + StylePanelStore via deps).
+ *
+ * Contract:
+ * - Return `null` when the agent has no styleBinding configured (legacy /
+ *   backward-compat path — no injection, no block).
+ * - Return `{ panel, bodyContent }` when a binding resolves to an active panel.
+ * - Throw `StyleNotBoundError` (or any error with `{ binding, reason }`
+ *   shape) when a binding exists but is unresolvable — orchestrator will
+ *   treat this as a blocker and emit `run.blocked`.
+ */
+export type ResolveStyleForAgent = (
+  agentKey: WriterAgentKey,
+) => Promise<ResolvedStyle | null>;
+
+export interface MissingBinding {
+  agentKey: string;
+  account?: string;
+  role?: string;
+  reason: string;
+}
+
+export interface RunBlockedResult {
+  blocked: true;
+  missingBindings: MissingBinding[];
+}
+
 export interface RunWriterOpts {
   projectId: string;
   projectsDir: string;
@@ -34,6 +68,12 @@ export interface RunWriterOpts {
   sqlitePath: string;
   writerConfig: WriterConfig;
   sectionsToRun?: string[];
+  /** Optional style-binding resolver (SP-10). If omitted, orchestrator skips
+   *  all binding validation/injection for backwards compatibility. */
+  resolveStyleForAgent?: ResolveStyleForAgent;
+  /** Optional SSE-style event sink used by SP-10 for `run.blocked`. Existing
+   *  per-section events are still written via appendEvent regardless. */
+  onEvent?: (ev: { type: string; [k: string]: unknown }) => void;
 }
 
 interface ParsedCase {
@@ -176,10 +216,51 @@ function parseCriticRewrites(text: string, allowedKeys: string[]): Record<string
   return rewrites;
 }
 
-export async function runWriter(opts: RunWriterOpts): Promise<void> {
+function formatStyleReference(resolved: ResolvedStyle): string {
+  const { account, role, version } = resolved.panel.frontmatter;
+  return `\n\n# Style Reference — ${account}/${role} v${version}\n\n${resolved.bodyContent}\n`;
+}
+
+export async function runWriter(
+  opts: RunWriterOpts,
+): Promise<void | RunBlockedResult> {
   const pDir = join(opts.projectsDir, opts.projectId);
   const articleStore = new ArticleStore(pDir);
   await articleStore.init();
+
+  // --- SP-10: Pre-run style-binding validation ------------------------------
+  // Gate: if a resolver is supplied, we require every writer.* agent whose
+  // section will actually run to resolve to a bound style panel. If any fail,
+  // we return early with a RunBlockedResult and emit `run.blocked` without
+  // starting any agent and without mutating project status.
+  const writerAgents: WriterAgentKey[] = [
+    "writer.opening",
+    "writer.practice",
+    "writer.closing",
+  ];
+  const resolvedStyles: Partial<Record<WriterAgentKey, ResolvedStyle | null>> = {};
+  if (opts.resolveStyleForAgent) {
+    const missing: MissingBinding[] = [];
+    for (const agentKey of writerAgents) {
+      try {
+        const r = await opts.resolveStyleForAgent(agentKey);
+        resolvedStyles[agentKey] = r;
+      } catch (err) {
+        const e = err as { binding?: { account?: string; role?: string }; reason?: string };
+        missing.push({
+          agentKey,
+          account: e?.binding?.account,
+          role: e?.binding?.role,
+          reason: e?.reason ?? "unresolved",
+        });
+      }
+    }
+    if (missing.length > 0) {
+      opts.onEvent?.({ type: "run.blocked", missingBindings: missing });
+      return { blocked: true, missingBindings: missing };
+    }
+  }
+  // --------------------------------------------------------------------------
 
   const selectedRaw = await readFile(join(pDir, "mission/case-plan/selected-cases.md"), "utf-8");
   const cases = parseSelectedCases(selectedRaw);
@@ -231,12 +312,16 @@ export async function runWriter(opts: RunWriterOpts): Promise<void> {
         });
         const refs = await loadReferenceAccountKb(opts.vaultPath, openingResolved.referenceAccounts);
         const t0 = Date.now();
+        const openingStyle = resolvedStyles["writer.opening"];
         const result: WriterRunResult = await runWriterOpening({
           invokeAgent: invokerFor("writer.opening", openingResolved.cli, openingResolved.model),
           userMessage: buildOpeningUserMessage(briefSummary, missionSummary, productOverview, refs),
           dispatchTool,
           onEvent: toolEventBridge("opening"),
           sectionKey: "opening",
+          ...(openingStyle
+            ? { pinnedContext: formatStyleReference(openingStyle) }
+            : {}),
         });
         await articleStore.writeSection("opening", {
           key: "opening",
@@ -291,6 +376,7 @@ export async function runWriter(opts: RunWriterOpts): Promise<void> {
           ? (await readdir(shotsDir)).map((f) => join(shotsDir, f))
           : [];
         const t0 = Date.now();
+        const practiceStyle = resolvedStyles["writer.practice"];
         const result: WriterRunResult = await runWriterPractice({
           invokeAgent: invokerFor("writer.practice", practiceResolved.cli, practiceResolved.model),
           userMessage: buildPracticeUserMessage(c, notesFm, notesBody, shots, refs),
@@ -298,6 +384,9 @@ export async function runWriter(opts: RunWriterOpts): Promise<void> {
           dispatchTool,
           onEvent: toolEventBridge(sectionKey),
           sectionKey,
+          ...(practiceStyle
+            ? { pinnedContext: formatStyleReference(practiceStyle) }
+            : {}),
         });
         await articleStore.writeSection(sectionKey, {
           key: sectionKey,
@@ -413,12 +502,16 @@ export async function runWriter(opts: RunWriterOpts): Promise<void> {
       });
       const refs = await loadReferenceAccountKb(opts.vaultPath, closingResolved.referenceAccounts);
       const t0 = Date.now();
+      const closingStyle = resolvedStyles["writer.closing"];
       const result: WriterRunResult = await runWriterClosing({
         invokeAgent: invokerFor("writer.closing", closingResolved.cli, closingResolved.model),
         userMessage: buildClosingUserMessage(openingBody, stitchedPractice, refs),
         dispatchTool,
         onEvent: toolEventBridge("closing"),
         sectionKey: "closing",
+        ...(closingStyle
+          ? { pinnedContext: formatStyleReference(closingStyle) }
+          : {}),
       });
       await articleStore.writeSection("closing", {
         key: "closing",
