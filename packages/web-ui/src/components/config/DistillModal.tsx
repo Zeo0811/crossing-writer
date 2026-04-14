@@ -24,6 +24,7 @@ export function DistillModal({ account, role, onClose, onSuccess }: DistillModal
   const [slicer, setSlicer] = useState<SlicerProgress | null>(null);
   const [composerDone, setComposerDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [limit, setLimit] = useState<number>(10);
   const streamRef = useRef<DistillStylePanelStream | null>(null);
 
   useEffect(() => {
@@ -40,7 +41,7 @@ export function DistillModal({ account, role, onClose, onSuccess }: DistillModal
     setSlicer(null);
     setComposerDone(false);
     setError(null);
-    const s = distillStylePanel(account, role);
+    const s = distillStylePanel(account, role, limit);
     streamRef.current = s;
     s.onEvent((ev) => {
       if (ev.type === "distill.started") {
@@ -61,7 +62,7 @@ export function DistillModal({ account, role, onClose, onSuccess }: DistillModal
         setError(ev.error ?? ev.data?.error ?? "unknown error");
       }
     });
-  }, [account, role, onSuccess]);
+  }, [account, role, onSuccess, limit]);
 
   const handleCancel = useCallback(() => {
     if (streamRef.current) {
@@ -93,7 +94,20 @@ export function DistillModal({ account, role, onClose, onSuccess }: DistillModal
         <div className="border-t mb-3" style={{ borderColor: "var(--border)" }} />
 
         <div className="text-sm mb-3">
-          <div className="opacity-80">源文章：账号最新 50 篇</div>
+          <div className="flex items-center gap-2 mb-2">
+            <label className="opacity-80">样本数：</label>
+            <input
+              type="number"
+              min={1}
+              max={100}
+              value={limit}
+              disabled={phase !== "idle"}
+              onChange={(e) => setLimit(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
+              className="w-20 px-2 py-0.5 text-xs border rounded"
+              style={{ borderColor: "var(--border)" }}
+            />
+            <span className="text-xs opacity-60">账号最新 N 篇（MVP 建议 10，省钱；生产建议 50）</span>
+          </div>
           <div className="mt-2">流程：</div>
           <ul className="ml-4 mt-1 text-xs leading-5 opacity-90">
             <li>① section-slicer (并发 5)</li>
