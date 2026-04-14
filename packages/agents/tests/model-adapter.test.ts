@@ -129,8 +129,10 @@ describe("invokeAgent with images", () => {
 
     const call = vi.mocked(spawnSync).mock.calls[0]!;
     const args = call[1] as string[];
+    const spawnOpts = call[2] as { input?: string };
     expect(args[0]).toBe("-p");
-    const prompt = args[1] as string;
+    expect(args[1]).toBe("-");
+    const prompt = spawnOpts.input ?? "";
     expect(prompt).toContain("@/abs/a.png");
     expect(prompt).toContain("@/abs/b.png");
     expect(args).not.toContain("--image");
