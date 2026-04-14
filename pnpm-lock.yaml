@@ -26,6 +26,9 @@ importers:
 
   packages/kb:
     dependencies:
+      '@crossing/agents':
+        specifier: workspace:*
+        version: link:../agents
       better-sqlite3:
         specifier: ^11.5.0
         version: 11.10.0

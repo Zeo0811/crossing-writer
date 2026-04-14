@@ -11,6 +11,7 @@
     "dev": "tsc -w -p ."
   },
   "dependencies": {
+    "@crossing/agents": "workspace:*",
     "better-sqlite3": "^11.5.0",
     "commander": "^12.1.0"
   },
