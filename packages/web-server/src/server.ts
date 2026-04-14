@@ -102,12 +102,32 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     sqlitePath: configStore.current.sqlitePath,
   });
 
+  // SP-10 config workbench stores (created here so both writer + config routes share them)
+  const agentConfigStore = createAgentConfigStore(configStore);
+  const stylePanelStore = new StylePanelStore(configStore.current.vaultPath);
+  try {
+    const migrated = stylePanelStore.migrateLegacy();
+    if (migrated > 0) {
+      console.log(
+        `[server] migrated ${migrated} legacy SP-06 style panel(s) to sp10 frontmatter`,
+      );
+    }
+  } catch (err) {
+    console.warn(
+      `[server] style-panel legacy migration failed: ${(err as Error).message}`,
+    );
+  }
+  const projectOverrideStore = new ProjectOverrideStore(configStore.current.projectsDir);
+
   registerWriterRoutes(app, {
     store,
     projectsDir: configStore.current.projectsDir,
     vaultPath: configStore.current.vaultPath,
     sqlitePath: configStore.current.sqlitePath,
     configStore: { get: async (key: string) => configStore.current.agents?.[key] } as any,
+    agentConfigStore,
+    projectOverrideStore,
+    stylePanelStore,
   });
 
   registerWriterRewriteSelectionRoutes(app, {
@@ -127,22 +147,7 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     },
   });
 
-  // SP-10 config workbench
-  const agentConfigStore = createAgentConfigStore(configStore);
-  const stylePanelStore = new StylePanelStore(configStore.current.vaultPath);
-  try {
-    const migrated = stylePanelStore.migrateLegacy();
-    if (migrated > 0) {
-      console.log(
-        `[server] migrated ${migrated} legacy SP-06 style panel(s) to sp10 frontmatter`,
-      );
-    }
-  } catch (err) {
-    console.warn(
-      `[server] style-panel legacy migration failed: ${(err as Error).message}`,
-    );
-  }
-  const projectOverrideStore = new ProjectOverrideStore(configStore.current.projectsDir);
+  // SP-10 config workbench routes (stores created above, shared with writer routes)
   registerConfigAgentsRoutes(app, { agentConfigStore });
   registerConfigStylePanelsRoutes(app, { stylePanelStore });
   registerConfigStylePanelsDistillRoutes(app, {

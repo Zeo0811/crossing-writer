@@ -3,7 +3,12 @@ import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { ProjectStore } from "../services/project-store.js";
 import type { ConfigStore } from "../services/config-store.js";
-import { runWriter, type WriterAgentKey, type WriterConfig } from "../services/writer-orchestrator.js";
+import type { AgentConfigStore } from "../services/agent-config-store.js";
+import type { ProjectOverrideStore } from "../services/project-override-store.js";
+import type { StylePanelStore } from "../services/style-panel-store.js";
+import { mergeAgentConfig } from "../services/config-merger.js";
+import { resolveStyleBinding } from "../services/style-binding-resolver.js";
+import { runWriter, type WriterAgentKey, type WriterConfig, type ResolveStyleForAgent } from "../services/writer-orchestrator.js";
 import { ArticleStore, type SectionKey } from "../services/article-store.js";
 import {
   WriterOpeningAgent, WriterPracticeAgent, WriterClosingAgent,
@@ -21,6 +26,33 @@ export interface WriterDeps {
   vaultPath: string;
   sqlitePath: string;
   configStore: ConfigStore | { get(key: string): Promise<{ cli?: string; model?: string; reference_accounts?: string[] } | undefined> };
+  agentConfigStore?: AgentConfigStore;
+  projectOverrideStore?: ProjectOverrideStore;
+  stylePanelStore?: StylePanelStore;
+}
+
+const SECTION_AGENT_TO_CONFIG_KEY: Record<string, string> = {
+  "writer.opening": "writer.opening",
+  "writer.practice": "writer.practice",
+  "writer.closing": "writer.closing",
+};
+
+function buildResolveStyleForAgent(
+  deps: WriterDeps,
+  projectId: string,
+): ResolveStyleForAgent | undefined {
+  if (!deps.agentConfigStore || !deps.stylePanelStore) return undefined;
+  const agentConfigStore = deps.agentConfigStore;
+  const projectOverrideStore = deps.projectOverrideStore;
+  const stylePanelStore = deps.stylePanelStore;
+  return async (agentKey) => {
+    const cfgKey = SECTION_AGENT_TO_CONFIG_KEY[agentKey] ?? agentKey;
+    const global = agentConfigStore.get(cfgKey);
+    if (!global) return null;
+    const override = projectOverrideStore?.get(projectId)?.agents?.[cfgKey];
+    const merged = mergeAgentConfig(global, override as any);
+    return resolveStyleBinding(merged.styleBinding, stylePanelStore);
+  };
 }
 
 const AGENT_KEYS: WriterAgentKey[] = [
@@ -95,6 +127,7 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
           reference_accounts_per_agent: writerConfig.reference_accounts_per_agent as Record<string, string[]>,
         },
       });
+      const resolveStyleForAgent = buildResolveStyleForAgent(deps, req.params.id);
       void (async () => {
         try {
           await runWriter({
@@ -104,6 +137,13 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
             vaultPath: deps.vaultPath,
             sqlitePath: deps.sqlitePath,
             writerConfig,
+            ...(resolveStyleForAgent ? { resolveStyleForAgent } : {}),
+            onEvent: async (ev) => {
+              try {
+                const { appendEvent } = await import("../services/event-log.js");
+                await appendEvent(join(deps.projectsDir, req.params.id), ev as any);
+              } catch {}
+            },
           });
         } catch {
           // runWriter itself sets writing_failed
@@ -383,12 +423,14 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
         cli_model_per_agent: (cfg?.cli_model_per_agent ?? {}) as WriterConfig["cli_model_per_agent"],
         reference_accounts_per_agent: (cfg?.reference_accounts_per_agent ?? {}) as WriterConfig["reference_accounts_per_agent"],
       };
+      const resolveStyleForAgent = buildResolveStyleForAgent(deps, req.params.id);
       void (async () => {
         try {
           await runWriter({
             projectId: req.params.id, projectsDir: deps.projectsDir, store: deps.store,
             vaultPath: deps.vaultPath, sqlitePath: deps.sqlitePath,
             writerConfig, sectionsToRun: failed,
+            ...(resolveStyleForAgent ? { resolveStyleForAgent } : {}),
           });
         } catch {}
       })();
