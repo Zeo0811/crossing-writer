@@ -21,6 +21,7 @@ export function ProjectList() {
         <h1 className="text-2xl font-semibold" style={{ color: "var(--green)" }}>
           Crossing Writer
         </h1>
+        <a href="/style-panels" className="px-3 py-1 rounded border text-sm" style={{ borderColor: "var(--border)" }}>风格面板</a>
         <button
           onClick={() => setShowNew(true)}
           className="px-4 py-2 rounded text-white"
