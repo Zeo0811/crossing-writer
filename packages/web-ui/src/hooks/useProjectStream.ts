@@ -36,6 +36,8 @@ const EVENT_TYPES = [
   "case_expert.tool_call", "case_expert.failed",
   "case_coordinator.synthesizing", "case_coordinator.done",
   "cases.selected",
+  "evidence.updated",
+  "evidence.submitted",
 ];
 
 export function useProjectStream(projectId: string | undefined) {

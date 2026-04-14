@@ -15,6 +15,7 @@ import { registerMissionRoutes } from "./routes/mission.js";
 import { registerStreamRoutes } from "./routes/stream.js";
 import { createConfigStore } from "./services/config-store.js";
 import { registerConfigRoutes } from "./routes/config.js";
+import { registerEvidenceRoutes } from "./routes/evidence.js";
 
 const configPath = process.env.CROSSING_CONFIG
   ?? resolve(process.cwd(), "../../config.json");
@@ -25,7 +26,7 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
   app.decorate("crossingConfig", cfg);
 
   await app.register(cors, { origin: true });
-  await app.register(multipart, { limits: { fileSize: 20 * 1024 * 1024 } });
+  await app.register(multipart, { limits: { fileSize: 1.5 * 1024 * 1024 * 1024 } });
 
   const store = new ProjectStore(cfg.projectsDir);
   app.decorate("projectStore", store);
@@ -71,6 +72,11 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
       sqlitePath: configStore.current.sqlitePath,
       configStore,
     },
+  });
+
+  registerEvidenceRoutes(app, {
+    store,
+    projectsDir: configStore.current.projectsDir,
   });
 
   registerOverviewRoutes(app, {

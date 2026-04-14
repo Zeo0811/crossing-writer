@@ -52,6 +52,19 @@ export interface Project {
     selected_count: number;
     approved_at: string | null;
   };
+  evidence?: {
+    cases: Record<string, {
+      has_screenshot: boolean;
+      has_notes: boolean;
+      has_generated: boolean;
+      complete: boolean;
+      counts: { screenshots: number; recordings: number; generated: number };
+      last_updated_at: string;
+    }>;
+    index_path: string;
+    all_complete: boolean;
+    submitted_at: string | null;
+  };
   runs: Array<{
     id: string;
     stage: string;

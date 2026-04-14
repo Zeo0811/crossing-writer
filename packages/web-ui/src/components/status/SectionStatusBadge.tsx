@@ -1,12 +1,13 @@
 import type { ActiveAgent, StreamEvent } from "../../hooks/useProjectStream";
 
-export type SectionKey = "brief" | "mission" | "overview" | "case";
+export type SectionKey = "brief" | "mission" | "overview" | "case" | "evidence";
 
 const AGENT_PREFIXES: Record<SectionKey, (agent: string) => boolean> = {
   brief: (a) => a === "brief_analyst",
   mission: (a) => a === "coordinator" || a.startsWith("topic_expert."),
   overview: (a) => a === "product_overview",
   case: (a) => a === "case_coordinator" || a.startsWith("case_expert."),
+  evidence: () => false,
 };
 
 const SECTION_ORDER: Array<{ key: SectionKey; states: string[] }> = [
@@ -14,6 +15,7 @@ const SECTION_ORDER: Array<{ key: SectionKey; states: string[] }> = [
   { key: "mission", states: ["awaiting_mission_pick"] },
   { key: "overview", states: ["mission_approved", "awaiting_overview_input", "overview_analyzing", "overview_ready", "overview_failed"] },
   { key: "case", states: ["awaiting_case_expert_selection", "case_planning_running", "case_planning_failed", "case_synthesizing", "awaiting_case_selection", "case_plan_approved"] },
+  { key: "evidence", states: ["evidence_collecting", "evidence_ready"] },
 ];
 
 function sectionIndex(key: SectionKey): number {

@@ -16,6 +16,15 @@ vi.mock("../../src/hooks/useProjectStream", () => ({
   useProjectStream: () => ({ events: [], activeAgents: [] }),
 }));
 
+vi.mock("../../src/api/evidence-client", () => ({
+  getProjectEvidence: vi.fn(async () => ({ cases: {}, all_complete: true, submitted_at: null, index_path: "" })),
+  getCaseEvidence: vi.fn(),
+  uploadEvidenceFile: vi.fn(),
+  deleteEvidenceFile: vi.fn(),
+  putNotes: vi.fn(),
+  submitEvidence: vi.fn(),
+}));
+
 describe("ProjectWorkbench SP-03 status routing", () => {
   it.each([
     ["awaiting_overview_input", /Brief 配图|拖拽/],
@@ -25,6 +34,8 @@ describe("ProjectWorkbench SP-03 status routing", () => {
     ["case_planning_running", /规划中/],
     ["awaiting_case_selection", /左侧选 2-4/],
     ["case_plan_approved", /Case Plan 已批准/],
+    ["evidence_collecting", /左侧选一个 Case/],
+    ["evidence_ready", /左侧选一个 Case/],
   ])("status=%s renders expected panel", async (status, pattern) => {
     const { getProject } = await import("../../src/api/client");
     vi.mocked(getProject).mockResolvedValue({
