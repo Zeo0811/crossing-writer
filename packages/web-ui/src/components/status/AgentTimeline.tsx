@@ -41,9 +41,9 @@ function aggregate(events: StreamEvent[]): AggRow[] {
 }
 
 function dotClass(state: AggRow["state"]): string {
-  if (state === "online") return "inline-block w-2 h-2 rounded-full bg-green-500";
-  if (state === "failed") return "inline-block w-2 h-2 rounded-full bg-red-500";
-  return "inline-block w-2 h-2 rounded-full bg-gray-400";
+  if (state === "online") return "inline-block w-2 h-2 bg-accent";
+  if (state === "failed") return "inline-block w-2 h-2 bg-red";
+  return "inline-block w-2 h-2 bg-hair-strong";
 }
 
 const TOOL_EVENT_TYPES = new Set([
@@ -110,50 +110,51 @@ export function AgentTimeline({
   const recent = events.slice(-20).reverse();
   const toolEvents = events.filter((e) => TOOL_EVENT_TYPES.has(e.type));
   return (
-    <div className="border rounded bg-white">
-      <div className="px-3 py-2 border-b bg-gray-50 text-xs font-semibold flex items-center justify-between">
+    <div className="border border-hair rounded-[6px] bg-[var(--log-bg)]">
+      <div className="px-3 py-2 border-b border-hair bg-bg-2 text-xs font-semibold flex items-center justify-between text-body">
         <span className="flex items-center gap-2">
-            ⏱ Agent 时间线
+            <span className="font-pixel text-[11px] tracking-[0.06em] text-accent">[TIMELINE]</span>
+            Agent 时间线
             {connectionState && (
               <SseHealthDot connectionState={connectionState} lastEventTs={lastEventTs ?? null} />
             )}
           </span>
-        <span className="text-gray-500 font-normal">
+        <span className="text-meta font-normal font-mono-term">
           {rows.length} agents · {events.length} events
         </span>
       </div>
       {rows.length === 0 && events.length === 0 ? (
-        <div className="px-3 py-4 text-xs text-gray-400">
+        <div className="px-3 py-4 text-xs text-faint font-mono-term">
           暂无事件（等待 agent 启动…）
         </div>
       ) : (
         <>
           {rows.length > 0 && (
-            <ul className="text-xs font-mono px-3 py-2 space-y-1 border-b">
+            <ul className="text-xs font-mono-term px-3 py-2 space-y-1 border-b border-hair">
               {rows.map((r) => (
                 <li key={r.agent} data-testid={`agent-row-${r.agent}`} className="flex gap-2 items-center">
-                  <span className="text-gray-500 w-16">{r.firstTs.slice(11, 19)}</span>
+                  <span className="text-faint w-16">{r.firstTs.slice(11, 19)}</span>
                   <span className={dotClass(r.state)}
                     data-testid={`status-dot-${r.agent}`} />
-                  <span className="truncate max-w-[12rem]" title={r.agent}>{r.agent}</span>
-                  <span className="text-gray-500">· {r.cli}/{r.model ?? "?"}</span>
-                  <span className="ml-auto text-gray-400">{r.lastStage}</span>
+                  <span className="truncate max-w-[12rem] text-body" title={r.agent}>{r.agent}</span>
+                  <span className="text-meta">· {r.cli}/{r.model ?? "?"}</span>
+                  <span className="ml-auto text-faint">{r.lastStage}</span>
                 </li>
               ))}
             </ul>
           )}
           {toolEvents.length > 0 && (
-            <ul data-testid="tool-events" className="px-3 py-2 space-y-1 border-b">
+            <ul data-testid="tool-events" className="px-3 py-2 space-y-1 border-b border-hair">
               {toolEvents.map((ev, i) => renderToolEvent(ev, i))}
             </ul>
           )}
           <details className="px-3 py-1">
-            <summary className="cursor-pointer text-[10px] text-gray-500">
+            <summary className="cursor-pointer text-[10px] text-meta">
               原始事件 ({events.length})
             </summary>
-            <ul className="text-[10px] font-mono space-y-0.5 mt-1 max-h-32 overflow-auto">
+            <ul className="text-[10px] font-mono-term space-y-0.5 mt-1 max-h-32 overflow-auto">
               {recent.map((ev, i) => (
-                <li key={i} className="text-gray-600 truncate" title={JSON.stringify(ev)}>
+                <li key={i} className="text-meta truncate" title={JSON.stringify(ev)}>
                   {typeof ev.ts === "string" ? ev.ts.slice(11, 19) : ev.ts} · {ev.type}
                   {ev.agent ? ` · ${ev.agent}` : ""}
                 </li>

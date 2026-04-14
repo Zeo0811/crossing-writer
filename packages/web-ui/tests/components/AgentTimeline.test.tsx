@@ -11,7 +11,7 @@ describe("AgentTimeline SP-03", () => {
     expect(screen.getAllByText(/brief_analyst/).length).toBeGreaterThan(0);
     expect(screen.getByText(/claude\/sonnet/)).toBeInTheDocument();
     const dot = screen.getByTestId("status-dot-brief_analyst");
-    expect(dot.className).toMatch(/green/);
+    expect(dot.className).toMatch(/bg-accent/);
   });
 
   it("shows gray dot after completed", () => {
@@ -20,7 +20,7 @@ describe("AgentTimeline SP-03", () => {
       { ts: "t2", type: "agent.completed", agent: "x", cli: "codex", model: "gpt5" },
     ]} />);
     const dot = screen.getByTestId("status-dot-x");
-    expect(dot.className).toMatch(/gray/);
+    expect(dot.className).toMatch(/bg-hair-strong/);
   });
 
   it("shows red dot on failed", () => {
@@ -29,7 +29,7 @@ describe("AgentTimeline SP-03", () => {
       { ts: "t2", type: "overview.failed", agent: "product_overview", cli: "claude", model: "opus" },
     ]} />);
     const dot = screen.getByTestId("status-dot-product_overview");
-    expect(dot.className).toMatch(/red/);
+    expect(dot.className).toMatch(/bg-red/);
   });
 
   it("aggregates multiple events from same agent into one row", () => {
