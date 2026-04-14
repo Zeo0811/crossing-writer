@@ -19,6 +19,10 @@ import { CaseSelectedGuide } from "../components/right/CaseSelectedGuide";
 import { SettingsDrawer } from "../components/settings/SettingsDrawer";
 import { EvidenceSection } from "../components/evidence/EvidenceSection";
 import { EvidenceIntakeForm } from "../components/evidence/EvidenceIntakeForm";
+import { ArticleSection } from "../components/writer/ArticleSection";
+import { WriterConfigForm } from "../components/writer/WriterConfigForm";
+import { WriterProgressPanel } from "../components/writer/WriterProgressPanel";
+import { ArticleEditor } from "../components/writer/ArticleEditor";
 
 type SecStat = "completed" | "active" | "pending";
 
@@ -42,6 +46,10 @@ const SECTION_ORDER: Array<{ key: string; activeStates: string[] }> = [
   {
     key: "evidence",
     activeStates: ["evidence_collecting", "evidence_ready"],
+  },
+  {
+    key: "article",
+    activeStates: ["writing_configuring", "writing_running", "writing_ready", "writing_editing", "writing_failed"],
   },
 ];
 
@@ -249,6 +257,10 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
                   <div className="text-xs text-gray-400">case_plan_approved 后启用</div>
                 )}
               </Section>
+
+              <Section title={<>Article <SectionStatusBadge sectionKey="article" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("article", status)}>
+                <ArticleSection projectId={projectId} status={status} />
+              </Section>
             </SectionAccordion>
           )}
         </div>
@@ -259,7 +271,27 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
             <AgentTimeline events={events} connectionState={connectionState} lastEventTs={lastEventTs} />
           </div>
           <div className="flex-1 overflow-auto p-6 space-y-4">
-            {(status === "evidence_collecting" || status === "evidence_ready") ? (
+            {(status === "evidence_ready" || status === "writing_configuring") ? (
+              <WriterConfigForm
+                projectId={projectId}
+                defaults={{
+                  "writer.opening":    { cli: "claude", model: "opus" },
+                  "writer.practice":   { cli: "claude", model: "sonnet" },
+                  "writer.closing":    { cli: "claude", model: "opus" },
+                  "practice.stitcher": { cli: "claude", model: "haiku" },
+                  "style_critic":      { cli: "claude", model: "opus" },
+                }}
+                onStarted={refetch}
+              />
+            ) : (status === "writing_running" || status === "writing_failed") ? (
+              <WriterProgressPanel
+                projectId={projectId}
+                sectionsPlanned={["opening", "closing"]}
+                status={status}
+              />
+            ) : (status === "writing_ready" || status === "writing_editing") ? (
+              <ArticleEditor projectId={projectId} />
+            ) : status === "evidence_collecting" ? (
               selectedEvidenceCase
                 ? <EvidenceIntakeForm projectId={projectId} caseId={selectedEvidenceCase} />
                 : <div className="p-4 text-sm text-gray-500">← 左侧选一个 Case 开始上传 evidence</div>

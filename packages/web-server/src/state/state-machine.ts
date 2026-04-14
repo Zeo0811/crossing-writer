@@ -23,6 +23,11 @@ export const STATUSES = [
   "case_plan_approved",
   "evidence_collecting",
   "evidence_ready",
+  "writing_configuring",
+  "writing_running",
+  "writing_ready",
+  "writing_editing",
+  "writing_failed",
 ] as const;
 
 export type ProjectStatus = (typeof STATUSES)[number];
@@ -53,7 +58,12 @@ export const TRANSITIONS: Record<ProjectStatus, ProjectStatus[]> = {
   awaiting_case_selection: ["case_plan_approved"],
   case_plan_approved: ["evidence_collecting"],
   evidence_collecting: ["evidence_ready"],
-  evidence_ready: ["evidence_collecting"],
+  evidence_ready: ["evidence_collecting", "writing_configuring"],
+  writing_configuring: ["writing_running"],
+  writing_running: ["writing_ready", "writing_failed"],
+  writing_ready: ["writing_editing", "evidence_collecting"],
+  writing_editing: ["writing_ready"],
+  writing_failed: ["writing_running"],
 };
 
 export function canTransition(from: ProjectStatus, to: ProjectStatus): boolean {

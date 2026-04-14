@@ -16,6 +16,8 @@ import { registerStreamRoutes } from "./routes/stream.js";
 import { createConfigStore } from "./services/config-store.js";
 import { registerConfigRoutes } from "./routes/config.js";
 import { registerEvidenceRoutes } from "./routes/evidence.js";
+import { registerKbStylePanelsRoutes } from "./routes/kb-style-panels.js";
+import { registerWriterRoutes } from "./routes/writer.js";
 
 const configPath = process.env.CROSSING_CONFIG
   ?? resolve(process.cwd(), "../../config.json");
@@ -77,6 +79,18 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
   registerEvidenceRoutes(app, {
     store,
     projectsDir: configStore.current.projectsDir,
+  });
+
+  registerKbStylePanelsRoutes(app, {
+    vaultPath: configStore.current.vaultPath,
+  });
+
+  registerWriterRoutes(app, {
+    store,
+    projectsDir: configStore.current.projectsDir,
+    vaultPath: configStore.current.vaultPath,
+    sqlitePath: configStore.current.sqlitePath,
+    configStore: { get: async (key: string) => configStore.current.agents?.[key] } as any,
   });
 
   registerOverviewRoutes(app, {

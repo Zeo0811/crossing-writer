@@ -38,6 +38,14 @@ const EVENT_TYPES = [
   "cases.selected",
   "evidence.updated",
   "evidence.submitted",
+  "writer.section_started",
+  "writer.section_completed",
+  "writer.section_failed",
+  "writer.rewrite_chunk",
+  "writer.rewrite_completed",
+  "writer.rewrite_failed",
+  "writer.style_critic_applied",
+  "writer.final_rebuilt",
 ];
 
 export function useProjectStream(projectId: string | undefined) {
