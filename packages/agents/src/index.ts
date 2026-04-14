@@ -23,4 +23,6 @@ export { runCaseExpert, parseToolCalls as parseCaseToolCalls } from "./case-expe
 export type { ToolCall as CaseToolCall, ToolExecutor, RunCaseExpertResult } from "./case-expert-runner.js";
 export { WriterOpeningAgent } from "./roles/writer-opening-agent.js";
 export type { WriterOpeningInput, WriterOutput, ReferenceAccountKb } from "./roles/writer-opening-agent.js";
+export { WriterPracticeAgent } from "./roles/writer-practice-agent.js";
+export type { WriterPracticeInput } from "./roles/writer-practice-agent.js";
 export const VERSION = "0.2.0";
