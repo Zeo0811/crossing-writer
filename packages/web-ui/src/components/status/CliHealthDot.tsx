@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CliHealthItem } from "../../api/system-health";
 import { CLI_INSTALL_HINTS } from "./cliInstallHints";
+import { copyToClipboard } from "./copyToClipboard";
 
 export interface CliHealthDotProps {
   label: "CLAUDE" | "CODEX";
@@ -58,8 +59,8 @@ export function CliHealthDot({ label, item, onCopy }: CliHealthDotProps) {
     try {
       if (onCopy) {
         await onCopy(text);
-      } else if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
+      } else {
+        await copyToClipboard(text);
       }
       setCopiedIndex(idx);
       if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
