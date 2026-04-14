@@ -67,6 +67,13 @@ export function registerConfigStylePanelsDistillRoutes(
           send("distill.started", { account: ev.account, role: ev.role, run_id: ev.run_id });
         } else if (ev.phase === "slicer_progress") {
           send("distill.slicer_progress", { processed: ev.processed, total: ev.total });
+        } else if (ev.phase === "slicer_cache_hit") {
+          // SP-15: surface per-article slicer cache hits to the client.
+          send("distill.slicer_cache_hit", {
+            article_id: ev.article_id,
+            cache_key: ev.cache_key,
+            cached_at: ev.cached_at,
+          });
         } else if (ev.phase === "snippets_done") {
           send("distill.snippets_done", { count: ev.count });
         } else if (ev.phase === "structure_done") {
@@ -124,6 +131,13 @@ export function registerConfigStylePanelsDistillRoutes(
           send("distill_all.started", { account: ev.account, run_id: ev.run_id });
         } else if (ev.phase === "slicer_progress") {
           send("slicer_progress", { processed: ev.processed, total: ev.total });
+        } else if (ev.phase === "slicer_cache_hit") {
+          // SP-15: surface per-article slicer cache hits (all-roles variant).
+          send("slicer_cache_hit", {
+            article_id: ev.article_id,
+            cache_key: ev.cache_key,
+            cached_at: ev.cached_at,
+          });
         } else if (ev.phase === "role_started") {
           send("role_started", { role: ev.role });
         } else if (ev.phase === "role_done") {

@@ -38,6 +38,7 @@ export function DistillModal({ account, role, onClose, onSuccess }: DistillModal
   const [phase, setPhase] = useState<Phase>("idle");
   const [slicer, setSlicer] = useState<SlicerProgress | null>(null);
   const [composerDone, setComposerDone] = useState(false);
+  const [cachedCount, setCachedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [limit, setLimit] = useState<number>(10);
   const [roleStatus, setRoleStatus] = useState<Record<StyleBindingRole, RoleStatus>>({
@@ -62,6 +63,7 @@ export function DistillModal({ account, role, onClose, onSuccess }: DistillModal
     setPhase("running");
     setSlicer(null);
     setComposerDone(false);
+    setCachedCount(0);
     setError(null);
     setRoleStatus({ opening: "WAITING", practice: "WAITING", closing: "WAITING" });
     setRoleError({});
@@ -76,6 +78,9 @@ export function DistillModal({ account, role, onClose, onSuccess }: DistillModal
           const processed = Number(ev.data?.processed ?? 0);
           const total = Number(ev.data?.total ?? 0);
           setSlicer({ processed, total });
+        } else if (ev.type === "slicer_cache_hit") {
+          // SP-15: distill-all surfaces cache hits via bare "slicer_cache_hit".
+          setCachedCount((n) => n + 1);
         } else if (ev.type === "role_started") {
           const r = ev.data?.role as StyleBindingRole | undefined;
           if (r) setRoleStatus((prev) => ({ ...prev, [r]: "RUNNING" }));
@@ -116,6 +121,9 @@ export function DistillModal({ account, role, onClose, onSuccess }: DistillModal
         const processed = Number(ev.data?.processed ?? 0);
         const total = Number(ev.data?.total ?? 0);
         setSlicer({ processed, total });
+      } else if (ev.type === "distill.slicer_cache_hit") {
+        // SP-15: each article whose slicer output was cached yields one event.
+        setCachedCount((n) => n + 1);
       } else if (ev.type === "distill.composer_done") {
         setComposerDone(true);
       } else if (ev.type === "distill.finished") {
@@ -210,14 +218,26 @@ export function DistillModal({ account, role, onClose, onSuccess }: DistillModal
 
         <div className="text-sm mb-3">
           <div className="mb-1">进度：</div>
-          <div className="text-xs font-mono mb-1">
-            Slicer:{" "}
-            {slicer ? (
-              <span>
-                {slicer.processed}/{slicer.total} articles...
+          <div className="text-xs font-mono mb-1 flex items-center gap-2">
+            <span>
+              Slicer:{" "}
+              {slicer ? (
+                <span>
+                  {slicer.processed}/{slicer.total} articles...
+                </span>
+              ) : (
+                <span className="opacity-60">waiting</span>
+              )}
+            </span>
+            {cachedCount > 0 && (
+              <span
+                data-testid="distill-cached-count"
+                className="px-1.5 py-0.5 rounded text-[10px]"
+                style={{ background: "var(--bg-2)", color: "var(--accent)" }}
+                title="slicer output reused from filesystem cache"
+              >
+                cached {cachedCount}
               </span>
-            ) : (
-              <span className="opacity-60">waiting</span>
             )}
           </div>
           <div

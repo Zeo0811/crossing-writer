@@ -206,4 +206,56 @@ describe("DistillModal", () => {
       expect(arg.results[2].error).toBe("no slices");
     });
   });
+
+  describe("SP-15: slicer cache hit chip", () => {
+    it("renders 'cached N' chip counting distill.slicer_cache_hit events (single role)", async () => {
+      const s = makeStream();
+      vi.mocked(distillStylePanel).mockReturnValue(s.stream as any);
+      render(
+        <DistillModal
+          account="acctA"
+          role="opening"
+          onClose={() => {}}
+          onSuccess={() => {}}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: /开始蒸馏/ }));
+      act(() => {
+        s.emit({
+          type: "distill.slicer_cache_hit",
+          data: { article_id: "a1", cache_key: "k1", cached_at: "t" },
+        });
+        s.emit({
+          type: "distill.slicer_cache_hit",
+          data: { article_id: "a2", cache_key: "k2", cached_at: "t" },
+        });
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId("distill-cached-count")).toHaveTextContent(/cached\s*2/i);
+      });
+    });
+
+    it("counts slicer_cache_hit events in all-roles mode too", async () => {
+      const s = makeStream();
+      vi.mocked(distillAllRoles).mockReturnValue(s.stream as any);
+      render(
+        <DistillModal
+          account="acctA"
+          role="all"
+          onClose={() => {}}
+          onSuccess={() => {}}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: /开始蒸馏/ }));
+      act(() => {
+        s.emit({
+          type: "slicer_cache_hit",
+          data: { article_id: "a1", cache_key: "k1", cached_at: "t" },
+        });
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId("distill-cached-count")).toHaveTextContent(/cached\s*1/i);
+      });
+    });
+  });
 });
