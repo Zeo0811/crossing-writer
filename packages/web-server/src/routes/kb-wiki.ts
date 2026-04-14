@@ -109,4 +109,28 @@ export function registerKbWikiRoutes(app: FastifyInstance, deps: KbWikiDeps) {
     reply.header("Content-Type", "text/markdown; charset=utf-8");
     return reply.send(readFileSync(abs, "utf-8"));
   });
+
+  app.get<{ Querystring: { q?: string; kind?: string; limit?: string } }>("/api/kb/wiki/search", async (req, reply) => {
+    const q = (req.query.q ?? "").trim();
+    if (!q) return reply.code(400).send({ error: "q required" });
+    const kind = req.query.kind as ("entity" | "concept" | "case" | "observation" | "person" | undefined);
+    const limit = req.query.limit ? Math.max(1, Math.min(50, Number(req.query.limit))) : 10;
+    const { searchWiki } = await import("@crossing/kb");
+    const results = await searchWiki({ query: q, kind, limit }, { vaultPath: deps.vaultPath });
+    return reply.send(results);
+  });
+
+  app.get("/api/kb/wiki/status", async (_req, reply) => {
+    const { WikiStore } = await import("@crossing/kb");
+    const store = new WikiStore(deps.vaultPath);
+    const pages = store.listPages();
+    const by_kind: Record<string, number> = { entity: 0, concept: 0, case: 0, observation: 0, person: 0 };
+    let last: string | null = null;
+    for (const p of pages) {
+      by_kind[p.frontmatter.type] = (by_kind[p.frontmatter.type] ?? 0) + 1;
+      const li = p.frontmatter.last_ingest;
+      if (li && (!last || li > last)) last = li;
+    }
+    return reply.send({ total: pages.length, by_kind, last_ingest_at: last });
+  });
 }
