@@ -7,23 +7,7 @@ import {
   type StylePanel,
   type StyleBindingRole,
 } from "../../api/writer-client.js";
-
-// T22 placeholder
-function DistillModal({ onClose }: { onClose: () => void }) {
-  return (
-    <div
-      role="dialog"
-      data-testid="distill-modal"
-      className="fixed inset-0 flex items-center justify-center"
-      style={{ background: "rgba(0,0,0,0.5)" }}
-    >
-      <div className="p-6 rounded border" style={{ background: "var(--bg)", borderColor: "var(--border)" }}>
-        <div>DistillModal TBD</div>
-        <button onClick={onClose} className="mt-2 px-2 py-1 border rounded">Close</button>
-      </div>
-    </div>
-  );
-}
+import { DistillModal } from "./DistillModal.js";
 
 type Chip = "active" | "deleted" | "legacy";
 
@@ -190,7 +174,17 @@ export function StylePanelList() {
           </div>
         </section>
       ))}
-      {distillTarget && <DistillModal onClose={() => setDistillTarget(null)} />}
+      {distillTarget && (
+        <DistillModal
+          account={distillTarget.account}
+          role={distillTarget.role}
+          onClose={() => setDistillTarget(null)}
+          onSuccess={() => {
+            setDistillTarget(null);
+            void refresh();
+          }}
+        />
+      )}
     </div>
   );
 }
