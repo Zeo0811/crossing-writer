@@ -99,6 +99,18 @@ export async function runWriter(opts: RunWriterOpts): Promise<void> {
 
   await opts.store.update(opts.projectId, { status: "writing_running", writer_failed_sections: [] });
 
+  // Auto-expand sectionsToRun: include any expected section missing from disk.
+  // This ensures retry-failed covers sections that were never attempted (e.g. closing skipped because upstream failed).
+  if (opts.sectionsToRun) {
+    const expected = ["opening", ...cases.map((c) => `practice.${c.caseId}`), "closing"];
+    const expanded = new Set(opts.sectionsToRun);
+    for (const k of expected) {
+      const ex = await articleStore.readSection(k as SectionKey);
+      if (!ex) expanded.add(k);
+    }
+    opts.sectionsToRun = [...expanded];
+  }
+
   const failed: string[] = [];
   const shouldRun = (key: string) => !opts.sectionsToRun || opts.sectionsToRun.includes(key);
 
