@@ -37,7 +37,7 @@ export function CliHealthDot({ label, item, onCopy }: CliHealthDotProps) {
   const key = label.toLowerCase() as "claude" | "codex";
   const hint = CLI_INSTALL_HINTS[key];
   const isOnline = item.status === "online";
-  const color = isOnline ? "#22c55e" : "#ef4444";
+  const color = isOnline ? "var(--accent)" : "var(--red)";
   const ariaLabel = `${label} ${item.status}`;
   const titleHint = isOnline
     ? (item.version ? `v${item.version}` : "online")
@@ -85,15 +85,19 @@ export function CliHealthDot({ label, item, onCopy }: CliHealthDotProps) {
         aria-label={ariaLabel}
         title={titleHint}
         role="status"
+        data-pixel-dot=""
+        className="pixel-dot"
         style={{
           display: "inline-block",
-          width: 8,
-          height: 8,
-          borderRadius: 999,
+          width: 10,
+          height: 10,
+          borderRadius: 0,
           backgroundColor: color,
+          imageRendering: "pixelated",
+          clipPath: "polygon(25% 0, 75% 0, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0 75%, 0 25%)",
         }}
       />
-      <span style={{ fontSize: 11, color: "#6b7280", letterSpacing: 0.5 }}>{label}</span>
+      <span style={{ fontSize: 11, color: "var(--meta)", letterSpacing: 0.5 }}>{label}</span>
       {open && (
         <div
           role="dialog"
@@ -104,19 +108,19 @@ export function CliHealthDot({ label, item, onCopy }: CliHealthDotProps) {
             right: 0,
             marginTop: 6,
             width: 280,
-            background: "#ffffff",
-            color: "#111827",
-            border: "1px solid #e5e7eb",
-            borderRadius: 8,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+            background: "var(--bg-1)",
+            color: "var(--body)",
+            border: "1px solid var(--hair)",
+            borderRadius: 6,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
             padding: 12,
             zIndex: 50,
             fontSize: 12,
           }}
         >
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>{title}</div>
-          <div style={{ color: "#6b7280", marginBottom: 8 }}>{statusLine}</div>
-          <div style={{ borderTop: "1px solid #f3f4f6", margin: "8px 0" }} />
+          <div style={{ fontWeight: 600, marginBottom: 4, color: "var(--heading)" }}>{title}</div>
+          <div style={{ color: "var(--meta)", marginBottom: 8 }}>{statusLine}</div>
+          <div style={{ borderTop: "1px solid var(--hair)", margin: "8px 0" }} />
           {([
             { label: "安装", cmd: hint.install },
             { label: "登录", cmd: hint.login },
@@ -125,14 +129,15 @@ export function CliHealthDot({ label, item, onCopy }: CliHealthDotProps) {
               key={row.label}
               style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}
             >
-              <div style={{ width: 32, color: "#9ca3af" }}>{row.label}</div>
+              <div style={{ width: 32, color: "var(--faint)" }}>{row.label}</div>
               <code
                 style={{
                   flex: 1,
-                  background: "#f9fafb",
+                  background: "var(--bg-2)",
+                  color: "var(--body)",
                   padding: "2px 6px",
                   borderRadius: 4,
-                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                  fontFamily: "var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)",
                   fontSize: 11,
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -146,8 +151,9 @@ export function CliHealthDot({ label, item, onCopy }: CliHealthDotProps) {
                 aria-label={`Copy ${row.label}`}
                 onClick={() => void doCopy(row.cmd, idx)}
                 style={{
-                  border: "1px solid #e5e7eb",
-                  background: "#ffffff",
+                  border: "1px solid var(--hair)",
+                  background: "var(--bg-2)",
+                  color: "var(--body)",
                   borderRadius: 4,
                   fontSize: 11,
                   padding: "2px 6px",
@@ -158,7 +164,7 @@ export function CliHealthDot({ label, item, onCopy }: CliHealthDotProps) {
               </button>
             </div>
           ))}
-          <div style={{ marginTop: 6, color: "#9ca3af", fontSize: 11 }}>每 30 秒自动检测</div>
+          <div style={{ marginTop: 6, color: "var(--faint)", fontSize: 11 }}>每 30 秒自动检测</div>
         </div>
       )}
     </span>
