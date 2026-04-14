@@ -56,7 +56,7 @@ describe("DistillModal", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: /开始蒸馏/ }));
-    expect(distillStylePanel).toHaveBeenCalledWith("acctA", "opening");
+    expect(distillStylePanel).toHaveBeenCalledWith("acctA", "opening", 10);
 
     act(() => s.emit({ type: "distill.started" }));
     act(() => s.emit({ type: "distill.slicer_progress", data: { processed: 23, total: 50 } }));
