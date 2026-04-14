@@ -88,11 +88,12 @@ export async function rewriteSectionStream(
   key: string,
   userHint: string | undefined,
   onEvent: (ev: { type: string; data: any }) => void,
+  selectedText?: string,
 ): Promise<void> {
   const res = await fetch(`/api/projects/${projectId}/writer/sections/${encodeURIComponent(key)}/rewrite`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_hint: userHint }),
+    body: JSON.stringify({ user_hint: userHint, selected_text: selectedText }),
   });
   if (!res.ok || !res.body) throw new Error(`rewrite failed: ${res.status}`);
   const reader = res.body.getReader();

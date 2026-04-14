@@ -163,7 +163,7 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
     },
   );
 
-  app.post<{ Params: { id: string; key: string }; Body: { user_hint?: string } }>(
+  app.post<{ Params: { id: string; key: string }; Body: { user_hint?: string; selected_text?: string } }>(
     "/api/projects/:id/writer/sections/:key/rewrite",
     async (req, reply) => {
       const project = await deps.store.get(req.params.id);
@@ -173,6 +173,17 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
       if (!existing) return reply.code(404).send({ error: "section not found" });
       const agentKey = sectionKeyToAgentKey(req.params.key);
       if (!agentKey) return reply.code(400).send({ error: "unsupported section key" });
+
+      const selected = req.body?.selected_text?.trim();
+      const userHint = req.body?.user_hint?.trim();
+      const augmentedHintParts: string[] = [];
+      if (userHint) augmentedHintParts.push(`用户提示：${userHint}`);
+      if (selected) {
+        augmentedHintParts.push(
+          `**只改写下面这段片段，保留段落其它内容逐字不变**。输出完整段落 markdown（仅把这段替换为改后的版本）：\n<<<\n${selected}\n>>>`,
+        );
+      }
+      const hintBlock = augmentedHintParts.length ? `\n\n${augmentedHintParts.join("\n\n")}` : "";
 
       reply.raw.setHeader("Content-Type", "text/event-stream");
       reply.raw.setHeader("Cache-Control", "no-cache");
@@ -197,14 +208,14 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
           const mission = existsSync(join(pDir, "mission/selected.md")) ? await readFile(join(pDir, "mission/selected.md"), "utf-8") : "";
           const po = existsSync(join(pDir, "context/product-overview.md")) ? await readFile(join(pDir, "context/product-overview.md"), "utf-8") : "";
           const agent = new WriterOpeningAgent({ cli: cliModel.cli as "claude" | "codex", model: cliModel.model });
-          const out = await agent.write({ briefSummary: brief + (req.body?.user_hint ? `\n用户提示：${req.body.user_hint}` : ""), missionSummary: mission, productOverview: po, referenceAccountsKb: refs });
+          const out = await agent.write({ briefSummary: brief + hintBlock, missionSummary: mission, productOverview: po, referenceAccountsKb: refs });
           newBody = out.text;
         } else if (agentKey === "writer.closing") {
           const openingBody = (await as.readSection("opening"))?.body ?? "";
           const list = await as.listSections();
           const practiceText = list.filter((s) => s.key.startsWith("practice.case-")).map((s) => s.body).join("\n\n");
           const agent = new WriterClosingAgent({ cli: cliModel.cli as "claude" | "codex", model: cliModel.model });
-          const out = await agent.write({ openingText: openingBody + (req.body?.user_hint ? `\n用户提示：${req.body.user_hint}` : ""), stitchedPracticeText: practiceText, referenceAccountsKb: refs });
+          const out = await agent.write({ openingText: openingBody + hintBlock, stitchedPracticeText: practiceText, referenceAccountsKb: refs });
           newBody = out.text;
         } else if (agentKey === "writer.practice") {
           const caseId = req.params.key.slice("practice.".length);
@@ -219,7 +230,7 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
           const shots = existsSync(shotsDir) ? readdirSync(shotsDir).map((f) => join(shotsDir, f)) : [];
           const agent = new WriterPracticeAgent({ cli: cliModel.cli as "claude" | "codex", model: cliModel.model });
           const out = await agent.write({
-            caseId, caseName: caseId, caseDescription: existing.body + (req.body?.user_hint ? `\n用户提示：${req.body.user_hint}` : ""),
+            caseId, caseName: caseId, caseDescription: existing.body + hintBlock,
             notesBody, notesFrontmatter: {}, screenshotPaths: shots, referenceAccountsKb: refs,
           });
           newBody = out.text;

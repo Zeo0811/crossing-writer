@@ -51,6 +51,8 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [hint, setHint] = useState("");
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [selectedText, setSelectedText] = useState<string>("");
+  const [selectionKey, setSelectionKey] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     if (status === "evidence_ready" || status === "writing_configuring" || status === "writing_running") return;
@@ -90,20 +92,40 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
 
   const rewriteSupported = (key: string) => key === "opening" || key === "closing" || key.startsWith("practice.case-");
 
-  const triggerRewrite = async (key: string) => {
+  const triggerRewrite = async (key: string, useSelection: boolean) => {
+    const snippet = useSelection && selectionKey === key ? selectedText : undefined;
     setActiveKey(null);
     setBusyKey(key);
     try {
-      await rewriteSectionStream(projectId, key, hint || undefined, (ev) => {
-        if (ev.type === "writer.rewrite_chunk" && ev.data?.chunk) {
-          setBodies((b) => ({ ...b, [key]: ev.data.chunk }));
-        }
-      });
+      await rewriteSectionStream(
+        projectId,
+        key,
+        hint || undefined,
+        (ev) => {
+          if (ev.type === "writer.rewrite_chunk" && ev.data?.chunk) {
+            setBodies((b) => ({ ...b, [key]: ev.data.chunk }));
+          }
+        },
+        snippet,
+      );
     } finally {
       setBusyKey(null);
       setHint("");
+      setSelectedText("");
+      setSelectionKey(null);
       reload();
     }
+  };
+
+  const handleSelectionChange = (key: string, body: string) => {
+    const sel = window.getSelection();
+    const text = sel ? sel.toString().trim() : "";
+    if (!text || !body.includes(text)) {
+      if (selectionKey === key) { setSelectedText(""); setSelectionKey(null); }
+      return;
+    }
+    setSelectedText(text);
+    setSelectionKey(key);
   };
 
   return (
@@ -125,33 +147,59 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
           const supported = rewriteSupported(key);
           const isActive = activeKey === key;
           const isBusy = busyKey === key;
+          const hasSelection = selectionKey === key && selectedText.length > 0;
           return (
             <section key={key} className="group relative border rounded p-3 bg-white hover:border-blue-400">
               <header className="flex justify-between items-center text-xs text-gray-500 mb-2">
                 <span className="font-mono">{sectionTitle(key)}</span>
-                {supported && !isBusy && (
-                  <button
-                    onClick={() => setActiveKey(isActive ? null : key)}
-                    className="opacity-0 group-hover:opacity-100 transition px-2 py-0.5 border rounded text-blue-600 hover:bg-blue-50"
-                  >
-                    🤖 @agent 重写
-                  </button>
-                )}
+                <div className="flex gap-1">
+                  {supported && !isBusy && hasSelection && (
+                    <button
+                      onClick={() => setActiveKey(isActive ? null : key)}
+                      className="px-2 py-0.5 border rounded text-orange-600 hover:bg-orange-50"
+                      title={`只改写：${selectedText.slice(0, 40)}${selectedText.length > 40 ? "…" : ""}`}
+                    >
+                      🎯 重写选中
+                    </button>
+                  )}
+                  {supported && !isBusy && !hasSelection && (
+                    <button
+                      onClick={() => setActiveKey(isActive ? null : key)}
+                      className="opacity-0 group-hover:opacity-100 transition px-2 py-0.5 border rounded text-blue-600 hover:bg-blue-50"
+                    >
+                      🤖 重写整段
+                    </button>
+                  )}
+                </div>
                 {isBusy && <span className="text-blue-600">重写中…</span>}
               </header>
               {isActive && (
-                <div className="mb-2 flex gap-2">
-                  <input
-                    value={hint}
-                    onChange={(e) => setHint(e.target.value)}
-                    placeholder="给 agent 的提示（可空）"
-                    className="flex-1 px-2 py-1 border rounded text-xs"
-                  />
-                  <button onClick={() => triggerRewrite(key)} className="px-2 py-1 bg-blue-600 text-white rounded text-xs">确认</button>
-                  <button onClick={() => { setActiveKey(null); setHint(""); }} className="px-2 py-1 bg-gray-200 rounded text-xs">取消</button>
+                <div className="mb-2 flex flex-col gap-2">
+                  {hasSelection && (
+                    <div className="text-xs bg-orange-50 border border-orange-200 rounded p-2">
+                      <span className="text-orange-700">选中片段：</span>
+                      <span className="font-mono">{selectedText.slice(0, 120)}{selectedText.length > 120 ? "…" : ""}</span>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <input
+                      value={hint}
+                      onChange={(e) => setHint(e.target.value)}
+                      placeholder="给 agent 的提示（可空）"
+                      className="flex-1 px-2 py-1 border rounded text-xs"
+                    />
+                    <button onClick={() => triggerRewrite(key, hasSelection)} className="px-2 py-1 bg-blue-600 text-white rounded text-xs">
+                      {hasSelection ? "确认改片段" : "确认改整段"}
+                    </button>
+                    <button onClick={() => { setActiveKey(null); setHint(""); }} className="px-2 py-1 bg-gray-200 rounded text-xs">取消</button>
+                  </div>
                 </div>
               )}
-              <article className="prose prose-sm max-w-none">
+              <article
+                className="prose prose-sm max-w-none"
+                onMouseUp={() => handleSelectionChange(key, body)}
+                onKeyUp={() => handleSelectionChange(key, body)}
+              >
                 <ReactMarkdown>{body || "_(空)_"}</ReactMarkdown>
               </article>
             </section>
