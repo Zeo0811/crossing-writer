@@ -6,6 +6,7 @@ vi.mock("../../src/api/writer-client.js", () => ({
   getAgentConfigs: vi.fn(async () => ({ agents: {} })),
   setAgentConfig: vi.fn(async () => {}),
   listConfigStylePanels: vi.fn(async () => ({ panels: [] })),
+  deleteStylePanel: vi.fn(async () => {}),
 }));
 
 import { ConfigWorkbench } from "../../src/pages/ConfigWorkbench";
@@ -33,7 +34,7 @@ describe("ConfigWorkbench page shell", () => {
   it("switches to 蒸馏 tab when clicked", () => {
     renderPage();
     fireEvent.click(screen.getByRole("tab", { name: /蒸馏/ }));
-    expect(screen.getByText(/StylePanelList placeholder/i)).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /蒸馏/ })).toHaveAttribute("aria-selected", "true");
   });
 
   it("marks the active tab with aria-selected", () => {
