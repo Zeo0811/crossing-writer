@@ -115,6 +115,7 @@ describe("writer-orchestrator", () => {
   });
 });
 
+// T9: retry-failed + per-project override
 describe("writer-orchestrator retry + override", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
