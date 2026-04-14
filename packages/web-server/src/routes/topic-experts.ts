@@ -1,9 +1,14 @@
 import type { FastifyInstance } from "fastify";
 import type { TopicExpertStore, TopicExpertMeta } from "../services/topic-expert-store.js";
-import { randomUUID } from "node:crypto";
+import {
+  runTopicExpertDistill,
+  type DistillDeps,
+  type DistillEvent,
+} from "../services/topic-expert-distill.js";
 
 export interface TopicExpertsRoutesOpts {
   store: TopicExpertStore;
+  distillDeps?: Pick<DistillDeps, "ingest" | "distill">;
 }
 
 export function registerTopicExpertsRoutes(
@@ -104,11 +109,38 @@ export function registerTopicExpertsRoutes(
     const detail = await store.get(name);
     if (!detail) return reply.code(404).send({ error: "not_found" });
     const mode = body.mode ?? "initial";
-    if (mode === "redistill") {
-      await store.backupKb(name);
+
+    if (!opts.distillDeps) {
+      // fallback: stub behavior for environments without pipeline wiring
+      if (mode === "redistill") await store.backupKb(name);
+      return reply.code(202).send({ job_id: `stub-${Date.now()}`, status: "queued" });
     }
-    const jobId = randomUUID();
-    console.info("[topic-expert] distill queued", { name, mode, job_id: jobId });
-    return reply.code(202).send({ job_id: jobId, status: "queued" });
+
+    reply.hijack();
+    reply.raw.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+    (reply.raw as any).flushHeaders?.();
+    const emit = (ev: DistillEvent) => {
+      reply.raw.write(`event: ${ev.type}\n`);
+      reply.raw.write(`data: ${JSON.stringify(ev.data)}\n\n`);
+    };
+    try {
+      await runTopicExpertDistill(
+        {
+          expertName: name,
+          seedUrls: body.seed_urls,
+          mode,
+        },
+        { store, ingest: opts.distillDeps.ingest, distill: opts.distillDeps.distill, emit },
+      );
+    } catch {
+      // failed event already emitted by pipeline
+    } finally {
+      reply.raw.end();
+    }
   });
 }
