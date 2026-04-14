@@ -466,3 +466,168 @@ export async function rewriteSectionStream(
     }
   }
 }
+
+// ============================================================================
+// SP-12: Topic Expert APIs
+// ============================================================================
+
+export interface TopicExpertMeta {
+  name: string;
+  specialty: string;
+  active: boolean;
+  default_preselect: boolean;
+  soft_deleted: boolean;
+  updated_at?: string;
+  distilled_at?: string;
+  version?: number;
+}
+
+export interface TopicExpertDetail extends TopicExpertMeta {
+  kb_markdown: string;
+  word_count: number;
+}
+
+export type TopicExpertInvokeType = "score" | "structure" | "continue";
+
+export async function listTopicExperts(
+  opts?: { includeDeleted?: boolean },
+): Promise<{ experts: TopicExpertMeta[] }> {
+  const qs = opts?.includeDeleted ? "?include_deleted=1" : "";
+  const res = await throwingFetch(`/api/topic-experts${qs}`);
+  return res.json();
+}
+
+export async function getTopicExpert(name: string): Promise<TopicExpertDetail> {
+  const res = await throwingFetch(`/api/topic-experts/${encodeURIComponent(name)}`);
+  return res.json();
+}
+
+export async function setTopicExpert(
+  name: string,
+  patch: Partial<Pick<TopicExpertMeta, "active" | "default_preselect" | "specialty">> & {
+    kb_markdown?: string;
+  },
+): Promise<{ ok: true; expert: TopicExpertMeta }> {
+  const res = await throwingFetch(`/api/topic-experts/${encodeURIComponent(name)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+  return res.json();
+}
+
+export async function createTopicExpert(body: {
+  name: string;
+  specialty: string;
+  seed_urls?: string[];
+}): Promise<{ ok: true; expert: TopicExpertMeta; job_id: string | null }> {
+  const res = await throwingFetch(`/api/topic-experts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
+export async function deleteTopicExpert(
+  name: string,
+  opts?: { mode?: "soft" | "hard" },
+): Promise<{ ok: true; mode: "soft" | "hard" }> {
+  const mode = opts?.mode ?? "soft";
+  const res = await throwingFetch(
+    `/api/topic-experts/${encodeURIComponent(name)}?mode=${mode}`,
+    { method: "DELETE" },
+  );
+  return res.json();
+}
+
+export interface TopicExpertSseHandlers {
+  onEvent: (type: string, data: unknown) => void;
+  onError?: (e: Error) => void;
+  onClose?: () => void;
+}
+
+function openTopicExpertSse(
+  url: string,
+  body: unknown,
+  handlers: TopicExpertSseHandlers,
+): { abort: () => void } {
+  const controller = new AbortController();
+  (async () => {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      if (!res.ok || !res.body) {
+        handlers.onError?.(new Error(`${url} → HTTP ${res.status}`));
+        handlers.onClose?.();
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buf.indexOf("\n\n")) >= 0) {
+          const raw = buf.slice(0, idx);
+          buf = buf.slice(idx + 2);
+          const eventMatch = /^event:\s*(.+)$/m.exec(raw);
+          const dataMatch = /^data:\s*(.*)$/m.exec(raw);
+          if (eventMatch) {
+            const type = eventMatch[1]!.trim();
+            let data: unknown = undefined;
+            if (dataMatch) {
+              try { data = JSON.parse(dataMatch[1]!); } catch { data = dataMatch[1]!; }
+            }
+            handlers.onEvent(type, data);
+          }
+        }
+      }
+      handlers.onClose?.();
+    } catch (err: any) {
+      if (err?.name !== "AbortError") {
+        handlers.onError?.(err instanceof Error ? err : new Error(String(err)));
+      }
+      handlers.onClose?.();
+    }
+  })();
+  return { abort: () => controller.abort() };
+}
+
+export function distillTopicExpert(
+  name: string,
+  body: { seed_urls?: string[]; mode?: "initial" | "redistill" },
+  handlers: TopicExpertSseHandlers,
+): { abort: () => void } {
+  return openTopicExpertSse(
+    `/api/topic-experts/${encodeURIComponent(name)}/distill`,
+    body,
+    handlers,
+  );
+}
+
+export function consultTopicExperts(
+  projectId: string,
+  body: {
+    selected: string[];
+    invokeType: TopicExpertInvokeType;
+    brief?: string;
+    productContext?: string;
+    candidatesMd?: string;
+    currentDraft?: string;
+    focus?: string;
+  },
+  handlers: TopicExpertSseHandlers,
+): { abort: () => void } {
+  return openTopicExpertSse(
+    `/api/projects/${encodeURIComponent(projectId)}/topic-experts/consult`,
+    body,
+    handlers,
+  );
+}
