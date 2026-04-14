@@ -291,4 +291,270 @@
 - Config Workbench UI panel (`🧑‍🎓 选题专家团`) + DistillModal reuse — **T10+ Part 2**.
 - Project page `[🗂 召唤选题专家团]` SSE client + streaming cards — **T10+ Part 2**.
 
-<!-- PART2_MARKER -->
+## T9 — Topic-expert full distill pipeline
+
+**Files:**
+- Create: `packages/web-server/src/services/topic-expert-distill.ts`
+- Modify: `packages/web-server/src/routes/topic-experts.ts` (upgrade T8 stub)
+- Test: `packages/web-server/tests/topic-expert-distill-pipeline.test.ts`
+
+**Steps:**
+1. [ ] Signature:
+   ```ts
+   export interface DistillArgs {
+     expertName: string;
+     seedUrls?: string[];
+     mode: "initial"|"redistill";
+     cli?: "claude"|"codex";
+     model?: string;
+   }
+   export interface DistillEvent {
+     type: "distill.started"|"ingest_progress"|"distill_progress"
+          |"distill.done"|"distill.failed";
+     data: Record<string, unknown>;
+   }
+   export async function runTopicExpertDistill(
+     args: DistillArgs,
+     deps: {
+       store: TopicExpertStore;
+       ingest: (urls: string[]) => Promise<{ articles: Array<{ url:string; title:string; body:string }> }>;
+       distill: (input: { name:string; articles: unknown[]; cli:string; model?:string }) => Promise<{ markdown:string; version:number }>;
+       emit: (ev: DistillEvent) => void;
+     }
+   ): Promise<{ version: number; backupPath?: string }>
+   ```
+2. [ ] Emit `distill.started` with `{ expertName, mode, seedCount }`.
+3. [ ] Resolve expert via `store.get(name)` → 404 throw if missing.
+4. [ ] If `mode==="redistill"` and existing KB body non-empty, call `store.backupKb(name)` → record `.bak/<name>_kb.<ts>.md` path.
+5. [ ] Call `deps.ingest(seedUrls ?? [])` — wraps SP-07 wiki-ingestor; emit `ingest_progress` per article (`{ url, title }`).
+6. [ ] Call `deps.distill({ name, articles, cli, model })` — wraps SP-06 style-distiller; emit `distill_progress` events forwarded from distiller stream.
+7. [ ] On success call `store.writeKb(name, markdown, { distilled_from: seedUrls, distilled_at: new Date().toISOString(), version: (prev.version ?? 0) + 1 })`; commit "topic-expert: distill <name> v<n>".
+8. [ ] Emit `distill.done` with `{ expertName, version, backupPath }`.
+9. [ ] On any throw emit `distill.failed` with `{ error: err.message }` and rethrow.
+10. [ ] Upgrade route: `POST /api/topic-experts/:name/distill` → SSE (hijack pattern as T6). Body `{ seed_urls?, mode? }`. Invoke `runTopicExpertDistill` with real `ingest`/`distill` deps imported from `@crossing/agents`.
+11. [ ] Tests (mock ingest + distill):
+    - initial mode: no backup; emits started → ingest_progress × N → distill.done with version=1
+    - redistill mode: backup path returned; version increments
+    - ingest throws → emits `distill.failed`; route responds 200 SSE with failure event
+    - SSE route: 2-url seed, assert events in order on `res.rawPayload`
+
+**Verify:** `pnpm --filter @crossing/web-server exec vitest run tests/topic-expert-distill-pipeline.test.ts`
+
+---
+
+## T10 — Frontend client API
+
+**Files:**
+- Modify: `packages/web-ui/src/api/writer-client.ts`
+- Test: `packages/web-ui/tests/writer-client.topic-experts.test.ts`
+
+**Steps:**
+1. [ ] Add TypeScript types mirroring backend:
+   ```ts
+   export interface TopicExpertMeta { name:string; specialty:string; active:boolean; default_preselect:boolean; soft_deleted:boolean; updated_at?:string; distilled_at?:string; version?:number }
+   export interface TopicExpertDetail extends TopicExpertMeta { kb_markdown:string; word_count:number }
+   export type TopicExpertInvokeType = "score"|"structure"|"continue";
+   ```
+2. [ ] Plain REST methods:
+   ```ts
+   listTopicExperts(opts?: { includeDeleted?: boolean }): Promise<{ experts: TopicExpertMeta[] }>
+   getTopicExpert(name: string): Promise<TopicExpertDetail>
+   setTopicExpert(name: string, patch: Partial<Pick<TopicExpertMeta,"active"|"default_preselect"|"specialty"> & { kb_markdown?: string }>): Promise<{ ok:true; expert: TopicExpertMeta }>
+   createTopicExpert(body: { name:string; specialty:string; seed_urls?: string[] }): Promise<{ ok:true; expert: TopicExpertMeta; job_id: string|null }>
+   deleteTopicExpert(name: string, opts?: { mode?: "soft"|"hard" }): Promise<{ ok:true; mode:"soft"|"hard" }>
+   ```
+3. [ ] SSE methods reuse existing `openSse(url, body, handlers)` helper:
+   ```ts
+   distillTopicExpert(name: string, body: { seed_urls?: string[]; mode?: "initial"|"redistill" }, handlers: { onEvent: (type:string, data:unknown)=>void; onError?: (e:Error)=>void; onClose?: ()=>void }): { abort: ()=>void }
+   consultTopicExperts(projectId: string, body: { selected: string[]; invokeType: TopicExpertInvokeType; brief?:string; productContext?:string; candidatesMd?:string; currentDraft?:string; focus?:string }, handlers: { onEvent: (type:string, data:unknown)=>void; onError?:(e:Error)=>void; onClose?:()=>void }): { abort: ()=>void }
+   ```
+4. [ ] Tests (`vi.fn` for fetch + `EventSource` polyfill as in existing client tests):
+    - `listTopicExperts` hits `GET /api/topic-experts`; `includeDeleted:true` adds `?include_deleted=1`
+    - `getTopicExpert` hits `GET /api/topic-experts/foo`; 404 rejects
+    - `setTopicExpert` PUTs JSON body
+    - `createTopicExpert` POSTs body; propagates 409 error
+    - `deleteTopicExpert` default → `?mode=soft`; `{mode:"hard"}` → `?mode=hard`
+    - `distillTopicExpert` + `consultTopicExperts`: assert SSE handler fires `onEvent` per parsed event; `abort()` closes source
+
+**Verify:** `pnpm --filter @crossing/web-ui exec vitest run tests/writer-client.topic-experts.test.ts`
+
+---
+
+## T11 — `useProjectStream` event type extension
+
+**Files:**
+- Modify: `packages/web-ui/src/hooks/useProjectStream.ts` (or equivalent)
+- Test: `packages/web-ui/tests/useProjectStream.topic-consult.test.ts`
+
+**Steps:**
+1. [ ] Extend `EVENT_TYPES` union / const array to include: `topic_consult.started`, `expert_started`, `expert_delta`, `expert_done`, `expert_failed`, `all_done`.
+2. [ ] Add typed payload interfaces:
+   ```ts
+   export interface ExpertStartedPayload { name: string }
+   export interface ExpertDeltaPayload { name: string; chunk: string }
+   export interface ExpertDonePayload { name: string; markdown: string; tokens?: number|null; meta?: { cli:string; model?:string|null; durationMs:number } }
+   export interface ExpertFailedPayload { name: string; error: string }
+   export interface TopicConsultStartedPayload { invokeType: TopicExpertInvokeType; selected: string[] }
+   export interface AllDonePayload { succeeded: string[]; failed: string[] }
+   ```
+3. [ ] State slice: add `topicConsult` shape `{ status: "idle"|"running"|"done"; invokeType?: TopicExpertInvokeType; experts: Record<string, { status:"pending"|"running"|"done"|"failed"; markdown:string; error?:string }>; succeeded: string[]; failed: string[] }`.
+4. [ ] Reducer handles each event: started seeds entries → pending; `expert_started` → running; `expert_delta` → appends chunk; `expert_done` → done + final markdown; `expert_failed` → failed + error; `all_done` → status:"done" + summary.
+5. [ ] Tests:
+    - dispatches each new event type, asserts reducer shape
+    - `expert_delta` accumulates across multiple chunks
+    - `expert_failed` does not unset other experts' state
+    - `all_done` transitions `status` to `"done"` and records both arrays
+
+**Verify:** `pnpm --filter @crossing/web-ui exec vitest run tests/useProjectStream.topic-consult.test.ts`
+
+---
+
+## T12 — Config Workbench side nav + `TopicExpertPanel`
+
+**Files:**
+- Modify: `packages/web-ui/src/pages/ConfigWorkbench.tsx` (add nav entry)
+- Create: `packages/web-ui/src/components/config/TopicExpertPanel.tsx`
+- Create: `packages/web-ui/src/components/config/TopicExpertRow.tsx`
+- Create: `packages/web-ui/src/components/config/NewTopicExpertModal.tsx`
+- Test: `packages/web-ui/tests/TopicExpertPanel.test.tsx`
+
+**Steps:**
+1. [ ] Add side-nav item `{ key: "topic-experts", label: "🧑‍🎓 选题专家团" }` to ConfigWorkbench, route it to `<TopicExpertPanel />`.
+2. [ ] `TopicExpertPanel`:
+    - on mount call `client.listTopicExperts()`, render table (columns: name / specialty / active toggle / default_preselect toggle / distilled_at / 操作)
+    - 操作 column: `[查看KB] [重蒸] [软删] [硬删] [新增]` (新增 at panel top-right).
+    - `active` / `default_preselect` toggles → `client.setTopicExpert` + optimistic update; rollback on error (toast).
+    - specialty cell: inline edit (double-click → textarea), blur → setTopicExpert.
+    - `[查看KB]` → side drawer renders `kb_markdown` via existing `<Markdown>` component.
+    - `[重蒸]` → opens `DistillModal` (reuse SP-10) with `mode="redistill"`, wired to `client.distillTopicExpert(name, { mode:"redistill" }, handlers)`; show live SSE events in modal body.
+    - `[软删]` → confirm dialog → `deleteTopicExpert(name, { mode:"soft" })`; row greyed.
+    - `[硬删]` → stricter confirm (typed name) → `deleteTopicExpert(name, { mode:"hard" })`; row removed.
+    - `[+ 新增专家]` → `NewTopicExpertModal` (name + specialty + optional seed_urls textarea); submit → `createTopicExpert` then optionally chain `distillTopicExpert(name, { mode:"initial", seed_urls })` if URLs provided.
+3. [ ] Empty / loading / error states.
+4. [ ] Tests (`@testing-library/react` + msw or fetch mocks):
+    - renders two seeded experts after mount
+    - toggling `active` fires `PUT` with `{active:false}`
+    - soft-delete hides row after refresh
+    - hard-delete confirmation requires typed name
+    - new-expert modal POSTs create + (if URLs) triggers distill SSE
+    - reshow loading spinner during distill events, success final state
+
+**Verify:** `pnpm --filter @crossing/web-ui exec vitest run tests/TopicExpertPanel.test.tsx`
+
+---
+
+## T13 — `TopicExpertConsultModal`
+
+**Files:**
+- Create: `packages/web-ui/src/components/project/TopicExpertConsultModal.tsx`
+- Create: `packages/web-ui/src/components/project/ExpertStreamCard.tsx`
+- Test: `packages/web-ui/tests/TopicExpertConsultModal.test.tsx`
+
+**Steps:**
+1. [ ] Props:
+   ```ts
+   interface Props {
+     projectId: string;
+     briefSummary?: string;
+     productContext?: string;
+     candidatesMd?: string;
+     currentDraft?: string;
+     open: boolean;
+     onClose: () => void;
+     onSaved?: (markdown: string) => void;
+   }
+   ```
+2. [ ] On open, `client.listTopicExperts()` → filter `active && !soft_deleted`. Default-checked set = those with `default_preselect:true`.
+3. [ ] Top area: segmented control for invokeType `[打分 | 结构 | 续写]` (values `score`/`structure`/`continue`).
+4. [ ] Body: checkbox list, each row `[✓] <name> — <specialty>`.
+5. [ ] Footer: `[开始召唤]` disabled when `selected.length===0`. Secondary `[取消]`.
+6. [ ] Submit → call `client.consultTopicExperts(projectId, { selected, invokeType, brief, productContext, candidatesMd, currentDraft }, handlers)`. Handlers wire into local reducer (reuse shape from T11).
+7. [ ] Live view: replace config area with progress banner `N / M 专家已完成` + grid of `<ExpertStreamCard name status markdown error onRetry>` (markdown rendered with existing `<StreamingMarkdownCard>` or similar).
+8. [ ] Failed card shows `[重试]` → re-invokes consult for that single expert (re-opens SSE with `selected:[name]`).
+9. [ ] After `all_done`: button `[保存到项目笔记]` → concats all succeeded markdown with headers `## <name>`, calls `onSaved(combined)` (caller writes to project note; see T14).
+10. [ ] Tests:
+    - defaults preselects experts with `default_preselect:true`
+    - invokeType `score` is default
+    - submit triggers SSE with correct payload
+    - `expert_delta` appends to card markdown progressively
+    - `expert_failed` card shows retry; clicking retry re-opens SSE
+    - `[保存到项目笔记]` emits combined markdown via `onSaved`
+
+**Verify:** `pnpm --filter @crossing/web-ui exec vitest run tests/TopicExpertConsultModal.test.tsx`
+
+---
+
+## T14 — Integrate consult modal into `ProjectWorkbench`
+
+**Files:**
+- Modify: `packages/web-ui/src/pages/ProjectWorkbench.tsx`
+- Test: `packages/web-ui/tests/ProjectWorkbench.topic-expert-button.test.tsx`
+
+**Steps:**
+1. [ ] In Step 1 (brief 解析后) area, add button `[🗂 召唤选题专家团]`. Disabled until `briefSummary` exists.
+2. [ ] Local state `consultModalOpen: boolean`; button onClick → open; pass current `projectId / briefSummary / productContext / candidatesMd / currentDraft` as props.
+3. [ ] `onSaved(markdown)` handler: PUT to vault `projects/<id>/topic-expert-panel.md` via existing project-notes client method (or add `saveProjectNote(projectId, relPath, markdown)` helper if missing). Toast "已保存到项目笔记".
+4. [ ] Tests:
+    - button disabled pre-brief
+    - enables once brief exists
+    - clicking opens modal (presence of modal role)
+    - onSaved callback invokes `saveProjectNote` with `topic-expert-panel.md` path
+
+**Verify:** `pnpm --filter @crossing/web-ui exec vitest run tests/ProjectWorkbench.topic-expert-button.test.tsx`
+
+---
+
+## T15 — E2E: mocked backend SSE consult
+
+**Files:**
+- Create: `packages/web-ui/tests/e2e/topic-expert-consult.e2e.test.tsx`
+- Test helper (if absent): `packages/web-ui/tests/e2e/helpers/mock-sse-server.ts`
+
+**Steps:**
+1. [ ] Spin up an in-process mock server (e.g., `msw` with SSE extension or a local `http.createServer`) that:
+    - `GET /api/topic-experts` → returns 3 active experts `[A,B,C]`, two `default_preselect:true` (A,B).
+    - `POST /api/projects/p1/topic-experts/consult` → replies `text/event-stream`; writes `topic_consult.started`, `expert_started` for each selected, 2× `expert_delta` chunks each, `expert_done` each, `all_done`.
+2. [ ] Render `<ProjectWorkbench projectId="p1" />` with seeded brief context.
+3. [ ] Click `[🗂 召唤选题专家团]` → modal appears.
+4. [ ] Assert default-checked experts are `[A,B]`; select invokeType `打分` (default).
+5. [ ] Click `[开始召唤]`.
+6. [ ] Await: both `<ExpertStreamCard name="A">` and `<ExpertStreamCard name="B">` render final markdown (`getByText` on streamed content).
+7. [ ] Progress indicator reads `2 / 2 专家已完成`.
+8. [ ] `[保存到项目笔记]` button visible and clicking calls mocked save endpoint once.
+9. [ ] Negative variant test: server emits `expert_failed` for B → card shows error + `[重试]`.
+10. [ ] Tests run under vitest `environment: "jsdom"` with real `EventSource` polyfill.
+
+**Verify:** `pnpm --filter @crossing/web-ui exec vitest run tests/e2e/topic-expert-consult.e2e.test.tsx`
+
+---
+
+## Self-Review
+
+**Spec coverage (T1-T15 vs spec §3-§9):**
+- §3.1 `TopicExpertStore` — T1
+- §3.2 orchestrator (parallel, concurrency=3, fail-isolated) — T5
+- §3.3 agent `invokeType` switch — T2
+- §4.1 list — T3
+- §4.2 detail — T3
+- §4.3 update — T3
+- §4.4 create — T4
+- §4.5 delete (soft/hard) — T4
+- §4.6 SSE consult — T6
+- §5.1/5.2 index.yaml + frontmatter — T1
+- §6.1 Config Workbench 侧栏 — T12
+- §6.2 Project Page Step 1 召唤 — T13 + T14
+- §6.3 SSE 流式卡片 — T13 (`ExpertStreamCard`)
+- §7 蒸馏/重蒸/新增/软硬删 管线 — T9 (pipeline) + T12 (UI wiring)
+- §8 SSE 事件名 (`topic_consult.started / expert_started / expert_delta / expert_done / expert_failed / all_done`) — T11 + T13
+- §9 验收 10 项 — covered by T6+T13 happy path, T4 软硬删, T9 重蒸 version++/.bak, T13 default_preselect 勾选, T13 invokeType 三种, T5 fail-isolated, T14 `[保存到项目笔记]`.
+
+**Placeholder scan:** grep for `<!-- PART2_MARKER -->` → removed. No `TODO(placeholder)` / `FIXME` / `???` left in plan body besides T9 which is the resolution of T8's forward TODO.
+
+**Type consistency:** `TopicExpertMeta` / `TopicExpertDetail` / `TopicExpertInvokeType` defined once in T1, mirrored verbatim in T10, reused in T11/T13. Event names in T11 match T5 orchestrator emits (T5 emits `expert_delta` in SP-spec §8 though orchestrator currently passes-through only `expert_done`; T9 pipeline reserves its own `distill.*` event namespace to avoid clash).
+
+**Task count:** Part 1 T1-T8 (8) + Part 2 T9-T15 (7) = **15 tasks total**, matching Part 1 forward references (T9 distill, T10+ UI).
+
+**Risks:**
+- SP-06 style-distiller + SP-07 wiki-ingestor interfaces assumed; T9 `deps.ingest/distill` signatures may need alignment once implementing — deps injection preserves testability.
+- `expert_delta` event requires underlying agent stream tokens; SP-02 `invokeAgent` currently returns final markdown only → T5/T11 treats `expert_delta` as optional (reducer tolerant) so UI still works in non-streaming mode.
+- Vault commit frequency on rapid toggles (T12) could bloat git history — consider debouncing in follow-up; not blocking.
