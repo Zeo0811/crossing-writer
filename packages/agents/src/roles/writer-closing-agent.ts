@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { invokeAgent } from "../model-adapter.js";
+import { TOOL_PROTOCOL_PROMPT } from "../prompts/load.js";
 import type { ReferenceAccountKb, WriterOutput } from "./writer-opening-agent.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -9,6 +10,10 @@ const SYSTEM_PROMPT = readFileSync(
   join(__dirname, "../prompts/writer-closing.md"),
   "utf-8",
 );
+
+export function getSystemPrompt(): string {
+  return `${SYSTEM_PROMPT}\n\n${TOOL_PROTOCOL_PROMPT}`;
+}
 
 export interface WriterClosingInput {
   openingText: string;
@@ -43,7 +48,7 @@ export class WriterClosingAgent {
       agentKey: "writer.closing",
       cli: this.opts.cli,
       model: this.opts.model,
-      systemPrompt: SYSTEM_PROMPT,
+      systemPrompt: getSystemPrompt(),
       userMessage,
     });
     return {

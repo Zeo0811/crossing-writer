@@ -2,12 +2,17 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { invokeAgent } from "../model-adapter.js";
+import { TOOL_PROTOCOL_PROMPT } from "../prompts/load.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SYSTEM_PROMPT = readFileSync(
   join(__dirname, "../prompts/writer-opening.md"),
   "utf-8",
 );
+
+export function getSystemPrompt(): string {
+  return `${SYSTEM_PROMPT}\n\n${TOOL_PROTOCOL_PROMPT}`;
+}
 
 export interface ReferenceAccountKb {
   id: string;
@@ -55,7 +60,7 @@ export class WriterOpeningAgent {
       agentKey: "writer.opening",
       cli: this.opts.cli,
       model: this.opts.model,
-      systemPrompt: SYSTEM_PROMPT,
+      systemPrompt: getSystemPrompt(),
       userMessage,
     });
     return {
