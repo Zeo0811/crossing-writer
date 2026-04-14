@@ -43,7 +43,7 @@ export function ImageUploadButton({ projectId, onInsert, onError, disabled }: Im
         type="file"
         accept="image/*"
         style={{ display: "none" }}
-        onChange={handleChange}
+        onChange={(e) => { void handleChange(e); }}
         data-testid="image-upload-input"
       />
     </>
