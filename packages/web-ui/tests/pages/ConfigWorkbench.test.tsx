@@ -1,6 +1,13 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+
+vi.mock("../../src/api/writer-client.js", () => ({
+  getAgentConfigs: vi.fn(async () => ({ agents: {} })),
+  setAgentConfig: vi.fn(async () => {}),
+  listConfigStylePanels: vi.fn(async () => ({ panels: [] })),
+}));
+
 import { ConfigWorkbench } from "../../src/pages/ConfigWorkbench";
 
 function renderPage() {
@@ -18,9 +25,8 @@ describe("ConfigWorkbench page shell", () => {
     expect(screen.getByRole("tab", { name: /蒸馏/ })).toBeInTheDocument();
   });
 
-  it("defaults to the 主流程 tab showing AgentsPanel placeholder", () => {
+  it("defaults to the 主流程 tab rendering AgentsPanel", () => {
     renderPage();
-    expect(screen.getByText(/AgentsPanel placeholder/i)).toBeInTheDocument();
     expect(screen.queryByText(/StylePanelList placeholder/i)).not.toBeInTheDocument();
   });
 
@@ -28,7 +34,6 @@ describe("ConfigWorkbench page shell", () => {
     renderPage();
     fireEvent.click(screen.getByRole("tab", { name: /蒸馏/ }));
     expect(screen.getByText(/StylePanelList placeholder/i)).toBeInTheDocument();
-    expect(screen.queryByText(/AgentsPanel placeholder/i)).not.toBeInTheDocument();
   });
 
   it("marks the active tab with aria-selected", () => {

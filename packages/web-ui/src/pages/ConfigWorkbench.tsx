@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { AgentsPanel } from "../components/config/AgentsPanel.js";
 
 type TabKey = "main" | "distill";
 
@@ -52,7 +53,7 @@ export function ConfigWorkbench() {
       </div>
 
       <section className="p-8">
-        {active === "main" && <div>AgentsPanel placeholder (T20)</div>}
+        {active === "main" && <AgentsPanel />}
         {active === "distill" && <div>StylePanelList placeholder (T21)</div>}
       </section>
     </div>
