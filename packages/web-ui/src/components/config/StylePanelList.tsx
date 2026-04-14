@@ -104,11 +104,29 @@ export function StylePanelList() {
   return (
     <div>
       {error && <div style={{ color: "var(--red)" }}>Error: {error}</div>}
-      {grouped.map(([account, rows]) => (
+      {grouped.map(([account, rows]) => {
+        const existingActiveRoles = new Set(
+          rows.filter((r) => !r.is_legacy && r.status === "active").map((r) => r.role),
+        );
+        const missingRoles: StyleBindingRole[] = (["opening", "practice", "closing"] as StyleBindingRole[])
+          .filter((r) => !existingActiveRoles.has(r));
+        return (
         <section key={account} className="mb-6">
-          <h2 className="text-sm font-semibold mb-2" style={{ color: "var(--green)" }}>
-            {account}
-          </h2>
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <h2 className="text-sm font-semibold" style={{ color: "var(--green)" }}>
+              {account}
+            </h2>
+            {missingRoles.map((role) => (
+              <button
+                key={role}
+                className="px-2 py-0.5 text-xs border rounded"
+                style={{ borderColor: "var(--border)" }}
+                onClick={() => setDistillTarget({ account, role })}
+              >
+                + 蒸 {role}
+              </button>
+            ))}
+          </div>
           <div className="flex flex-col gap-2">
             {rows.map((p) => {
               const chip: Chip = p.is_legacy ? "legacy" : p.status === "deleted" ? "deleted" : "active";
@@ -173,7 +191,8 @@ export function StylePanelList() {
             })}
           </div>
         </section>
-      ))}
+        );
+      })}
       {distillTarget && (
         <DistillModal
           account={distillTarget.account}

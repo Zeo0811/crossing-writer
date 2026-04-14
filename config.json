@@ -33,6 +33,17 @@
     "topic_expert.数字生命卡兹克": {
       "cli": "claude",
       "model": "sonnet"
+    },
+    "writer.opening": {
+      "agentKey": "writer.opening",
+      "model": {
+        "cli": "claude",
+        "model": "claude-sonnet-4.5"
+      },
+      "tools": {
+        "search_wiki": true,
+        "search_raw": true
+      }
     }
   }
 }
