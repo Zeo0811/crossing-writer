@@ -19,8 +19,8 @@ function chipLabel(c: Chip) {
 
 function chipColor(c: Chip) {
   if (c === "active") return "var(--green)";
-  if (c === "deleted") return "#888";
-  return "#d4a72c";
+  if (c === "deleted") return "var(--faint)";
+  return "var(--amber)";
 }
 
 export function StylePanelList() {

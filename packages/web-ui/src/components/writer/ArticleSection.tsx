@@ -132,7 +132,7 @@ function StyleBadge({
       <span
         data-testid={`style-badge-${sectionKey}`}
         className="text-xs ml-2"
-        style={{ color: "var(--red, #ef4444)" }}
+        style={{ color: "var(--red)" }}
       >
         ⚠️ 未绑定
       </span>
@@ -145,7 +145,7 @@ function StyleBadge({
   const text = v !== undefined
     ? `🎨 ${binding.account}/${binding.role} v${v}`
     : `⚠️ 未绑定`;
-  const color = v !== undefined ? undefined : "var(--red, #ef4444)";
+  const color = v !== undefined ? undefined : "var(--red)";
   return (
     <span
       data-testid={`style-badge-${sectionKey}`}

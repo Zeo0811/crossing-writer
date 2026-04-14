@@ -57,7 +57,7 @@ export function AgentCard({
   const isWriter = agentKey.startsWith("writer.");
   const bound = Boolean(local.styleBinding);
   const statusLabel = bound ? "● ACTIVE" : "◉ style_not_bound";
-  const statusColor = bound ? "var(--green)" : "#d4a72c";
+  const statusColor = bound ? "var(--accent)" : "var(--amber)";
 
   const grouped = useMemo(() => {
     const byAcct = new Map<string, StylePanel[]>();

@@ -190,7 +190,7 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
           <span className="text-xs opacity-60 font-mono">{projectId}</span>
         </header>
 
-        {error && <div className="text-xs mb-3" style={{ color: "var(--red, #ef4444)" }}>{error}</div>}
+        {error && <div className="text-xs mb-3 text-red">{error}</div>}
 
         <div className="flex flex-col gap-4">
           {WRITER_AGENTS.map((agentKey) => {
@@ -288,7 +288,7 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
             disabled={saving}
             onClick={() => { void handleSave(); }}
             className="px-3 py-1 text-sm border rounded"
-            style={{ borderColor: "var(--border)", background: "var(--green, #22c55e)", color: "#fff" }}
+            style={{ borderColor: "var(--accent)", background: "var(--accent)", color: "var(--accent-on)" }}
           >
             {saving ? "保存中…" : "保存"}
           </button>
