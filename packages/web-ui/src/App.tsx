@@ -18,6 +18,7 @@ export function App() {
             <Route path="/projects/:id" element={<ProjectWorkbench />} />
             <Route path="/style-panels" element={<StylePanelsPage />} />
             <Route path="/knowledge" element={<KnowledgePage />} />
+            <Route path="/config" element={<div data-testid="config-workbench-placeholder">配置工作台</div>} />
           </Routes>
         </BrowserRouter>
       </QueryClientProvider>
