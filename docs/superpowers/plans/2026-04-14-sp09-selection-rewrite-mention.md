@@ -810,4 +810,1167 @@ Steps:
 
 ---
 
-<!-- PART2_MARKER -->
+## T11 — Frontend: useTextSelection hook
+
+**Files:**
+- Create: `/Users/zeoooo/crossing-writer/packages/web-ui/src/hooks/useTextSelection.ts`
+- Create (test): `/Users/zeoooo/crossing-writer/packages/web-ui/src/hooks/__tests__/useTextSelection.test.ts`
+
+Steps:
+- [ ] Create the hook file with this content:
+```ts
+import { useCallback, useEffect, useRef, useState } from "react";
+
+export interface TextSelectionState {
+  range: Range | null;
+  rect: DOMRect | null;
+  text: string;
+}
+
+const EMPTY: TextSelectionState = { range: null, rect: null, text: "" };
+
+export function useTextSelection<T extends HTMLElement = HTMLElement>() {
+  const elementRef = useRef<T | null>(null);
+  const [state, setState] = useState<TextSelectionState>(EMPTY);
+
+  const recompute = useCallback(() => {
+    const sel = typeof window !== "undefined" ? window.getSelection() : null;
+    if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+      setState(EMPTY);
+      return;
+    }
+    const range = sel.getRangeAt(0);
+    const host = elementRef.current;
+    if (!host || !host.contains(range.commonAncestorContainer)) {
+      setState(EMPTY);
+      return;
+    }
+    const text = range.toString();
+    if (!text.trim()) {
+      setState(EMPTY);
+      return;
+    }
+    setState({ range, rect: range.getBoundingClientRect(), text });
+  }, []);
+
+  useEffect(() => {
+    const handler = () => recompute();
+    document.addEventListener("selectionchange", handler);
+    document.addEventListener("mouseup", handler);
+    document.addEventListener("keyup", handler);
+    return () => {
+      document.removeEventListener("selectionchange", handler);
+      document.removeEventListener("mouseup", handler);
+      document.removeEventListener("keyup", handler);
+    };
+  }, [recompute]);
+
+  const clear = useCallback(() => setState(EMPTY), []);
+  return { elementRef, selection: state, clear };
+}
+```
+- [ ] Create the test:
+```ts
+import { describe, it, expect } from "vitest";
+import { renderHook, act } from "@testing-library/react";
+import { useTextSelection } from "../useTextSelection.js";
+
+describe("useTextSelection", () => {
+  it("returns empty when collapsed", () => {
+    const { result } = renderHook(() => useTextSelection<HTMLDivElement>());
+    expect(result.current.selection.text).toBe("");
+  });
+
+  it("captures selection text inside host element", () => {
+    const host = document.createElement("div");
+    host.textContent = "Hello world selection";
+    document.body.appendChild(host);
+    const { result } = renderHook(() => useTextSelection<HTMLDivElement>());
+    act(() => {
+      (result.current.elementRef as any).current = host;
+      const range = document.createRange();
+      range.setStart(host.firstChild!, 0);
+      range.setEnd(host.firstChild!, 5);
+      const sel = window.getSelection()!;
+      sel.removeAllRanges();
+      sel.addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+    expect(result.current.selection.text).toBe("Hello");
+    expect(result.current.selection.range).not.toBeNull();
+    document.body.removeChild(host);
+  });
+
+  it("ignores selection outside the ref'd host", () => {
+    const outside = document.createElement("div");
+    outside.textContent = "outside text";
+    document.body.appendChild(outside);
+    const host = document.createElement("div");
+    host.textContent = "inside";
+    document.body.appendChild(host);
+    const { result } = renderHook(() => useTextSelection<HTMLDivElement>());
+    act(() => {
+      (result.current.elementRef as any).current = host;
+      const range = document.createRange();
+      range.setStart(outside.firstChild!, 0);
+      range.setEnd(outside.firstChild!, 3);
+      const sel = window.getSelection()!;
+      sel.removeAllRanges();
+      sel.addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+    expect(result.current.selection.text).toBe("");
+    document.body.removeChild(outside);
+    document.body.removeChild(host);
+  });
+});
+```
+- [ ] Run: `pnpm --filter @crossing/web-ui exec vitest run src/hooks/__tests__/useTextSelection.test.ts`
+- [ ] Commit: `git -c commit.gpgsign=false commit -am "sp09(T11): useTextSelection hook"`
+
+---
+
+## T12 — Frontend: SelectionBubble component
+
+**Files:**
+- Create: `/Users/zeoooo/crossing-writer/packages/web-ui/src/components/writer/SelectionBubble.tsx`
+- Create (test): `/Users/zeoooo/crossing-writer/packages/web-ui/src/components/writer/__tests__/SelectionBubble.test.tsx`
+
+Steps:
+- [ ] Create the component:
+```tsx
+import type { CSSProperties } from "react";
+
+export interface SelectionBubbleProps {
+  rect: DOMRect | null;
+  onClick: () => void;
+}
+
+export function SelectionBubble({ rect, onClick }: SelectionBubbleProps) {
+  if (!rect) return null;
+  const style: CSSProperties = {
+    position: "fixed",
+    top: Math.max(8, rect.top - 40),
+    left: rect.left + rect.width / 2,
+    transform: "translateX(-50%)",
+    zIndex: 40,
+  };
+  return (
+    <div style={style} data-testid="selection-bubble">
+      <button
+        type="button"
+        onClick={onClick}
+        className="px-3 py-1 rounded-md bg-slate-900 text-white text-xs shadow-lg hover:bg-slate-700"
+      >
+        ✍️ 重写选中
+      </button>
+    </div>
+  );
+}
+```
+- [ ] Create the test:
+```tsx
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { SelectionBubble } from "../SelectionBubble.js";
+
+function makeRect(top = 100, left = 50, width = 80): DOMRect {
+  return { top, left, width, height: 20, right: left + width, bottom: top + 20, x: left, y: top, toJSON: () => ({}) } as DOMRect;
+}
+
+describe("SelectionBubble", () => {
+  it("renders nothing when rect is null", () => {
+    const { container } = render(<SelectionBubble rect={null} onClick={() => {}} />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("renders button and positions above rect", () => {
+    render(<SelectionBubble rect={makeRect(200, 40, 100)} onClick={() => {}} />);
+    const el = screen.getByTestId("selection-bubble") as HTMLElement;
+    expect(el.style.top).toBe("160px");
+    expect(el.style.left).toBe("90px");
+    expect(screen.getByRole("button").textContent).toMatch(/重写选中/);
+  });
+
+  it("fires onClick", () => {
+    const spy = vi.fn();
+    render(<SelectionBubble rect={makeRect()} onClick={spy} />);
+    fireEvent.click(screen.getByRole("button"));
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+});
+```
+- [ ] Run: `pnpm --filter @crossing/web-ui exec vitest run src/components/writer/__tests__/SelectionBubble.test.tsx`
+- [ ] Commit: `git -c commit.gpgsign=false commit -am "sp09(T12): SelectionBubble component"`
+
+---
+
+## T13 — Frontend: MentionDropdown component
+
+**Files:**
+- Create: `/Users/zeoooo/crossing-writer/packages/web-ui/src/components/writer/MentionDropdown.tsx`
+- Create (test): `/Users/zeoooo/crossing-writer/packages/web-ui/src/components/writer/__tests__/MentionDropdown.test.tsx`
+
+Steps:
+- [ ] Create the component:
+```tsx
+import type { SuggestItem } from "../../api/writer-client.js";
+
+export interface MentionDropdownProps {
+  items: SuggestItem[];
+  activeIndex: number;
+  onSelect: (item: SuggestItem) => void;
+  onHover: (index: number) => void;
+}
+
+export function MentionDropdown({ items, activeIndex, onSelect, onHover }: MentionDropdownProps) {
+  if (items.length === 0) return null;
+  return (
+    <ul
+      data-testid="mention-dropdown"
+      className="absolute z-50 mt-1 max-h-80 w-[420px] overflow-auto rounded-md border border-slate-200 bg-white shadow-lg"
+    >
+      {items.slice(0, 12).map((it, i) => {
+        const active = i === activeIndex;
+        const label =
+          it.kind === "wiki"
+            ? `[wiki] ${it.title} — ${it.excerpt}`
+            : `[raw] ${it.published_at ?? ""} · ${it.account ?? ""} · ${it.title}`;
+        return (
+          <li
+            key={`${it.kind}:${it.id}`}
+            data-testid={`mention-item-${i}`}
+            data-active={active ? "true" : "false"}
+            onMouseEnter={() => onHover(i)}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onSelect(it);
+            }}
+            className={`cursor-pointer px-3 py-2 text-sm ${active ? "bg-slate-100" : "bg-white"}`}
+          >
+            <span className="truncate block" dangerouslySetInnerHTML={{ __html: label }} />
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+```
+- [ ] Create the test:
+```tsx
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { MentionDropdown } from "../MentionDropdown.js";
+import type { SuggestItem } from "../../../api/writer-client.js";
+
+const items: SuggestItem[] = [
+  { kind: "wiki", id: "entities/AI.Talk.md", title: "AI.Talk", excerpt: "AI studio" },
+  { kind: "raw", id: "abc", title: "Top100", account: "花叔", published_at: "2024-08-28", excerpt: "..." },
+];
+
+describe("MentionDropdown", () => {
+  it("returns null when empty", () => {
+    const { container } = render(
+      <MentionDropdown items={[]} activeIndex={0} onSelect={() => {}} onHover={() => {}} />,
+    );
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("formats wiki and raw labels and marks active row", () => {
+    render(<MentionDropdown items={items} activeIndex={1} onSelect={() => {}} onHover={() => {}} />);
+    expect(screen.getByTestId("mention-item-0").textContent).toMatch(/\[wiki\] AI\.Talk — AI studio/);
+    expect(screen.getByTestId("mention-item-1").textContent).toMatch(/\[raw\] 2024-08-28 · 花叔 · Top100/);
+    expect(screen.getByTestId("mention-item-1").getAttribute("data-active")).toBe("true");
+    expect(screen.getByTestId("mention-item-0").getAttribute("data-active")).toBe("false");
+  });
+
+  it("fires onSelect on mouse down and onHover on enter", () => {
+    const sel = vi.fn();
+    const hov = vi.fn();
+    render(<MentionDropdown items={items} activeIndex={0} onSelect={sel} onHover={hov} />);
+    fireEvent.mouseEnter(screen.getByTestId("mention-item-1"));
+    expect(hov).toHaveBeenCalledWith(1);
+    fireEvent.mouseDown(screen.getByTestId("mention-item-0"));
+    expect(sel).toHaveBeenCalledWith(items[0]);
+  });
+
+  it("caps at 12 rows", () => {
+    const many: SuggestItem[] = Array.from({ length: 20 }, (_, i) => ({
+      kind: "wiki", id: `p${i}`, title: `T${i}`, excerpt: "e",
+    }));
+    render(<MentionDropdown items={many} activeIndex={0} onSelect={() => {}} onHover={() => {}} />);
+    expect(screen.getAllByTestId(/mention-item-/).length).toBe(12);
+  });
+});
+```
+- [ ] Run: `pnpm --filter @crossing/web-ui exec vitest run src/components/writer/__tests__/MentionDropdown.test.tsx`
+- [ ] Commit: `git -c commit.gpgsign=false commit -am "sp09(T13): MentionDropdown component"`
+
+---
+
+## T14 — Frontend: InlineComposer (mention engine + submit)
+
+**Files:**
+- Create: `/Users/zeoooo/crossing-writer/packages/web-ui/src/components/writer/InlineComposer.tsx`
+- Create (test): `/Users/zeoooo/crossing-writer/packages/web-ui/src/components/writer/__tests__/InlineComposer.test.tsx`
+
+Steps:
+- [ ] Create the component:
+```tsx
+import { useCallback, useEffect, useRef, useState } from "react";
+import { suggestRefs, rewriteSelection, type SuggestItem } from "../../api/writer-client.js";
+import { MentionDropdown } from "./MentionDropdown.js";
+
+export interface MentionPill {
+  kind: "wiki" | "raw";
+  id: string;
+  title: string;
+  full_excerpt: string;
+}
+
+export interface InlineComposerProps {
+  projectId: string;
+  sectionKey: string;
+  selectedText: string;
+  onCancel: () => void;
+  onCompleted: () => void;
+  // optional injection for tests
+  _suggest?: typeof suggestRefs;
+  _rewrite?: typeof rewriteSelection;
+}
+
+interface MentionState {
+  active: boolean;
+  start: number; // index of `@`
+  query: string;
+  items: SuggestItem[];
+  activeIndex: number;
+}
+
+const EMPTY_MENTION: MentionState = { active: false, start: -1, query: "", items: [], activeIndex: 0 };
+
+export function InlineComposer(props: InlineComposerProps) {
+  const { projectId, sectionKey, selectedText, onCancel, onCompleted } = props;
+  const suggest = props._suggest ?? suggestRefs;
+  const rewrite = props._rewrite ?? rewriteSelection;
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
+  const [value, setValue] = useState("");
+  const [pills, setPills] = useState<MentionPill[]>([]);
+  const [mention, setMention] = useState<MentionState>(EMPTY_MENTION);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const closeMention = useCallback(() => setMention(EMPTY_MENTION), []);
+
+  const runQuery = useCallback(
+    (q: string) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(async () => {
+        try {
+          const items = await suggest(q, 12);
+          setMention((m) => (m.active ? { ...m, items, activeIndex: 0 } : m));
+        } catch {
+          setMention((m) => (m.active ? { ...m, items: [], activeIndex: 0 } : m));
+        }
+      }, 120);
+    },
+    [suggest],
+  );
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const next = e.target.value;
+    setValue(next);
+    const caret = e.target.selectionStart ?? next.length;
+    // detect @ trigger
+    const before = next.slice(0, caret);
+    const at = before.lastIndexOf("@");
+    if (at >= 0) {
+      const frag = before.slice(at + 1);
+      if (!/\s/.test(frag) && frag.length <= 40) {
+        setMention({ active: true, start: at, query: frag, items: mention.items, activeIndex: 0 });
+        runQuery(frag);
+        return;
+      }
+    }
+    closeMention();
+  };
+
+  const insertPill = (item: SuggestItem) => {
+    const token = `[${item.kind}:${item.title}]`;
+    const before = value.slice(0, mention.start);
+    const afterCaret = value.slice(taRef.current?.selectionStart ?? value.length);
+    const nextVal = before + token + afterCaret;
+    const pill: MentionPill = {
+      kind: item.kind,
+      id: item.id,
+      title: item.title,
+      full_excerpt: item.excerpt,
+    };
+    setPills((p) => [...p.filter((x) => !(x.kind === pill.kind && x.id === pill.id)), pill]);
+    setValue(nextVal);
+    closeMention();
+    queueMicrotask(() => {
+      const pos = before.length + token.length;
+      taRef.current?.setSelectionRange(pos, pos);
+      taRef.current?.focus();
+    });
+  };
+
+  const handleKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (mention.active && mention.items.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMention((m) => ({ ...m, activeIndex: Math.min(m.items.length - 1, m.activeIndex + 1) }));
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMention((m) => ({ ...m, activeIndex: Math.max(0, m.activeIndex - 1) }));
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        insertPill(mention.items[mention.activeIndex]);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeMention();
+        return;
+      }
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      onCancel();
+      return;
+    }
+    if (e.key === "Backspace") {
+      const caret = e.currentTarget.selectionStart ?? 0;
+      if (caret > 0 && value[caret - 1] === "]") {
+        // find nearest `[kind:` before
+        const open = value.lastIndexOf("[", caret - 1);
+        if (open >= 0 && /^\[(wiki|raw):/.test(value.slice(open, caret))) {
+          e.preventDefault();
+          const token = value.slice(open, caret);
+          const m = /^\[(wiki|raw):(.+)\]$/.exec(token);
+          setValue(value.slice(0, open) + value.slice(caret));
+          if (m) {
+            const title = m[2];
+            setPills((p) => p.filter((x) => x.title !== title));
+          }
+          queueMicrotask(() => taRef.current?.setSelectionRange(open, open));
+          return;
+        }
+      }
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      if (submitting) return;
+      setSubmitting(true);
+      setError(null);
+      try {
+        const stream = rewrite(projectId, sectionKey, {
+          selected_text: selectedText,
+          user_prompt: value,
+          references: pills.map((p) => ({
+            kind: p.kind,
+            id: p.id,
+            title: p.title,
+            excerpt: p.full_excerpt,
+          })),
+        });
+        await new Promise<void>((resolve, reject) => {
+          stream.onEvent((ev: { type: string; error?: string }) => {
+            if (ev.type === "writer.completed") resolve();
+            if (ev.type === "writer.failed") reject(new Error(ev.error ?? "rewrite failed"));
+          });
+        });
+        onCompleted();
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setSubmitting(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    taRef.current?.focus();
+  }, []);
+
+  const preview = selectedText.length > 60 ? selectedText.slice(0, 60) + "…" : selectedText;
+
+  return (
+    <div data-testid="inline-composer" className="mt-2 rounded-md border border-slate-300 bg-white p-3 shadow">
+      <div className="mb-2 text-xs text-slate-500" data-testid="composer-preview">
+        选中：<span className="text-slate-800">{preview}</span>
+      </div>
+      <div className="relative">
+        <textarea
+          ref={taRef}
+          data-testid="composer-textarea"
+          value={value}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          rows={4}
+          placeholder="描述怎么改它，@ 引用素材..."
+          className="w-full resize-y rounded-md border border-slate-200 p-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+        />
+        {mention.active && (
+          <MentionDropdown
+            items={mention.items}
+            activeIndex={mention.activeIndex}
+            onSelect={insertPill}
+            onHover={(i) => setMention((m) => ({ ...m, activeIndex: i }))}
+          />
+        )}
+      </div>
+      {error && <div className="mt-1 text-xs text-red-600" data-testid="composer-error">{error}</div>}
+      <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+        <span>Esc 取消 · ⌘↵ 提交{submitting ? "（提交中…）" : ""}</span>
+        <button type="button" className="text-slate-700 underline" onClick={onCancel}>取消</button>
+      </div>
+    </div>
+  );
+}
+```
+- [ ] Create the test:
+```tsx
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { InlineComposer } from "../InlineComposer.js";
+import type { SuggestItem } from "../../../api/writer-client.js";
+
+const sample: SuggestItem[] = [
+  { kind: "wiki", id: "entities/AI.Talk.md", title: "AI.Talk", excerpt: "AI studio" },
+  { kind: "raw", id: "abc", title: "Top100", account: "花叔", published_at: "2024-08-28", excerpt: "..." },
+];
+
+function makeRewrite(capture: { payload?: any }) {
+  let cb: ((ev: { type: string }) => void) | null = null;
+  const stream = {
+    onEvent: (fn: (ev: { type: string }) => void) => { cb = fn; },
+    close: vi.fn(),
+  };
+  const fn = vi.fn((_pid: string, _sk: string, payload: any) => {
+    capture.payload = payload;
+    queueMicrotask(() => cb?.({ type: "writer.started" }));
+    queueMicrotask(() => cb?.({ type: "writer.completed" }));
+    return stream;
+  });
+  return { fn, stream };
+}
+
+describe("InlineComposer", () => {
+  it("triggers mention dropdown on @ and navigates + inserts pill", async () => {
+    const user = userEvent.setup();
+    const suggest = vi.fn(async () => sample);
+    const cap: { payload?: any } = {};
+    const { fn: rewrite } = makeRewrite(cap);
+    render(
+      <InlineComposer
+        projectId="p1"
+        sectionKey="intro"
+        selectedText="某段文字"
+        onCancel={() => {}}
+        onCompleted={() => {}}
+        _suggest={suggest}
+        _rewrite={rewrite}
+      />,
+    );
+    const ta = screen.getByTestId("composer-textarea") as HTMLTextAreaElement;
+    await user.click(ta);
+    await user.type(ta, "@AI");
+    await waitFor(() => expect(suggest).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByTestId("mention-dropdown")).toBeTruthy());
+    // ArrowDown then Enter → picks raw (index 1)
+    fireEvent.keyDown(ta, { key: "ArrowDown" });
+    fireEvent.keyDown(ta, { key: "Enter" });
+    expect(ta.value).toMatch(/\[raw:Top100\]/);
+  });
+
+  it("submits on ⌘↵ with references payload and closes on completed", async () => {
+    const user = userEvent.setup();
+    const suggest = vi.fn(async () => sample);
+    const cap: { payload?: any } = {};
+    const { fn: rewrite } = makeRewrite(cap);
+    const onCompleted = vi.fn();
+    render(
+      <InlineComposer
+        projectId="p1"
+        sectionKey="intro"
+        selectedText="AI 内容工作室已经越来越多"
+        onCancel={() => {}}
+        onCompleted={onCompleted}
+        _suggest={suggest}
+        _rewrite={rewrite}
+      />,
+    );
+    const ta = screen.getByTestId("composer-textarea") as HTMLTextAreaElement;
+    await user.click(ta);
+    await user.type(ta, "@AI");
+    await waitFor(() => expect(screen.getByTestId("mention-dropdown")).toBeTruthy());
+    fireEvent.keyDown(ta, { key: "Enter" }); // insert wiki AI.Talk (active 0)
+    await user.type(ta, " 改得更有数据");
+    await act(async () => {
+      fireEvent.keyDown(ta, { key: "Enter", metaKey: true });
+    });
+    await waitFor(() => expect(onCompleted).toHaveBeenCalled());
+    expect(rewrite).toHaveBeenCalled();
+    expect(cap.payload.selected_text).toBe("AI 内容工作室已经越来越多");
+    expect(cap.payload.references[0]).toMatchObject({ kind: "wiki", id: "entities/AI.Talk.md", title: "AI.Talk" });
+    expect(cap.payload.user_prompt).toMatch(/改得更有数据/);
+  });
+
+  it("Esc calls onCancel", () => {
+    const onCancel = vi.fn();
+    render(
+      <InlineComposer
+        projectId="p1"
+        sectionKey="intro"
+        selectedText="x"
+        onCancel={onCancel}
+        onCompleted={() => {}}
+        _suggest={async () => []}
+        _rewrite={(() => ({ onEvent: () => {}, close: () => {} })) as any}
+      />,
+    );
+    const ta = screen.getByTestId("composer-textarea");
+    fireEvent.keyDown(ta, { key: "Escape" });
+    expect(onCancel).toHaveBeenCalled();
+  });
+
+  it("truncates selected-text preview over 60 chars", () => {
+    const long = "あ".repeat(80);
+    render(
+      <InlineComposer
+        projectId="p" sectionKey="s" selectedText={long}
+        onCancel={() => {}} onCompleted={() => {}}
+        _suggest={async () => []}
+        _rewrite={(() => ({ onEvent: () => {}, close: () => {} })) as any}
+      />,
+    );
+    expect(screen.getByTestId("composer-preview").textContent).toMatch(/…$/);
+  });
+});
+```
+- [ ] Run: `pnpm --filter @crossing/web-ui exec vitest run src/components/writer/__tests__/InlineComposer.test.tsx`
+- [ ] Commit: `git -c commit.gpgsign=false commit -am "sp09(T14): InlineComposer + mention engine"`
+
+---
+
+## T15 — Frontend: rewriteSelection SSE client helper
+
+**Files:**
+- Modify: `/Users/zeoooo/crossing-writer/packages/web-ui/src/api/writer-client.ts`
+- Create (test): `/Users/zeoooo/crossing-writer/packages/web-ui/src/api/__tests__/rewriteSelection.test.ts`
+
+Steps:
+- [ ] Read the existing `rewriteSectionStream` implementation in `writer-client.ts` (grep `rewriteSectionStream` to locate it) so the new helper matches its return shape (object with `onEvent` / `close`, parses `data:` lines).
+- [ ] Append to `writer-client.ts`:
+```ts
+export interface SelectionRewriteReference {
+  kind: "wiki" | "raw";
+  id: string;
+  title: string;
+  excerpt: string;
+}
+
+export interface SelectionRewritePayload {
+  selected_text: string;
+  user_prompt: string;
+  references: SelectionRewriteReference[];
+}
+
+export interface SelectionRewriteEvent {
+  type: string;
+  [key: string]: unknown;
+}
+
+export interface SelectionRewriteStream {
+  onEvent: (cb: (ev: SelectionRewriteEvent) => void) => void;
+  close: () => void;
+}
+
+export function rewriteSelection(
+  projectId: string,
+  sectionKey: string,
+  payload: SelectionRewritePayload,
+): SelectionRewriteStream {
+  const url = `/api/projects/${encodeURIComponent(projectId)}/writer/sections/${encodeURIComponent(sectionKey)}/rewrite-selection`;
+  const ctrl = new AbortController();
+  const listeners: Array<(ev: SelectionRewriteEvent) => void> = [];
+  (async () => {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "text/event-stream" },
+        body: JSON.stringify(payload),
+        signal: ctrl.signal,
+      });
+      if (!res.ok || !res.body) {
+        for (const cb of listeners) cb({ type: "writer.failed", error: `HTTP ${res.status}` });
+        return;
+      }
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const parts = buf.split("\n\n");
+        buf = parts.pop() ?? "";
+        for (const part of parts) {
+          const line = part.split("\n").find((l) => l.startsWith("data:"));
+          if (!line) continue;
+          try {
+            const ev = JSON.parse(line.slice(5).trim()) as SelectionRewriteEvent;
+            for (const cb of listeners) cb(ev);
+          } catch { /* ignore malformed */ }
+        }
+      }
+    } catch (err) {
+      for (const cb of listeners) cb({ type: "writer.failed", error: err instanceof Error ? err.message : String(err) });
+    }
+  })();
+  return {
+    onEvent(cb) { listeners.push(cb); },
+    close() { ctrl.abort(); },
+  };
+}
+```
+- [ ] Create test:
+```ts
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { rewriteSelection } from "../writer-client.js";
+
+function sseBody(chunks: string[]): ReadableStream<Uint8Array> {
+  const enc = new TextEncoder();
+  return new ReadableStream({
+    start(ctrl) {
+      for (const c of chunks) ctrl.enqueue(enc.encode(c));
+      ctrl.close();
+    },
+  });
+}
+
+describe("rewriteSelection", () => {
+  beforeEach(() => { (globalThis as any).fetch = vi.fn(); });
+
+  it("dispatches parsed SSE events to listeners", async () => {
+    (globalThis as any).fetch = vi.fn(async () => ({
+      ok: true,
+      body: sseBody([
+        `data: ${JSON.stringify({ type: "writer.started" })}\n\n`,
+        `data: ${JSON.stringify({ type: "writer.selection_rewritten", new_text: "new" })}\n\n`,
+        `data: ${JSON.stringify({ type: "writer.completed" })}\n\n`,
+      ]),
+    }));
+    const events: any[] = [];
+    const s = rewriteSelection("p1", "intro", { selected_text: "a", user_prompt: "b", references: [] });
+    s.onEvent((e) => events.push(e));
+    await new Promise((r) => setTimeout(r, 10));
+    expect(events.map((e) => e.type)).toEqual(["writer.started", "writer.selection_rewritten", "writer.completed"]);
+  });
+
+  it("emits writer.failed on non-ok response", async () => {
+    (globalThis as any).fetch = vi.fn(async () => ({ ok: false, status: 400, body: null }));
+    const events: any[] = [];
+    const s = rewriteSelection("p1", "intro", { selected_text: "a", user_prompt: "b", references: [] });
+    s.onEvent((e) => events.push(e));
+    await new Promise((r) => setTimeout(r, 10));
+    expect(events[0].type).toBe("writer.failed");
+  });
+});
+```
+- [ ] Run: `pnpm --filter @crossing/web-ui exec vitest run src/api/__tests__/rewriteSelection.test.ts`
+- [ ] Commit: `git -c commit.gpgsign=false commit -am "sp09(T15): rewriteSelection SSE client"`
+
+---
+
+## T16 — Frontend: integrate into ArticleSection + delete SkillForm
+
+**Files:**
+- Modify: `/Users/zeoooo/crossing-writer/packages/web-ui/src/components/writer/ArticleSection.tsx`
+- Delete: `/Users/zeoooo/crossing-writer/packages/web-ui/src/components/writer/SkillForm.tsx`
+- Delete: `/Users/zeoooo/crossing-writer/packages/web-ui/src/components/writer/__tests__/SkillForm.test.tsx`
+- Delete: `/Users/zeoooo/crossing-writer/packages/web-ui/src/components/writer/__tests__/ArticleSection-skill-button.test.tsx`
+- Create (test): `/Users/zeoooo/crossing-writer/packages/web-ui/src/components/writer/__tests__/ArticleSection-selection.test.tsx`
+
+Steps:
+- [ ] Read `ArticleSection.tsx` fully; locate `[🔧 @skill]` button, `skillOpen` state, `<SkillForm …>` block. Note the ref pattern used for the body element (we need to attach `useTextSelection`'s `elementRef`).
+- [ ] Remove imports: `import { SkillForm } from "./SkillForm.js";` and any pinned fetch logic in ReferencePanel (keep the edit minimal for T19 — only remove SkillForm render + button + `skillOpen` in this step).
+- [ ] Wire selection bubble + composer. Add near the top of the component:
+```tsx
+import { useTextSelection } from "../../hooks/useTextSelection.js";
+import { SelectionBubble } from "./SelectionBubble.js";
+import { InlineComposer } from "./InlineComposer.js";
+// ...
+const { elementRef, selection, clear } = useTextSelection<HTMLDivElement>();
+const [selectionRewriteOpen, setSelectionRewriteOpen] = useState<{ text: string } | null>(null);
+```
+- [ ] Attach the ref to the body container that renders section markdown: `<div ref={elementRef} className="...">{bodyMarkdown}</div>`.
+- [ ] Render bubble and composer:
+```tsx
+{!selectionRewriteOpen && (
+  <SelectionBubble
+    rect={selection.rect}
+    onClick={() => {
+      setSelectionRewriteOpen({ text: selection.text });
+      clear();
+    }}
+  />
+)}
+{selectionRewriteOpen && (
+  <InlineComposer
+    projectId={projectId}
+    sectionKey={sectionKey}
+    selectedText={selectionRewriteOpen.text}
+    onCancel={() => setSelectionRewriteOpen(null)}
+    onCompleted={() => {
+      setSelectionRewriteOpen(null);
+      onRefetch?.(); // existing refetch hook in this component
+    }}
+  />
+)}
+```
+- [ ] Delete dead files:
+  ```
+  rm /Users/zeoooo/crossing-writer/packages/web-ui/src/components/writer/SkillForm.tsx \
+     /Users/zeoooo/crossing-writer/packages/web-ui/src/components/writer/__tests__/SkillForm.test.tsx \
+     /Users/zeoooo/crossing-writer/packages/web-ui/src/components/writer/__tests__/ArticleSection-skill-button.test.tsx
+  ```
+- [ ] Create integration test `ArticleSection-selection.test.tsx`:
+```tsx
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import { ArticleSection } from "../ArticleSection.js";
+
+// minimum props harness — adjust to whatever ArticleSection actually requires;
+// mock fetch-backed hooks as needed.
+vi.mock("../../api/writer-client.js", async (orig) => {
+  const actual: any = await orig();
+  return {
+    ...actual,
+    suggestRefs: vi.fn(async () => []),
+    rewriteSelection: vi.fn(() => ({
+      onEvent: (cb: any) => queueMicrotask(() => cb({ type: "writer.completed" })),
+      close: () => {},
+    })),
+  };
+});
+
+describe("ArticleSection selection→composer", () => {
+  it("shows bubble on selection and mounts composer on click", async () => {
+    // Render with minimal props — assumes ArticleSection accepts these; align with real signature.
+    render(
+      <ArticleSection
+        projectId="p1"
+        sectionKey="intro"
+        title="Intro"
+        bodyMarkdown="Hello world selection text"
+        onRefetch={() => {}}
+      />,
+    );
+    const host = screen.getByText(/Hello world selection text/i).closest("div")!;
+    const text = host.firstChild as Text;
+    const range = document.createRange();
+    range.setStart(text, 0);
+    range.setEnd(text, 5);
+    const sel = window.getSelection()!;
+    sel.removeAllRanges();
+    sel.addRange(range);
+    await act(async () => { document.dispatchEvent(new Event("selectionchange")); });
+    await waitFor(() => expect(screen.getByTestId("selection-bubble")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: /重写选中/ }));
+    expect(screen.getByTestId("inline-composer")).toBeTruthy();
+  });
+
+  it("no SkillForm is present", () => {
+    render(
+      <ArticleSection
+        projectId="p1"
+        sectionKey="intro"
+        title="Intro"
+        bodyMarkdown="x"
+        onRefetch={() => {}}
+      />,
+    );
+    expect(screen.queryByText(/@skill/)).toBeNull();
+  });
+});
+```
+  > Note: if `ArticleSection`'s actual prop surface differs (e.g., it reads from a store / receives a section object), adapt the render harness to match — keep the two assertions (bubble appears after selection, composer mounts on click; no SkillForm) intact.
+- [ ] Run: `pnpm --filter @crossing/web-ui exec vitest run src/components/writer/__tests__/ArticleSection-selection.test.tsx`
+- [ ] Sanity grep: `grep -rn "SkillForm\|skillOpen\|callSkill" /Users/zeoooo/crossing-writer/packages/web-ui/src/components/writer/ArticleSection.tsx` should return 0 matches.
+- [ ] Commit: `git -c commit.gpgsign=false commit -am "sp09(T16): selection bubble + composer in ArticleSection; delete SkillForm"`
+
+---
+
+## T17 — Frontend: useProjectStream handles writer.selection_rewritten
+
+**Files:**
+- Modify: `/Users/zeoooo/crossing-writer/packages/web-ui/src/hooks/useProjectStream.ts`
+- Modify or create (test): `/Users/zeoooo/crossing-writer/packages/web-ui/src/hooks/__tests__/useProjectStream.test.ts`
+
+Steps:
+- [ ] Locate the `EVENT_TYPES` (or equivalent list / switch) in `useProjectStream.ts`. Add `"writer.selection_rewritten"` to it. If the hook dispatches via a reducer with a typed union, add the corresponding branch:
+```ts
+case "writer.selection_rewritten":
+  return {
+    ...state,
+    events: [...state.events, { type: "writer.selection_rewritten", sectionKey: payload.sectionKey, selected_text: payload.selected_text, new_text: payload.new_text, ts: payload.ts ?? new Date().toISOString() }],
+  };
+```
+- [ ] Add a test:
+```ts
+import { describe, it, expect } from "vitest";
+import { renderHook, act } from "@testing-library/react";
+import { useProjectStream } from "../useProjectStream.js";
+
+describe("useProjectStream selection_rewritten", () => {
+  it("appends writer.selection_rewritten to events", () => {
+    const { result } = renderHook(() => useProjectStream("p1"));
+    act(() => {
+      // @ts-expect-error — test-only event injection (dispatch the event through the hook's public API)
+      result.current._testDispatch?.({
+        type: "writer.selection_rewritten",
+        sectionKey: "intro",
+        selected_text: "a",
+        new_text: "b",
+        ts: "2026-04-14T00:00:00Z",
+      });
+    });
+    const last = result.current.events.at(-1);
+    expect(last?.type).toBe("writer.selection_rewritten");
+  });
+});
+```
+  > If `useProjectStream` has no test-dispatch hook, use an EventSource mock (same as any existing SSE test in this file's sibling tests) to inject a `data:` line of `{"type":"writer.selection_rewritten",...}` — whichever pattern already exists in repo.
+- [ ] Run: `pnpm --filter @crossing/web-ui exec vitest run src/hooks/__tests__/useProjectStream.test.ts`
+- [ ] Commit: `git -c commit.gpgsign=false commit -am "sp09(T17): useProjectStream handles writer.selection_rewritten"`
+
+---
+
+## T18 — Frontend: AgentTimeline renders selection_rewritten
+
+**Files:**
+- Modify: `/Users/zeoooo/crossing-writer/packages/web-ui/src/components/status/AgentTimeline.tsx`
+- Create/modify (test): `/Users/zeoooo/crossing-writer/packages/web-ui/src/components/status/__tests__/AgentTimeline.test.tsx`
+
+Steps:
+- [ ] Locate the switch/map rendering event types in `AgentTimeline.tsx`. Add:
+```tsx
+case "writer.selection_rewritten":
+  return (
+    <li key={idx} className="text-xs text-slate-700" data-testid={`timeline-row-${idx}`}>
+      <span className="mr-1">✂️</span>
+      <span className="font-medium">改写选中片段</span>
+      <span className="ml-2 text-slate-500">§{ev.sectionKey}</span>
+      <span className="ml-2 text-slate-400 truncate">{(ev.selected_text ?? "").slice(0, 24)}…</span>
+    </li>
+  );
+```
+- [ ] Add/extend a snapshot test:
+```tsx
+import { describe, it, expect } from "vitest";
+import { render } from "@testing-library/react";
+import { AgentTimeline } from "../AgentTimeline.js";
+
+describe("AgentTimeline selection_rewritten", () => {
+  it("renders ✂️ 改写选中片段 row", () => {
+    const { container } = render(
+      <AgentTimeline
+        events={[
+          {
+            type: "writer.selection_rewritten",
+            sectionKey: "intro",
+            selected_text: "AI 内容工作室已经越来越多",
+            new_text: "...",
+            ts: "2026-04-14T00:00:00Z",
+          } as any,
+        ]}
+      />,
+    );
+    expect(container.textContent).toMatch(/✂️/);
+    expect(container.textContent).toMatch(/改写选中片段/);
+    expect(container).toMatchSnapshot();
+  });
+});
+```
+- [ ] Run: `pnpm --filter @crossing/web-ui exec vitest run src/components/status/__tests__/AgentTimeline.test.tsx`
+- [ ] Commit: `git -c commit.gpgsign=false commit -am "sp09(T18): AgentTimeline renders selection_rewritten"`
+
+---
+
+## T19 — Frontend cleanup: ReferencePanel + writer-client dead code
+
+**Files:**
+- Modify: `/Users/zeoooo/crossing-writer/packages/web-ui/src/components/writer/ArticleSection.tsx` (ReferencePanel block)
+- Modify: `/Users/zeoooo/crossing-writer/packages/web-ui/src/api/writer-client.ts`
+- Modify or delete: any test referencing `callSkill` / `getPinned` / `deletePin` / `PinnedItem`
+
+Steps:
+- [ ] `grep -rn "callSkill\|getPinned\|deletePin\|PinnedItem" /Users/zeoooo/crossing-writer/packages/web-ui/src/` to enumerate.
+- [ ] In `writer-client.ts` delete the exports `callSkill`, `getPinned`, `deletePin`, and the `PinnedItem` (plus `SkillResult` if only used by these). Keep `suggestRefs`, `rewriteSelection`, `rewriteSectionStream`, and everything else.
+- [ ] In `ArticleSection.tsx` ReferencePanel: remove the pinned fetch branch / `getPinned` useEffect / pinned render column. Keep only the `tools_used` frontmatter render.
+- [ ] Update or delete tests that asserted pinned UI; if a test was SP-08-only, delete it. Do NOT touch the T14/T15 SP-08 references test from earlier work — adjust its imports if it still imports the now-deleted names.
+- [ ] Sanity grep: `grep -rn "callSkill\|getPinned\|deletePin\|PinnedItem\|pendingPinsStore" /Users/zeoooo/crossing-writer/packages/web-ui/` → 0 matches.
+- [ ] Run full web-ui suite:
+  `pnpm --filter @crossing/web-ui exec vitest run`
+  Expected: all green.
+- [ ] Commit: `git -c commit.gpgsign=false commit -am "sp09(T19): remove SP-08 pinned/skill client dead code"`
+
+---
+
+## T20 — End-to-end integration test (happy path)
+
+**Files:**
+- Create (test): `/Users/zeoooo/crossing-writer/packages/web-ui/src/__tests__/sp09-e2e.test.tsx`
+
+Steps:
+- [ ] Create the e2e test wiring SelectionBubble → InlineComposer → MentionDropdown → SSE completion:
+```tsx
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, act, waitFor, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { ArticleSection } from "../components/writer/ArticleSection.js";
+
+vi.mock("../api/writer-client.js", async (orig) => {
+  const actual: any = await orig();
+  return {
+    ...actual,
+    suggestRefs: vi.fn(async (q: string) => {
+      if (!q) return [];
+      return [
+        { kind: "wiki", id: "entities/AI.Talk.md", title: "AI.Talk", excerpt: "AI studio" },
+        { kind: "raw", id: "abc", title: "Top100", account: "花叔", published_at: "2024-08-28", excerpt: "..." },
+      ];
+    }),
+    rewriteSelection: vi.fn((_p, _s, payload) => {
+      (globalThis as any).__lastRewritePayload = payload;
+      const listeners: Array<(e: any) => void> = [];
+      queueMicrotask(() => {
+        for (const l of listeners) l({ type: "writer.started" });
+        for (const l of listeners) l({
+          type: "writer.selection_rewritten",
+          sectionKey: "intro",
+          selected_text: payload.selected_text,
+          new_text: "NEW TEXT",
+          ts: "2026-04-14T00:00:00Z",
+        });
+        for (const l of listeners) l({ type: "writer.completed" });
+      });
+      return { onEvent: (cb: any) => listeners.push(cb), close: () => {} };
+    }),
+  };
+});
+
+describe("SP-09 e2e: select → bubble → @ mention → submit", () => {
+  it("completes the happy path and closes composer", async () => {
+    const user = userEvent.setup();
+    const refetch = vi.fn();
+    render(
+      <ArticleSection
+        projectId="p1"
+        sectionKey="intro"
+        title="Intro"
+        bodyMarkdown="AI 内容工作室已经越来越多 and more tail text"
+        onRefetch={refetch}
+      />,
+    );
+    // 1) select "AI 内容工作室已经越来越多"
+    const host = screen.getByText(/AI 内容工作室/).closest("div")!;
+    const textNode = host.firstChild as Text;
+    const selectedText = "AI 内容工作室已经越来越多";
+    const start = textNode.textContent!.indexOf(selectedText);
+    const range = document.createRange();
+    range.setStart(textNode, start);
+    range.setEnd(textNode, start + selectedText.length);
+    const sel = window.getSelection()!;
+    sel.removeAllRanges();
+    sel.addRange(range);
+    await act(async () => { document.dispatchEvent(new Event("selectionchange")); });
+
+    // 2) bubble appears → click
+    await waitFor(() => expect(screen.getByTestId("selection-bubble")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: /重写选中/ }));
+
+    // 3) composer mounts → type @AI → dropdown → arrow + enter
+    const ta = (await screen.findByTestId("composer-textarea")) as HTMLTextAreaElement;
+    await user.click(ta);
+    await user.type(ta, "@AI");
+    await waitFor(() => expect(screen.getByTestId("mention-dropdown")).toBeTruthy());
+    fireEvent.keyDown(ta, { key: "ArrowDown" });
+    fireEvent.keyDown(ta, { key: "Enter" });
+    expect(ta.value).toMatch(/\[raw:Top100\]/);
+
+    // 4) type prompt → ⌘↵
+    await user.type(ta, " 用更有数据支撑的说法改写");
+    await act(async () => {
+      fireEvent.keyDown(ta, { key: "Enter", metaKey: true });
+    });
+
+    // 5) composer closed + refetch called
+    await waitFor(() => expect(screen.queryByTestId("inline-composer")).toBeNull());
+    expect(refetch).toHaveBeenCalled();
+
+    // payload shape sanity
+    const payload = (globalThis as any).__lastRewritePayload;
+    expect(payload.selected_text).toBe(selectedText);
+    expect(payload.user_prompt).toMatch(/用更有数据/);
+    expect(payload.references.length).toBeGreaterThan(0);
+    expect(payload.references[0].kind).toBe("raw");
+  });
+});
+```
+- [ ] Run: `pnpm --filter @crossing/web-ui exec vitest run src/__tests__/sp09-e2e.test.tsx`
+- [ ] Full gate: `pnpm --filter @crossing/web-server exec vitest run && pnpm --filter @crossing/web-ui exec vitest run` — both green.
+- [ ] Commit: `git -c commit.gpgsign=false commit -am "sp09(T20): selection-rewrite-mention e2e happy path"`
+
+---
+
+## Self-Review
+
+### Spec-coverage mapping
+
+| Spec clause | Covered by |
+| --- | --- |
+| §2.1 划选文本弹 bubble | T11 (hook) · T12 (bubble) · T16 (mount) |
+| §2.2 bubble 点击升起 inline composer | T14 (composer) · T16 (state wiring) |
+| §2.3 composer 顶部选中预览 (>60 字截断) | T14 `preview` + test |
+| §2.3 prompt textarea + 底栏 Esc/⌘↵ | T14 |
+| §2.4 `@` 候选列表 ≤12 条 + 防抖 120ms | T14 mention engine · T13 dropdown cap |
+| §2.4 wiki / raw 条目格式化 | T13 label formatter + test |
+| §2.4 ↑↓ 导航 + Enter 选中 | T14 keydown branches + test |
+| §2.5 pill token 插入 + backspace 删除 | T14 insertPill / Backspace branch |
+| §2.6 ⌘↵ SSE 提交 | T14 submit + T15 stream helper |
+| §2 关闭语义 (Esc only, 点外部不关) | T14 Esc handler; no outside-click listener |
+| §3 frontend 新增/删除清单 | T11–T16, T19 |
+| §4 POST /rewrite-selection 客户端契约 | T15 payload + event shape |
+| §5 SuggestItem / MentionPill / selection_rewritten 类型 | T15 (SuggestItem re-exported part 1) · T14 (MentionPill) · T17 (event branch) |
+| §6 删除 SkillForm / ArticleSection-skill-button / callSkill / getPinned / deletePin / PinnedItem | T16, T19 |
+| §7 `frontmatter.tools_used` 保留渲染 | T19 ReferencePanel keeps tools_used column |
+| §7 整段 rewrite + writer agent 自主 tool 仍正常 | untouched (explicit guardrail in T19) |
+| §7 timeline 显示 selection_rewritten | T17 · T18 |
+
+### Placeholder scan
+
+Grepped this document for `TODO`, `TBD`, `FIXME`, `<placeholder>`, `...` standalone — none present outside legitimate string literals (`…` truncation markers in code, SSE `...` snippets in mocked excerpts, and the `// ...` in T16 example showing context continuation). All commands, file paths, route paths, and test names are fully resolved.
+
+### Type consistency check
+
+- `SuggestItem` — defined in part 1 T1 (web-server export) and re-declared/exported by `writer-client.ts` (part 1 T2). Consumed verbatim by T13, T14, T20. Field set: `kind, id, title, excerpt, account?, published_at?` identical everywhere.
+- `MentionPill` — only used inside `InlineComposer.tsx` (T14), no cross-module leakage.
+- `SelectionRewritePayload` / `SelectionRewriteReference` — defined in T15, consumed by T14 through the `rewriteSelection` import. Backend route in part 1 accepts `{selected_text, user_prompt, references:[{kind,id,title,excerpt}]}` — matches.
+- `writer.selection_rewritten` event — backend emits (part 1 T6/T7); client parses in T15; reducer in T17; timeline render in T18. `{type, sectionKey, selected_text, new_text, ts}` consistent at every stop.
+- No type imports cross the web-server↔web-ui boundary (structural compat only), matching existing repo convention.
+
+### Known risks
+
+- **T14 mention engine** — hand-rolled caret/`@` detection over a raw `<textarea>` is the trickiest surface: (a) multi-byte characters could make `selectionStart` offsets subtly wrong; (b) paste events aren't wired, so a paste containing `@` won't open the dropdown (acceptable MVP); (c) pill-as-text means a user can type `[wiki:Fake]` manually and it'll be treated as a real reference only if it survives the `pills[]` merge — the submit payload uses the `pills[]` state (not regex-parsing the textarea) so fake tokens are harmless but cosmetically confusing. Worth revisiting if complaints arise.
+- **T16 ArticleSection harness assumption** — the e2e and integration tests assume a prop shape `{projectId, sectionKey, title, bodyMarkdown, onRefetch}`. If the actual component reads from a store / context instead, harness wrappers will need adjustment. Called out inline in T16.
+
