@@ -37,4 +37,6 @@ export { StyleDistillerSnippetsAgent } from "./roles/style-distiller-snippets-ag
 export type { SnippetBatchArticle, SnippetHarvestInput, HarvestedSnippet, SnippetHarvestOutput } from "./roles/style-distiller-snippets-agent.js";
 export { StyleDistillerComposerAgent } from "./roles/style-distiller-composer-agent.js";
 export type { ComposerInput, ComposerOutput } from "./roles/style-distiller-composer-agent.js";
+export { WikiIngestorAgent, parseNdjsonOps } from "./roles/wiki-ingestor-agent.js";
+export type { IngestorInput, IngestorOp, IngestorOutput, IngestArticle, ExistingPageSnapshot } from "./roles/wiki-ingestor-agent.js";
 export const VERSION = "0.2.0";

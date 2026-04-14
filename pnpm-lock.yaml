@@ -35,10 +35,16 @@ importers:
       commander:
         specifier: ^12.1.0
         version: 12.1.0
+      js-yaml:
+        specifier: ^4.1.0
+        version: 4.1.1
     devDependencies:
       '@types/better-sqlite3':
         specifier: ^7.6.11
         version: 7.6.13
+      '@types/js-yaml':
+        specifier: ^4.0.9
+        version: 4.0.9
       '@types/node':
         specifier: ^20.12.0
         version: 20.19.39

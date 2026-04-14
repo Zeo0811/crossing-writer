@@ -4,6 +4,7 @@ import { ProjectList } from "./pages/ProjectList";
 import { ProjectWorkbench } from "./pages/ProjectWorkbench";
 import { ToastProvider } from "./components/ui/ToastProvider";
 import { StylePanelsPage } from "./pages/StylePanelsPage.js";
+import { KnowledgePage } from "./pages/KnowledgePage.js";
 
 const qc = new QueryClient();
 
@@ -16,6 +17,7 @@ export function App() {
             <Route path="/" element={<ProjectList />} />
             <Route path="/projects/:id" element={<ProjectWorkbench />} />
             <Route path="/style-panels" element={<StylePanelsPage />} />
+            <Route path="/knowledge" element={<KnowledgePage />} />
           </Routes>
         </BrowserRouter>
       </QueryClientProvider>
