@@ -27,6 +27,8 @@ import { registerConfigAgentsRoutes } from "./routes/config-agents.js";
 import { registerConfigStylePanelsRoutes } from "./routes/config-style-panels.js";
 import { registerConfigStylePanelsDistillRoutes } from "./routes/config-style-panels-distill.js";
 import { registerConfigProjectOverridesRoutes } from "./routes/config-project-overrides.js";
+import { createCliHealthProber } from "./services/cli-health.js";
+import { registerSystemHealthRoutes } from "./routes/system-health.js";
 
 const configPath = process.env.CROSSING_CONFIG
   ?? resolve(process.cwd(), "../../config.json");
@@ -159,6 +161,9 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     projectOverrideStore,
     projectStore: store,
   });
+
+  const cliHealthProber = createCliHealthProber();
+  registerSystemHealthRoutes(app, { prober: cliHealthProber });
 
   app.get("/api/health", async () => ({
     ok: true,

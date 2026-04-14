@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useProjects, useCreateProject } from "../hooks/useProjects";
+import { useCliHealth } from "../hooks/useCliHealth";
+import { CliHealthDot } from "../components/status/CliHealthDot";
 
 export function ProjectList() {
   const { data, isLoading } = useProjects();
+  const { data: cliHealth, loading: cliLoading } = useCliHealth();
   const create = useCreateProject();
   const navigate = useNavigate();
   const [name, setName] = useState("");
@@ -21,6 +24,25 @@ export function ProjectList() {
         <h1 className="text-2xl font-semibold" style={{ color: "var(--green)" }}>
           Crossing Writer
         </h1>
+        <div className="flex items-center gap-3">
+          {cliHealth ? (
+            <>
+              <CliHealthDot label="CLAUDE" item={cliHealth.claude} />
+              <CliHealthDot label="CODEX" item={cliHealth.codex} />
+            </>
+          ) : cliLoading ? (
+            <>
+              <span
+                data-testid="cli-dot-placeholder"
+                style={{ display: "inline-block", width: 8, height: 8, borderRadius: 999, backgroundColor: "#d1d5db" }}
+              />
+              <span
+                data-testid="cli-dot-placeholder"
+                style={{ display: "inline-block", width: 8, height: 8, borderRadius: 999, backgroundColor: "#d1d5db" }}
+              />
+            </>
+          ) : null}
+        </div>
         <a href="/style-panels" className="px-3 py-1 rounded border text-sm" style={{ borderColor: "var(--border)" }}>风格面板</a>
         <Link to="/knowledge" className="px-3 py-1 rounded border text-sm" style={{ borderColor: "var(--border)" }}>知识库</Link>
         <Link to="/config" className="px-3 py-1 rounded border text-sm" style={{ borderColor: "var(--border)" }}>⚙️ 配置工作台</Link>
