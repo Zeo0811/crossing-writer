@@ -35,4 +35,6 @@ export { StyleDistillerStructureAgent } from "./roles/style-distiller-structure-
 export type { StructureSample, StructureDistillInput, StructureDistillOutput } from "./roles/style-distiller-structure-agent.js";
 export { StyleDistillerSnippetsAgent } from "./roles/style-distiller-snippets-agent.js";
 export type { SnippetBatchArticle, SnippetHarvestInput, HarvestedSnippet, SnippetHarvestOutput } from "./roles/style-distiller-snippets-agent.js";
+export { StyleDistillerComposerAgent } from "./roles/style-distiller-composer-agent.js";
+export type { ComposerInput, ComposerOutput } from "./roles/style-distiller-composer-agent.js";
 export const VERSION = "0.2.0";
