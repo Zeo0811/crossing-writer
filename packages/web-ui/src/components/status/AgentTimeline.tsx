@@ -19,11 +19,11 @@ function aggregate(events: StreamEvent[]): AggRow[] {
     if (!a) continue;
     const cli = ev.cli ?? d.cli;
     const model = ev.model ?? d.model;
-    const row = map.get(a) ?? {
+    const row: AggRow = map.get(a) ?? {
       agent: a,
       cli, model,
-      state: "online" as const,
-      firstTs: ev.ts,
+      state: "online",
+      firstTs: String(ev.ts ?? ""),
       lastStage: "",
       events: [],
     };
@@ -142,7 +142,7 @@ export function AgentTimeline({
             <ul className="text-[10px] font-mono space-y-0.5 mt-1 max-h-32 overflow-auto">
               {recent.map((ev, i) => (
                 <li key={i} className="text-gray-600 truncate" title={JSON.stringify(ev)}>
-                  {ev.ts?.slice(11, 19)} · {ev.type}
+                  {typeof ev.ts === "string" ? ev.ts.slice(11, 19) : ev.ts} · {ev.type}
                   {ev.agent ? ` · ${ev.agent}` : ""}
                 </li>
               ))}
