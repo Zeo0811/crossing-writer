@@ -25,4 +25,6 @@ export { WriterOpeningAgent } from "./roles/writer-opening-agent.js";
 export type { WriterOpeningInput, WriterOutput, ReferenceAccountKb } from "./roles/writer-opening-agent.js";
 export { WriterPracticeAgent } from "./roles/writer-practice-agent.js";
 export type { WriterPracticeInput } from "./roles/writer-practice-agent.js";
+export { PracticeStitcherAgent } from "./roles/practice-stitcher-agent.js";
+export type { StitcherInput, StitcherOutput, StitcherCase } from "./roles/practice-stitcher-agent.js";
 export const VERSION = "0.2.0";
