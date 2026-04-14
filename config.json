@@ -43,6 +43,40 @@
       "tools": {
         "search_wiki": true,
         "search_raw": true
+      },
+      "styleBinding": {
+        "account": "十字路口Crossing",
+        "role": "opening"
+      }
+    },
+    "writer.practice": {
+      "agentKey": "writer.practice",
+      "model": {
+        "cli": "claude",
+        "model": "claude-opus-4.6"
+      },
+      "tools": {
+        "search_wiki": true,
+        "search_raw": true
+      },
+      "styleBinding": {
+        "account": "十字路口Crossing",
+        "role": "practice"
+      }
+    },
+    "writer.closing": {
+      "agentKey": "writer.closing",
+      "model": {
+        "cli": "claude",
+        "model": "claude-opus-4.6"
+      },
+      "tools": {
+        "search_wiki": true,
+        "search_raw": true
+      },
+      "styleBinding": {
+        "account": "十字路口Crossing",
+        "role": "closing"
       }
     }
   }
