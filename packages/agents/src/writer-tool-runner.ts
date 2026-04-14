@@ -46,18 +46,26 @@ export interface ToolUsage {
   }>;
 }
 
-export interface WriterToolEvent {
-  type: "tool_called" | "tool_returned" | "tool_failed" | "tool_round_completed";
-  section_key?: string;
-  agent: string;
-  tool?: string;
-  args?: Record<string, string>;
-  round: number;
-  hits_count?: number;
-  duration_ms?: number;
-  error?: string;
-  total_tools_in_round?: number;
-}
+export type WriterToolEvent =
+  | {
+      type: "tool_called" | "tool_returned" | "tool_failed" | "tool_round_completed";
+      section_key?: string;
+      agent: string;
+      tool?: string;
+      args?: Record<string, string>;
+      round: number;
+      hits_count?: number;
+      duration_ms?: number;
+      error?: string;
+      total_tools_in_round?: number;
+    }
+  | {
+      type: "selection_rewritten";
+      sectionKey: string;
+      selected_text: string;
+      new_text: string;
+      ts: string;
+    };
 
 export interface WriterRunOptions {
   agent: AgentInvoker;

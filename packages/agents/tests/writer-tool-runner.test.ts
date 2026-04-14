@@ -97,6 +97,58 @@ describe("runWriterWithTools", () => {
   });
 });
 
+describe("WriterToolEvent discriminated union: selection_rewritten branch", () => {
+  it("can construct a selection_rewritten event and narrow by type tag", () => {
+    const ev: WriterToolEvent = {
+      type: "selection_rewritten",
+      sectionKey: "opening",
+      selected_text: "原文片段",
+      new_text: "改写后的段落",
+      ts: "2026-04-14T00:00:00.000Z",
+    };
+    // type-level narrowing assertion (compile-time + runtime checks)
+    if (ev.type === "selection_rewritten") {
+      expect(ev.sectionKey).toBe("opening");
+      expect(ev.selected_text).toBe("原文片段");
+      expect(ev.new_text).toBe("改写后的段落");
+      expect(ev.ts).toBe("2026-04-14T00:00:00.000Z");
+    } else {
+      throw new Error("expected selection_rewritten branch");
+    }
+  });
+
+  it("preserves existing tool_called branch shape", () => {
+    const ev: WriterToolEvent = {
+      type: "tool_called",
+      agent: "writer.opening",
+      round: 1,
+      tool: "search_wiki",
+      args: { q: "x" },
+      section_key: "opening",
+    };
+    if (ev.type === "tool_called") {
+      expect(ev.agent).toBe("writer.opening");
+      expect(ev.round).toBe(1);
+      expect(ev.section_key).toBe("opening");
+    }
+  });
+
+  it("roundtrips a selection_rewritten event through JSON", () => {
+    const ev: WriterToolEvent = {
+      type: "selection_rewritten",
+      sectionKey: "practice",
+      selected_text: "A",
+      new_text: "B",
+      ts: "2026-04-14T12:00:00.000Z",
+    };
+    const parsed = JSON.parse(JSON.stringify(ev)) as WriterToolEvent;
+    expect(parsed.type).toBe("selection_rewritten");
+    if (parsed.type === "selection_rewritten") {
+      expect(parsed.new_text).toBe("B");
+    }
+  });
+});
+
 describe("runWriterWithTools pinnedContext + edge cases", () => {
   it("injects pinnedContext into system prompt", async () => {
     const captured: any[] = [];
