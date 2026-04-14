@@ -23,6 +23,7 @@ import { ArticleSection } from "../components/writer/ArticleSection";
 import { WriterConfigForm } from "../components/writer/WriterConfigForm";
 import { WriterProgressPanel } from "../components/writer/WriterProgressPanel";
 import { ArticleEditor } from "../components/writer/ArticleEditor";
+import { ProjectOverridePanel } from "../components/config/ProjectOverridePanel";
 
 type SecStat = "completed" | "active" | "pending";
 
@@ -163,6 +164,7 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
 
   const [project, setProject] = useState<any>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [overrideOpen, setOverrideOpen] = useState(false);
   const [selectedEvidenceCase, setSelectedEvidenceCase] = useState<string | null>(null);
   const { events, activeAgents, connectionState, lastEventTs } = useProjectStream(projectId);
 
@@ -179,6 +181,20 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
 
   if (!project) return <div>加载中...</div>;
   const status = project.status;
+
+  // SP-10: find last run.blocked event (if any) — cleared once a new run.started fires
+  let missingBindings: Array<{ agentKey: string; account?: string; role?: string; reason?: string }> = [];
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e: any = events[i];
+    if (e?.type === "run.blocked") {
+      const mb = e.missingBindings ?? e.data?.missingBindings ?? [];
+      if (Array.isArray(mb)) missingBindings = mb;
+      break;
+    }
+    if (e?.type === "writer.section_started") {
+      break; // new run cleared block
+    }
+  }
 
   const showCandidates = status === "awaiting_mission_pick";
   const showSelected = status === "mission_approved";
@@ -200,6 +216,14 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
         </span>
         <AgentStatusBar activeAgents={activeAgents} />
         <button
+          onClick={() => setOverrideOpen(true)}
+          className="ml-2 text-xs px-2 py-1 border rounded"
+          style={{ borderColor: "var(--border)" }}
+          title="本项目专属配置"
+        >
+          🔧 本项目专属配置
+        </button>
+        <button
           onClick={() => setSettingsOpen(true)}
           className="ml-2 text-lg opacity-70 hover:opacity-100"
           aria-label="settings"
@@ -215,6 +239,40 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
           className="w-3/5 border-r overflow-auto p-6"
           style={{ borderColor: "var(--border)" }}
         >
+          {missingBindings.length > 0 && (
+            <div
+              className="mb-4 border rounded p-4"
+              style={{ borderColor: "var(--red, #ef4444)", background: "#fff5f5" }}
+              data-testid="run-blocked-card"
+            >
+              <h3 className="font-semibold mb-2" style={{ color: "var(--red, #ef4444)" }}>
+                ⚠️ 无法开始
+              </h3>
+              <div className="text-sm mb-2">下列 agent 未绑定风格：</div>
+              <ul className="text-xs font-mono ml-4 mb-3">
+                {missingBindings.map((mb, i) => (
+                  <li key={`${mb.agentKey}-${i}`}>• {mb.agentKey}{mb.reason ? ` (${mb.reason})` : ""}</li>
+                ))}
+              </ul>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setOverrideOpen(true)}
+                  className="text-xs px-2 py-1 border rounded"
+                  style={{ borderColor: "var(--border)" }}
+                >
+                  本项目专属配置
+                </button>
+                <Link
+                  to="/config"
+                  className="text-xs px-2 py-1 border rounded"
+                  style={{ borderColor: "var(--border)" }}
+                >
+                  去配置工作台
+                </Link>
+              </div>
+            </div>
+          )}
           {status === "created" ? (
             <div className="text-gray-500">右侧上传 Brief 开始</div>
           ) : (
@@ -300,6 +358,12 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
         </div>
       </div>
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      {overrideOpen && (
+        <ProjectOverridePanel
+          projectId={projectId}
+          onClose={() => setOverrideOpen(false)}
+        />
+      )}
     </div>
   );
 }

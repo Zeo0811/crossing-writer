@@ -5,6 +5,7 @@ import { ProjectWorkbench } from "./pages/ProjectWorkbench";
 import { ToastProvider } from "./components/ui/ToastProvider";
 import { StylePanelsPage } from "./pages/StylePanelsPage.js";
 import { KnowledgePage } from "./pages/KnowledgePage.js";
+import { ConfigWorkbench } from "./pages/ConfigWorkbench";
 
 const qc = new QueryClient();
 
@@ -18,6 +19,7 @@ export function App() {
             <Route path="/projects/:id" element={<ProjectWorkbench />} />
             <Route path="/style-panels" element={<StylePanelsPage />} />
             <Route path="/knowledge" element={<KnowledgePage />} />
+            <Route path="/config" element={<ConfigWorkbench />} />
           </Routes>
         </BrowserRouter>
       </QueryClientProvider>

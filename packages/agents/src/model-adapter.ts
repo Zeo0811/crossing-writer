@@ -61,10 +61,10 @@ export function invokeAgent(opts: InvokeOptions): AgentResult {
     ? `${fullPrompt}\n\n附加图片：\n${images.map((p) => `@${p}`).join("\n")}`
     : fullPrompt;
   const args = [
-    "-p", claudePrompt,
+    "-p", "-",
     ...(opts.model ? ["--model", opts.model] : []),
   ];
-  const proc = spawnSync("claude", args, { encoding: "buffer", timeout, input: "" });
+  const proc = spawnSync("claude", args, { encoding: "buffer", timeout, input: Buffer.from(claudePrompt, "utf-8") });
   const stdout = proc.stdout?.toString("utf-8") ?? "";
   const stderr = proc.stderr?.toString("utf-8") ?? "";
   if (proc.status !== 0) {
