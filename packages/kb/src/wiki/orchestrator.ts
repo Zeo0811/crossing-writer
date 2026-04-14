@@ -55,11 +55,12 @@ function lastIngestedAt(vault: string, account: string): string | null {
 
 interface RawRow {
   id: string; account: string; title: string; published_at: string;
-  body_plain: string | null; body_html: string | null;
+  body_plain: string | null; html_path: string | null;
 }
 
 function loadArticles(sqlitePath: string, account: string, opts: {
   perAccountLimit: number; since?: string; until?: string; mode: IngestOptions["mode"]; sinceAuto?: string | null;
+  vaultRootPath?: string;
 }): IngestArticle[] {
   const db = new Database(sqlitePath, { readonly: true, fileMustExist: true });
   try {
@@ -68,12 +69,19 @@ function loadArticles(sqlitePath: string, account: string, opts: {
     if (opts.since) { where.push("published_at >= @s"); params.s = opts.since; }
     if (opts.until) { where.push("published_at <= @u"); params.u = opts.until; }
     if (opts.mode === "incremental" && opts.sinceAuto) { where.push("published_at > @sa"); params.sa = opts.sinceAuto; }
-    const sql = `SELECT id, account, title, published_at, body_plain, body_html FROM ref_articles WHERE ${where.join(" AND ")} ORDER BY published_at DESC LIMIT @lim`;
+    const sql = `SELECT id, account, title, published_at, body_plain, html_path FROM ref_articles WHERE ${where.join(" AND ")} ORDER BY published_at DESC LIMIT @lim`;
     params.lim = opts.perAccountLimit;
     const rows = db.prepare(sql).all(params) as RawRow[];
     return rows.map((r) => {
       const bodyPlain = r.body_plain ?? "";
-      const imgs = r.body_html ? extractImagesFromHtml(r.body_html) : extractImagesFromMarkdown(bodyPlain);
+      let imgs: ReturnType<typeof extractImagesFromMarkdown> = [];
+      if (r.html_path) {
+        const abs = r.html_path.startsWith("/") ? r.html_path : (opts.vaultRootPath ? join(opts.vaultRootPath, r.html_path) : r.html_path);
+        if (existsSync(abs)) {
+          try { imgs = extractImagesFromHtml(readFileSync(abs, "utf-8")); } catch { /* ignore */ }
+        }
+      }
+      if (imgs.length === 0) imgs = extractImagesFromMarkdown(bodyPlain);
       return {
         id: r.id, title: r.title, published_at: r.published_at, body_plain: bodyPlain, images: imgs,
       };
@@ -124,6 +132,7 @@ export async function runIngest(opts: IngestOptions, ctx: Ctx): Promise<IngestRe
       perAccountLimit: opts.perAccountLimit,
       since: opts.since, until: opts.until,
       mode: opts.mode, sinceAuto,
+      vaultRootPath: dirname(dirname(ctx.sqlitePath)),
     });
     if (articles.length === 0) {
       emit(opts.onEvent, { type: "account_completed", account, stats: { articles_processed: 0 } });

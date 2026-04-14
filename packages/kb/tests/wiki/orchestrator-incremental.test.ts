@@ -31,7 +31,7 @@ function mkDb(): string {
   const dir = mkdtempSync(join(tmpdir(), "inc-"));
   const p = join(dir, "refs.sqlite");
   const db = new Database(p);
-  db.exec(`CREATE TABLE ref_articles (id TEXT PRIMARY KEY, account TEXT, title TEXT, published_at TEXT, word_count INTEGER, body_plain TEXT, body_html TEXT)`);
+  db.exec(`CREATE TABLE ref_articles (id TEXT PRIMARY KEY, account TEXT, title TEXT, published_at TEXT, word_count INTEGER, body_plain TEXT, html_path TEXT)`);
   const ins = db.prepare(`INSERT INTO ref_articles VALUES (?,?,?,?,?,?,?)`);
   ins.run("X1", "A", "X1", "2026-01-01", 10, "b", "");
   ins.run("X2", "A", "X2", "2026-02-01", 10, "b", "");

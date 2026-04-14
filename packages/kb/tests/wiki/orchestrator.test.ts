@@ -32,8 +32,8 @@ function seedSqlite(): { sqlitePath: string } {
   const dir = mkdtempSync(join(tmpdir(), "oc-sql-"));
   const p = join(dir, "refs.sqlite");
   const db = new Database(p);
-  db.exec(`CREATE TABLE ref_articles (id TEXT PRIMARY KEY, account TEXT, title TEXT, published_at TEXT, word_count INTEGER, body_plain TEXT, body_html TEXT)`);
-  const ins = db.prepare(`INSERT INTO ref_articles (id,account,title,published_at,word_count,body_plain,body_html) VALUES (?,?,?,?,?,?,?)`);
+  db.exec(`CREATE TABLE ref_articles (id TEXT PRIMARY KEY, account TEXT, title TEXT, published_at TEXT, word_count INTEGER, body_plain TEXT, html_path TEXT)`);
+  const ins = db.prepare(`INSERT INTO ref_articles (id,account,title,published_at,word_count,body_plain,html_path) VALUES (?,?,?,?,?,?,?)`);
   for (let i = 0; i < 4; i += 1) {
     ins.run(`A${i}`, "AcctA", `TitleA-${i}`, `2026-01-${String(i + 1).padStart(2, "0")}`, 100, "body A", "<p>hi</p>");
   }
