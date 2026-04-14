@@ -21,4 +21,6 @@ export { CaseCoordinator } from "./roles/case-coordinator.js";
 export type { SynthesizeInput } from "./roles/case-coordinator.js";
 export { runCaseExpert, parseToolCalls as parseCaseToolCalls } from "./case-expert-runner.js";
 export type { ToolCall as CaseToolCall, ToolExecutor, RunCaseExpertResult } from "./case-expert-runner.js";
+export { WriterOpeningAgent } from "./roles/writer-opening-agent.js";
+export type { WriterOpeningInput, WriterOutput, ReferenceAccountKb } from "./roles/writer-opening-agent.js";
 export const VERSION = "0.2.0";
