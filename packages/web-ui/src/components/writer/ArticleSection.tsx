@@ -9,6 +9,7 @@ import {
   type SkillResult,
   type ToolUsageFrontmatter,
 } from "../../api/writer-client";
+import { SkillForm } from "./SkillForm";
 
 type PinEntry = SkillResult & { pinned_by?: string };
 
@@ -128,6 +129,7 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [selectedText, setSelectedText] = useState<string>("");
   const [selectionKey, setSelectionKey] = useState<string | null>(null);
+  const [skillOpenKey, setSkillOpenKey] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     if (status === "evidence_ready" || status === "writing_configuring" || status === "writing_running") return;
@@ -247,6 +249,15 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
                       🤖 重写整段
                     </button>
                   )}
+                  {!isBusy && (
+                    <button
+                      type="button"
+                      onClick={() => setSkillOpenKey(key)}
+                      className="opacity-0 group-hover:opacity-100 transition px-2 py-0.5 border rounded text-slate-700 hover:bg-slate-100"
+                    >
+                      🔧 @skill
+                    </button>
+                  )}
                 </div>
                 {isBusy && <span className="text-blue-600">重写中…</span>}
               </header>
@@ -284,6 +295,14 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
           );
         })}
       </div>
+      {skillOpenKey && (
+        <SkillForm
+          projectId={projectId}
+          sectionKey={skillOpenKey}
+          onClose={() => setSkillOpenKey(null)}
+          onResult={() => { /* ReferencePanel re-fetches on next open */ }}
+        />
+      )}
     </div>
   );
 }
