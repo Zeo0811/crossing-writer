@@ -46,9 +46,9 @@ export function ProgressView({ account, body, onDone }: ProgressViewProps) {
   }, [account, body, onDone]);
 
   return (
-    <div className="progress-view">
-      <h2>蒸馏 {account}</h2>
-      <pre className="log">{lines.join("\n")}</pre>
+    <div className="border rounded p-4 space-y-3 bg-white">
+      <h2 className="text-lg font-semibold">蒸馏 {account}</h2>
+      <pre className="bg-gray-900 text-green-300 text-xs p-3 rounded overflow-auto max-h-[60vh] whitespace-pre-wrap">{lines.join("\n") || "等待开始…"}</pre>
     </div>
   );
 }
