@@ -9,7 +9,7 @@ import {
   type ToolUsageFrontmatter,
 } from "../../api/writer-client";
 import { SelectionBubble } from "./SelectionBubble";
-import { InlineComposer } from "./InlineComposer";
+import { InlineComposer, type AnchorRect } from "./InlineComposer";
 
 function ReferencePanel({
   toolsUsed,
@@ -98,7 +98,7 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
   const [selectionKey, setSelectionKey] = useState<string | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const selection = useTextSelection(bodyRef);
-  const [selectionRewriteOpen, setSelectionRewriteOpen] = useState<{ key: string; text: string } | null>(null);
+  const [selectionRewriteOpen, setSelectionRewriteOpen] = useState<{ key: string; text: string; rect: AnchorRect } | null>(null);
 
   const reload = useCallback(async () => {
     if (status === "evidence_ready" || status === "writing_configuring" || status === "writing_running") return;
@@ -179,7 +179,11 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
     if (!text) return;
     const hitKey = renderOrder.find((k) => (bodies[k] ?? "").includes(text)) ?? renderOrder[0];
     if (!hitKey) return;
-    setSelectionRewriteOpen({ key: hitKey, text });
+    const r = selection.rect;
+    const rect: AnchorRect = r
+      ? { top: r.top, left: r.left, bottom: r.bottom, right: r.right }
+      : { top: 0, left: 0, bottom: 0, right: 0 };
+    setSelectionRewriteOpen({ key: hitKey, text, rect });
   };
 
   return (
@@ -264,6 +268,7 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
                   projectId={projectId}
                   sectionKey={key}
                   selectedText={selectionRewriteOpen.text}
+                  anchorRect={selectionRewriteOpen.rect}
                   onCancel={() => setSelectionRewriteOpen(null)}
                   onCompleted={() => {
                     setSelectionRewriteOpen(null);

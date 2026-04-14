@@ -65,7 +65,7 @@ describe("InlineComposer", () => {
     expect(ta.value).toBe("@search_raw ");
   });
 
-  it("submits on Cmd+Enter with raw user_prompt and no references field", async () => {
+  it("submits on plain Enter with raw user_prompt and no references field", async () => {
     const user = userEvent.setup();
     const cap: { payload?: any } = {};
     const { fn: rewrite } = makeRewrite(cap);
@@ -85,13 +85,62 @@ describe("InlineComposer", () => {
     await waitFor(() => expect(ta.value).toMatch(/@search_wiki /));
     await user.type(ta, "AI.Talk 的资料改写");
     await act(async () => {
-      fireEvent.keyDown(ta, { key: "Enter", metaKey: true });
+      // Plain Enter submits (dropdown already closed after skill insertion).
+      fireEvent.keyDown(ta, { key: "Enter" });
     });
     await waitFor(() => expect(onCompleted).toHaveBeenCalled());
     expect(rewrite).toHaveBeenCalled();
     expect(cap.payload.selected_text).toBe("AI 内容工作室已经越来越多");
     expect(cap.payload.user_prompt).toMatch(/@search_wiki AI\.Talk 的资料改写/);
     expect(cap.payload.references).toBeUndefined();
+  });
+
+  it("Shift+Enter inserts a newline and does NOT submit", async () => {
+    const user = userEvent.setup();
+    const cap: { payload?: any } = {};
+    const { fn: rewrite } = makeRewrite(cap);
+    const onCompleted = vi.fn();
+    render(
+      <InlineComposer
+        projectId="p1" sectionKey="intro" selectedText="x"
+        onCancel={() => {}} onCompleted={onCompleted}
+        _rewrite={rewrite}
+      />,
+    );
+    const ta = screen.getByTestId("composer-textarea") as HTMLTextAreaElement;
+    await user.click(ta);
+    await user.type(ta, "line1");
+    // Shift+Enter should NOT submit; let the default newline insert.
+    fireEvent.keyDown(ta, { key: "Enter", shiftKey: true });
+    await user.type(ta, "line2");
+    expect(rewrite).not.toHaveBeenCalled();
+    expect(onCompleted).not.toHaveBeenCalled();
+    // textarea value should contain both fragments; Shift+Enter's default may or may not
+    // actually insert "\n" in jsdom, but we assert that submission didn't happen and text is preserved.
+    expect(ta.value).toMatch(/line1/);
+    expect(ta.value).toMatch(/line2/);
+  });
+
+  it("still submits on Cmd+Enter (kept for safety)", async () => {
+    const user = userEvent.setup();
+    const cap: { payload?: any } = {};
+    const { fn: rewrite } = makeRewrite(cap);
+    const onCompleted = vi.fn();
+    render(
+      <InlineComposer
+        projectId="p1" sectionKey="intro" selectedText="S"
+        onCancel={() => {}} onCompleted={onCompleted}
+        _rewrite={rewrite}
+      />,
+    );
+    const ta = screen.getByTestId("composer-textarea") as HTMLTextAreaElement;
+    await user.click(ta);
+    await user.type(ta, "hi");
+    await act(async () => {
+      fireEvent.keyDown(ta, { key: "Enter", metaKey: true });
+    });
+    await waitFor(() => expect(onCompleted).toHaveBeenCalled());
+    expect(cap.payload.user_prompt).toBe("hi");
   });
 
   it("Esc (outside mention mode) calls onCancel", () => {

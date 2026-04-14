@@ -1,6 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { rewriteSelection } from "../../api/writer-client.js";
 import { MentionDropdown, SKILL_ITEMS, type MentionSkillItem } from "./MentionDropdown.js";
+
+export interface AnchorRect {
+  top: number;
+  left: number;
+  bottom: number;
+  right: number;
+}
 
 export interface InlineComposerProps {
   projectId: string;
@@ -8,6 +15,8 @@ export interface InlineComposerProps {
   selectedText: string;
   onCancel: () => void;
   onCompleted: () => void;
+  /** Viewport rect of the selected text; composer anchors just below it. */
+  anchorRect?: AnchorRect | null;
   // optional injection for tests
   _rewrite?: typeof rewriteSelection;
 }
@@ -25,7 +34,7 @@ const EMPTY_MENTION: MentionState = {
 };
 
 export function InlineComposer(props: InlineComposerProps) {
-  const { projectId, sectionKey, selectedText, onCancel, onCompleted } = props;
+  const { projectId, sectionKey, selectedText, onCancel, onCompleted, anchorRect } = props;
   const rewrite = props._rewrite ?? rewriteSelection;
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const [value, setValue] = useState("");
@@ -99,7 +108,10 @@ export function InlineComposer(props: InlineComposerProps) {
       onCancel();
       return;
     }
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+    // Plain Enter → submit; Shift+Enter → newline (default). ⌘↵/Ctrl+↵ still submits for safety.
+    const isSubmitKey =
+      e.key === "Enter" && (((e.metaKey || e.ctrlKey)) || (!e.shiftKey && !e.metaKey && !e.ctrlKey));
+    if (isSubmitKey) {
       e.preventDefault();
       if (submitting) return;
       setSubmitting(true);
@@ -131,10 +143,31 @@ export function InlineComposer(props: InlineComposerProps) {
   const preview =
     selectedText.length > 60 ? selectedText.slice(0, 60) + "…" : selectedText;
 
+  const anchorStyle = useMemo<CSSProperties | undefined>(() => {
+    if (!anchorRect) return undefined;
+    const COMPOSER_W = 480;
+    const viewportW = typeof window !== "undefined" ? window.innerWidth : 1024;
+    const left = Math.min(Math.max(8, anchorRect.left), Math.max(8, viewportW - COMPOSER_W - 8));
+    const top = Math.max(8, anchorRect.bottom + 8);
+    return {
+      position: "fixed",
+      top,
+      left,
+      width: COMPOSER_W,
+      maxWidth: "calc(100vw - 16px)",
+      zIndex: 50,
+    };
+  }, [anchorRect]);
+
   return (
     <div
       data-testid="inline-composer"
-      className="mt-2 rounded-md border border-slate-300 bg-white p-3 shadow"
+      style={anchorStyle}
+      className={
+        anchorStyle
+          ? "rounded-md border border-slate-300 bg-white p-3 shadow-lg"
+          : "mt-2 rounded-md border border-slate-300 bg-white p-3 shadow"
+      }
     >
       <div className="mb-2 text-xs text-slate-500" data-testid="composer-preview">
         选中：<span className="text-slate-800">{preview}</span>
@@ -166,7 +199,7 @@ export function InlineComposer(props: InlineComposerProps) {
       )}
       <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
         <span>
-          Esc 取消 · ⌘↵ 提交{submitting ? "（提交中…）" : ""}
+          Esc 取消 · ↵ 提交 · ⇧↵ 换行{submitting ? "（提交中…）" : ""}
         </span>
         <button type="button" className="text-slate-700 underline" onClick={onCancel}>
           取消

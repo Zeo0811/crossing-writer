@@ -110,9 +110,9 @@ describe("SP-09 e2e: select → bubble → @ mention → submit", () => {
     // 5) Continue typing query + rest of prompt
     await user.type(ta, "AI.Talk 的资料把这段改得更有数据");
 
-    // 6) ⌘↵ submit
+    // 6) Plain Enter submits (dropdown closed after skill insertion)
     await act(async () => {
-      fireEvent.keyDown(ta, { key: "Enter", metaKey: true });
+      fireEvent.keyDown(ta, { key: "Enter" });
     });
 
     // 7) Composer closes after writer.completed
