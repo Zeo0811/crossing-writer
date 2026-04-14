@@ -32,7 +32,6 @@ vi.mock("../../../api/writer-client", async () => {
     getSections: (...args: any[]) => getSectionsMock(...args),
     getFinal: (...args: any[]) => getFinalMock(...args),
     rewriteSectionStream: vi.fn(),
-    suggestRefs: vi.fn(async () => []),
     rewriteSelection: vi.fn(() => ({
       onEvent: (cb: (ev: { type: string }) => void) => {
         queueMicrotask(() => cb({ type: "writer.completed" }));

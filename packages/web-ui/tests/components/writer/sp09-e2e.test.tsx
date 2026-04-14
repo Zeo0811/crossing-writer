@@ -4,21 +4,14 @@ import userEvent from "@testing-library/user-event";
 
 // ---- mocks ----
 
-const { suggestRefsMock, rewriteSelectionMock } = vi.hoisted(() => {
-  const suggestRefsMock = vi.fn(async (q: string, _limit?: number) => {
-    if (!q) return [];
-    return [
-      { kind: "wiki", id: "entities/AI.Talk.md", title: "AI.Talk", excerpt: "AI studio excerpt" },
-      { kind: "raw", id: "abc", title: "Top100", account: "花叔", published_at: "2024-08-28", excerpt: "raw excerpt" },
-    ];
-  });
+const { rewriteSelectionMock } = vi.hoisted(() => {
   const rewriteSelectionMock = vi.fn((_projectId: string, _sectionKey: string, payload: any) => {
     (globalThis as any).__lastRewritePayload = payload;
     const listeners: Array<(e: any) => void> = [];
     queueMicrotask(() => {
       for (const l of listeners) l({ type: "writer.started" });
-      for (const l of listeners) l({ type: "writer.tool_called", data: { tool: "wiki.get" } });
-      for (const l of listeners) l({ type: "writer.tool_returned", data: { tool: "wiki.get", ok: true } });
+      for (const l of listeners) l({ type: "writer.tool_called", data: { tool: "search_wiki" } });
+      for (const l of listeners) l({ type: "writer.tool_returned", data: { tool: "search_wiki", ok: true } });
       for (const l of listeners) {
         l({
           type: "writer.selection_rewritten",
@@ -37,7 +30,7 @@ const { suggestRefsMock, rewriteSelectionMock } = vi.hoisted(() => {
       close: () => {},
     };
   });
-  return { suggestRefsMock, rewriteSelectionMock };
+  return { rewriteSelectionMock };
 });
 
 vi.mock("../../../src/api/writer-client", async (orig) => {
@@ -61,7 +54,6 @@ vi.mock("../../../src/api/writer-client", async (orig) => {
       "---\n---\n<!-- section:opening -->\nAI 内容工作室已经越来越多 and more tail text",
     ),
     rewriteSectionStream: vi.fn(),
-    suggestRefs: suggestRefsMock,
     rewriteSelection: rewriteSelectionMock,
   };
 });
@@ -85,7 +77,6 @@ import { ArticleSection } from "../../../src/components/writer/ArticleSection";
 
 describe("SP-09 e2e: select → bubble → @ mention → submit", () => {
   beforeEach(() => {
-    suggestRefsMock.mockClear();
     rewriteSelectionMock.mockClear();
     (globalThis as any).__lastRewritePayload = undefined;
   });
@@ -94,7 +85,7 @@ describe("SP-09 e2e: select → bubble → @ mention → submit", () => {
     const user = userEvent.setup();
     render(<ArticleSection projectId="p1" status="writing_ready" />);
 
-    // 1) SelectionBubble appears (useTextSelection mock is active)
+    // 1) SelectionBubble appears
     const bubble = await screen.findByTestId("selection-bubble");
     expect(bubble).toBeTruthy();
 
@@ -103,21 +94,21 @@ describe("SP-09 e2e: select → bubble → @ mention → submit", () => {
     const ta = (await screen.findByTestId("composer-textarea")) as HTMLTextAreaElement;
     expect(screen.getByTestId("composer-preview").textContent).toContain(SELECTED_TEXT);
 
-    // 3) Type @AI -> mention dropdown populates
+    // 3) Type `@` -> static 2-item dropdown appears
     await user.click(ta);
-    await user.type(ta, "@AI");
+    await user.type(ta, "用 @");
     await waitFor(() => expect(screen.getByTestId("mention-dropdown")).toBeTruthy());
-    await waitFor(() =>
-      expect(screen.getByTestId("mention-dropdown").textContent).toMatch(/Top100/),
-    );
+    // exactly 2 rows
+    expect(screen.getByTestId("mention-row-0")).toBeTruthy();
+    expect(screen.getByTestId("mention-row-1")).toBeTruthy();
+    expect(screen.queryByTestId("mention-row-2")).toBeNull();
 
-    // 4) ArrowDown -> Enter selects raw candidate
-    fireEvent.keyDown(ta, { key: "ArrowDown" });
+    // 4) Enter picks first (search_wiki), inserts `@search_wiki `
     fireEvent.keyDown(ta, { key: "Enter" });
-    await waitFor(() => expect(ta.value).toMatch(/\[raw:Top100\]/));
+    await waitFor(() => expect(ta.value).toMatch(/@search_wiki /));
 
-    // 5) Type prompt
-    await user.type(ta, " 用更有数据支撑的说法改写");
+    // 5) Continue typing query + rest of prompt
+    await user.type(ta, "AI.Talk 的资料把这段改得更有数据");
 
     // 6) ⌘↵ submit
     await act(async () => {
@@ -127,18 +118,13 @@ describe("SP-09 e2e: select → bubble → @ mention → submit", () => {
     // 7) Composer closes after writer.completed
     await waitFor(() => expect(screen.queryByTestId("inline-composer")).toBeNull());
 
-    // 8) Payload shape correctness
+    // 8) Payload shape correctness: raw user_prompt contains `@search_wiki`; no references field
     const payload = (globalThis as any).__lastRewritePayload;
     expect(payload).toBeTruthy();
     expect(payload.selected_text).toBe(SELECTED_TEXT);
-    expect(payload.user_prompt).toMatch(/用更有数据/);
-    expect(payload.references).toHaveLength(1);
-    expect(payload.references[0]).toMatchObject({
-      kind: "raw",
-      id: "abc",
-      title: "Top100",
-      excerpt: "raw excerpt",
-    });
+    expect(payload.user_prompt).toMatch(/@search_wiki AI\.Talk/);
+    expect(payload.user_prompt).toMatch(/改得更有数据/);
+    expect("references" in payload).toBe(false);
     expect(rewriteSelectionMock).toHaveBeenCalledTimes(1);
     expect(rewriteSelectionMock.mock.calls[0]?.[0]).toBe("p1");
     expect(rewriteSelectionMock.mock.calls[0]?.[1]).toBe("opening");
