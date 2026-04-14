@@ -31,4 +31,6 @@ export { WriterClosingAgent } from "./roles/writer-closing-agent.js";
 export type { WriterClosingInput } from "./roles/writer-closing-agent.js";
 export { StyleCriticAgent } from "./roles/style-critic-agent.js";
 export type { StyleCriticInput, StyleCriticOutput } from "./roles/style-critic-agent.js";
+export { StyleDistillerStructureAgent } from "./roles/style-distiller-structure-agent.js";
+export type { StructureSample, StructureDistillInput, StructureDistillOutput } from "./roles/style-distiller-structure-agent.js";
 export const VERSION = "0.2.0";
