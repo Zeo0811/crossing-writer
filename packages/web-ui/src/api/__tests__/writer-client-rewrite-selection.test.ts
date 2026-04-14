@@ -61,7 +61,6 @@ describe("rewriteSelection SSE client", () => {
     const stream = rewriteSelection("p1", "intro", {
       selected_text: "old",
       user_prompt: "make it better",
-      references: [],
     });
     stream.onEvent((e) => events.push(e));
     await flush();
@@ -89,7 +88,6 @@ describe("rewriteSelection SSE client", () => {
     const s = rewriteSelection("p1", "intro", {
       selected_text: "a",
       user_prompt: "b",
-      references: [],
     });
     s.onEvent((e) => events.push(e));
     await flush();
@@ -107,7 +105,6 @@ describe("rewriteSelection SSE client", () => {
     const s = rewriteSelection("p1", "intro", {
       selected_text: "a",
       user_prompt: "b",
-      references: [],
     });
     s.onEvent((e) => events.push(e));
     await flush();
@@ -129,7 +126,6 @@ describe("rewriteSelection SSE client", () => {
     const s = rewriteSelection("p1", "intro", {
       selected_text: "a",
       user_prompt: "b",
-      references: [],
     });
     s.onEvent((e) => events.push(e));
     await flush();
@@ -152,7 +148,6 @@ describe("rewriteSelection SSE client", () => {
     const s = rewriteSelection("p1", "intro", {
       selected_text: "a",
       user_prompt: "b",
-      references: [],
     });
     s.onEvent(() => {});
     s.close();

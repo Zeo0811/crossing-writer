@@ -97,34 +97,9 @@ export async function listStylePanels(): Promise<StylePanelEntry[]> {
   return res.json();
 }
 
-export interface SuggestItem {
-  kind: "wiki" | "raw";
-  id: string;
-  title: string;
-  excerpt: string;
-  account?: string;
-  published_at?: string;
-}
-
-export async function suggestRefs(q: string, limit = 12): Promise<SuggestItem[]> {
-  const url = `/api/writer/suggest?q=${encodeURIComponent(q)}&limit=${encodeURIComponent(String(limit))}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`suggest failed: ${res.status}`);
-  const json = (await res.json()) as { items?: SuggestItem[] };
-  return json.items ?? [];
-}
-
-export interface RewriteReference {
-  kind: "wiki" | "raw";
-  id: string;
-  title: string;
-  excerpt: string;
-}
-
 export interface RewriteSelectionBody {
   selected_text: string;
   user_prompt: string;
-  references: RewriteReference[];
 }
 
 export interface RewriteSelectionStream {

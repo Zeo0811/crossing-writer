@@ -12,11 +12,7 @@ import {
   type WriterToolEvent,
 } from "@crossing/agents";
 import { dispatchSkill } from "@crossing/kb";
-import {
-  buildSelectionRewriteUserMessage,
-  fetchReferenceBodies,
-  type RefInput,
-} from "../services/selection-rewrite-builder.js";
+import { buildSelectionRewriteUserMessage } from "../services/selection-rewrite-builder.js";
 import { appendEvent } from "../services/event-log.js";
 
 export interface RewriteSelectionDeps {
@@ -36,7 +32,6 @@ export interface RewriteSelectionDeps {
 interface Body {
   selected_text: string;
   user_prompt: string;
-  references?: RefInput[];
 }
 
 type RunnerFn = typeof runWriterOpening;
@@ -63,11 +58,7 @@ export function registerWriterRewriteSelectionRoutes(
       const project = await deps.store.get(req.params.id);
       if (!project)
         return reply.code(404).send({ error: "project not found" });
-      const {
-        selected_text,
-        user_prompt,
-        references = [],
-      } = (req.body ?? {}) as Body;
+      const { selected_text, user_prompt } = (req.body ?? {}) as Body;
       if (!selected_text || !user_prompt)
         return reply
           .code(400)
@@ -106,16 +97,10 @@ export function registerWriterRewriteSelectionRoutes(
           match_index: 0,
         });
 
-        const refsWithBodies = await fetchReferenceBodies(
-          references,
-          { vaultPath: deps.vaultPath, sqlitePath: deps.sqlitePath },
-          { warn: (m) => app.log.warn(m) },
-        );
         const userMessage = buildSelectionRewriteUserMessage({
           sectionBody: body,
           selectedText: selected_text,
           userPrompt: user_prompt,
-          references: refsWithBodies,
         });
 
         const cfg = (await (deps.configStore as any).get(runner.agentKey)) ?? {};

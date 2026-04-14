@@ -1,16 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-
-vi.mock("@crossing/kb", async () => {
-  const actual = await vi.importActual<any>("@crossing/kb");
-  return {
-    ...actual,
-    searchWiki: vi.fn(async () => []),
-    searchRaw: vi.fn(() => []),
-  };
-});
 
 import { buildApp } from "../src/server.js";
 
@@ -28,17 +19,6 @@ function testConfig() {
 }
 
 describe("SP-09 route registration smoke", () => {
-  it("suggest route is mounted", async () => {
-    const app = await buildApp(testConfig());
-    await app.ready();
-    const res = await app.inject({
-      method: "GET",
-      url: "/api/writer/suggest?q=test",
-    });
-    expect(res.statusCode).toBe(200);
-    await app.close();
-  });
-
   it("rewrite-selection route is mounted (404 for unknown project)", async () => {
     const app = await buildApp(testConfig());
     await app.ready();
@@ -46,6 +26,17 @@ describe("SP-09 route registration smoke", () => {
       method: "POST",
       url: "/api/projects/unknown/writer/sections/opening/rewrite-selection",
       payload: { selected_text: "x", user_prompt: "y" },
+    });
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it("suggest route is no longer mounted (404)", async () => {
+    const app = await buildApp(testConfig());
+    await app.ready();
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/writer/suggest?q=test",
     });
     expect(res.statusCode).toBe(404);
     await app.close();

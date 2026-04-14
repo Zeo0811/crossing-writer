@@ -20,7 +20,6 @@ import { registerKbStylePanelsRoutes } from "./routes/kb-style-panels.js";
 import { registerKbAccountsRoutes } from "./routes/kb-accounts.js";
 import { registerKbWikiRoutes } from "./routes/kb-wiki.js";
 import { registerWriterRoutes } from "./routes/writer.js";
-import { registerWriterSuggestRoutes } from "./routes/writer-suggest.js";
 import { registerWriterRewriteSelectionRoutes } from "./routes/writer-rewrite-selection.js";
 
 const configPath = process.env.CROSSING_CONFIG
@@ -105,10 +104,6 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     configStore: { get: async (key: string) => configStore.current.agents?.[key] } as any,
   });
 
-  registerWriterSuggestRoutes(app, {
-    vaultPath: configStore.current.vaultPath,
-    sqlitePath: configStore.current.sqlitePath,
-  });
   registerWriterRewriteSelectionRoutes(app, {
     store,
     projectsDir: configStore.current.projectsDir,
