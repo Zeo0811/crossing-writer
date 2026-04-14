@@ -96,3 +96,63 @@ describe("runWriterWithTools", () => {
     expect(events.some((e) => e.type === "tool_failed")).toBe(true);
   });
 });
+
+describe("runWriterWithTools pinnedContext + edge cases", () => {
+  it("injects pinnedContext into system prompt", async () => {
+    const captured: any[] = [];
+    const agent = {
+      invoke: vi.fn(async (messages: any) => {
+        captured.push(messages[0]);
+        return { text: "done", meta: { cli: "claude", durationMs: 1 } };
+      }),
+    };
+    await runWriterWithTools({
+      agent,
+      agentName: "w",
+      systemPrompt: "BASE",
+      initialUserMessage: "go",
+      pinnedContext: "PIN_XYZ",
+      dispatchTool: async () => { throw new Error("no"); },
+    });
+    expect(captured[0].content).toContain("BASE");
+    expect(captured[0].content).toContain("User-pinned references");
+    expect(captured[0].content).toContain("PIN_XYZ");
+  });
+
+  it("does not append section when pinnedContext empty", async () => {
+    const captured: any[] = [];
+    const agent = {
+      invoke: vi.fn(async (messages: any) => {
+        captured.push(messages[0]);
+        return { text: "done", meta: { cli: "claude", durationMs: 1 } };
+      }),
+    };
+    await runWriterWithTools({
+      agent, agentName: "w",
+      systemPrompt: "BASE",
+      initialUserMessage: "go",
+      dispatchTool: async () => { throw new Error("no"); },
+    });
+    expect(captured[0].content).not.toContain("User-pinned references");
+  });
+
+  it("accumulates total_duration_ms across rounds", async () => {
+    let i = 0;
+    const replies = ["```tool\nsearch_wiki \"a\"\n```", "done"];
+    const agent = {
+      invoke: vi.fn(async () => ({
+        text: replies[i++]!,
+        meta: { cli: "claude", model: "opus", durationMs: 100 },
+      })),
+    };
+    const r = await runWriterWithTools({
+      agent, agentName: "w",
+      systemPrompt: "s", initialUserMessage: "u",
+      dispatchTool: async () => ({
+        ok: true as const, tool: "search_wiki", query: "a", args: {},
+        hits: [], hits_count: 0, formatted: "()",
+      }),
+    });
+    expect(r.meta.total_duration_ms).toBe(200);
+  });
+});
