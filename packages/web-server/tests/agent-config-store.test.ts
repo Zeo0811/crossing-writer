@@ -94,9 +94,24 @@ describe("AgentConfigStore", () => {
 
   it("accepts all allowlisted keys", async () => {
     const s = createAgentConfigStore(fakeConfigStore() as any);
-    for (const key of ["style-critic", "section-slicer", "style-distiller.composer", "coordinator"]) {
+    for (const key of ["style_critic", "section_slicer", "style_distiller.composer", "coordinator"]) {
       await s.set(key, { agentKey: key, model: { cli: "claude" } });
       expect(s.get(key)).not.toBeNull();
     }
+  });
+
+  it("accepts topic_expert.<specialty> with CJK", async () => {
+    const s = createAgentConfigStore(fakeConfigStore() as any);
+    for (const key of ["topic_expert.赛博禅心", "topic_expert.数字生命卡兹克", "topic_expert.foo-bar"]) {
+      await s.set(key, { agentKey: key, model: { cli: "claude" } });
+      expect(s.get(key)).not.toBeNull();
+    }
+  });
+
+  it("rejects malformed topic_expert subkey", async () => {
+    const s = createAgentConfigStore(fakeConfigStore() as any);
+    await expect(
+      s.set("topic_expert.", { agentKey: "topic_expert.", model: { cli: "claude" } } as any),
+    ).rejects.toThrow(/invalid agent config/);
   });
 });

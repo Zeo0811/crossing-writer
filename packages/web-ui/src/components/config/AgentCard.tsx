@@ -17,6 +17,7 @@ export interface AgentCardProps {
   modelChoices: ModelChoice[];
   onChange: (next: AgentConfigEntry) => void;
   debounceMs?: number;
+  unconfigured?: boolean;
 }
 
 const WRITER_TOOLS = ["search_wiki", "search_raw"] as const;
@@ -36,6 +37,7 @@ export function AgentCard({
   modelChoices,
   onChange,
   debounceMs = 400,
+  unconfigured = false,
 }: AgentCardProps) {
   const [local, setLocal] = useState<AgentConfigEntry>(agentConfig);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -113,7 +115,18 @@ export function AgentCard({
       style={{ borderColor: "var(--border)" }}
     >
       <header className="flex items-center justify-between mb-3">
-        <span className="font-mono text-sm">{agentKey}</span>
+        <span className="font-mono text-sm flex items-center gap-2">
+          {agentKey}
+          {unconfigured && (
+            <span
+              data-testid="agent-unconfigured-badge"
+              className="text-[10px] px-1.5 py-0.5 rounded"
+              style={{ background: "rgba(212,167,44,0.15)", color: "#d4a72c" }}
+            >
+              ⚠️ 尚未配置（保存即创建）
+            </span>
+          )}
+        </span>
         <span className="text-xs" style={{ color: statusColor }}>
           {statusLabel}
         </span>

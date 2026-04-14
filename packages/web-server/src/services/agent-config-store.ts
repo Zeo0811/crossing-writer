@@ -4,22 +4,25 @@ export const AGENT_KEY_ALLOWLIST = [
   "writer.opening",
   "writer.practice",
   "writer.closing",
-  "style-critic",
-  "case-planner-expert",
-  "brief-analyst",
+  "style_critic",
+  "case_planner_expert",
+  "brief_analyst",
   "coordinator",
-  "case-coordinator",
-  "topic-expert",
-  "product-overview",
-  "practice-stitcher",
-  "wiki-ingestor",
-  "style-distiller.composer",
-  "style-distiller.snippets",
-  "style-distiller.structure",
-  "section-slicer",
+  "case_coordinator",
+  "topic_expert",
+  "product_overview",
+  "practice_stitcher",
+  "wiki_ingestor",
+  "style_distiller.composer",
+  "style_distiller.snippets",
+  "style_distiller.structure",
+  "section_slicer",
 ] as const;
 
 export type AgentKey = (typeof AGENT_KEY_ALLOWLIST)[number];
+
+// topic_expert.<specialty> — specialty can include CJK characters, word chars, digits, hyphen
+const TOPIC_EXPERT_SPECIALTY_RE = /^topic_expert\.[\w\u4e00-\u9fff-]+$/;
 
 export type StyleBindingRole = "opening" | "practice" | "closing";
 
@@ -53,7 +56,9 @@ export interface AgentConfigStore {
 }
 
 function isAllowedAgentKey(key: string): boolean {
-  return (AGENT_KEY_ALLOWLIST as readonly string[]).includes(key);
+  if ((AGENT_KEY_ALLOWLIST as readonly string[]).includes(key)) return true;
+  if (TOPIC_EXPERT_SPECIALTY_RE.test(key)) return true;
+  return false;
 }
 
 function validate(agentKey: string, cfg: AgentConfigEntry): void {

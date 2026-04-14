@@ -52,16 +52,36 @@ beforeEach(() => {
 });
 
 describe("AgentsPanel", () => {
-  it("fetches configs & panels on mount and renders agents grouped by step", async () => {
+  it("fetches configs & panels on mount and renders all STEPS agents (configured + unconfigured)", async () => {
     render(<AgentsPanel />);
     await waitFor(() => {
       expect(screen.getByText("writer.opening")).toBeInTheDocument();
     });
     expect(getAgentConfigs).toHaveBeenCalledTimes(1);
     expect(listConfigStylePanels).toHaveBeenCalledTimes(1);
+
+    // All STEP sections rendered
     expect(screen.getByText(/Step 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Step 2/)).toBeInTheDocument();
     expect(screen.getByText(/Step 4/)).toBeInTheDocument();
+    expect(screen.getByText(/Step 蒸馏工具/)).toBeInTheDocument();
+
+    // Configured agents render
     expect(screen.getByText("coordinator")).toBeInTheDocument();
+    expect(screen.getByText("writer.opening")).toBeInTheDocument();
+
+    // Unconfigured agents ALSO render
+    expect(screen.getByText("brief_analyst")).toBeInTheDocument();
+    expect(screen.getByText("style_critic")).toBeInTheDocument();
+    expect(screen.getByText("section_slicer")).toBeInTheDocument();
+    expect(screen.getByText("practice_stitcher")).toBeInTheDocument();
+
+    // Unconfigured badge appears
+    expect(screen.getAllByTestId("agent-unconfigured-badge").length).toBeGreaterThan(0);
+
+    // topic_expert placeholder + add button
+    expect(screen.getByText("topic_expert")).toBeInTheDocument();
+    expect(screen.getByTestId("add-topic-expert-btn")).toBeInTheDocument();
   });
 
   it("changing one card calls setAgentConfig and refreshes", async () => {

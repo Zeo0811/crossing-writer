@@ -22,11 +22,11 @@ interface StepGroup {
 const STEPS: StepGroup[] = [
   {
     label: "Step 1 选题/解读",
-    agentKeys: ["brief-analyst", "coordinator", "topic-expert", "product-overview"],
+    agentKeys: ["brief_analyst", "coordinator", "topic_expert", "product_overview"],
   },
   {
     label: "Step 2 案例策划",
-    agentKeys: ["case-coordinator", "case-planner-expert"],
+    agentKeys: ["case_coordinator", "case_planner_expert"],
   },
   {
     label: "Step 4 初稿",
@@ -34,21 +34,33 @@ const STEPS: StepGroup[] = [
       "writer.opening",
       "writer.practice",
       "writer.closing",
-      "practice-stitcher",
-      "style-critic",
+      "practice_stitcher",
+      "style_critic",
     ],
   },
   {
     label: "Step 蒸馏工具",
     agentKeys: [
-      "style-distiller.composer",
-      "style-distiller.snippets",
-      "style-distiller.structure",
-      "section-slicer",
-      "wiki-ingestor",
+      "style_distiller.composer",
+      "style_distiller.snippets",
+      "style_distiller.structure",
+      "section_slicer",
+      "wiki_ingestor",
     ],
   },
 ];
+
+function defaultAgentConfig(key: string): AgentConfigEntry {
+  const isWriter = key.startsWith("writer.");
+  const base: AgentConfigEntry = {
+    agentKey: key,
+    model: { cli: "claude", model: "claude-opus-4.6" },
+  };
+  if (isWriter) {
+    base.tools = { search_wiki: true, search_raw: true };
+  }
+  return base;
+}
 
 function writerRole(agentKey: string): "opening" | "practice" | "closing" | null {
   if (agentKey === "writer.opening") return "opening";
@@ -106,19 +118,50 @@ export function AgentsPanel() {
   if (loading) return <div>Loading…</div>;
   if (error) return <div style={{ color: "var(--red)" }}>Error: {error}</div>;
 
+  function handleAddTopicExpert() {
+    // eslint-disable-next-line no-alert
+    const specialty = window.prompt?.("请输入 topic_expert 专长名（例：赛博禅心）")?.trim();
+    if (!specialty) return;
+    const key = `topic_expert.${specialty}`;
+    if (agents[key]) return;
+    setAgents((prev) => ({ ...prev, [key]: defaultAgentConfig(key) }));
+  }
+
+  // Expand agent keys per step: topic_expert → all topic_expert.* instances (or placeholder)
+  function expandStepKeys(step: StepGroup): string[] {
+    const out: string[] = [];
+    for (const k of step.agentKeys) {
+      if (k === "topic_expert") {
+        const specialties = Object.keys(agents)
+          .filter((ak) => ak.startsWith("topic_expert."))
+          .sort();
+        if (specialties.length === 0) {
+          // keep bare topic_expert as placeholder; card will show unconfigured badge
+          out.push("topic_expert");
+        } else {
+          out.push(...specialties);
+        }
+      } else {
+        out.push(k);
+      }
+    }
+    return out;
+  }
+
   return (
     <div>
       {error && <div style={{ color: "var(--red)" }}>Error: {error}</div>}
       {STEPS.map((step) => {
-        const present = step.agentKeys.filter((k) => agents[k]);
-        if (present.length === 0) return null;
+        const keys = expandStepKeys(step);
+        const hasTopicExpert = step.agentKeys.includes("topic_expert");
         return (
           <section key={step.label} className="mb-6">
             <h2 className="text-sm font-semibold mb-2" style={{ color: "var(--green)" }}>
               {step.label}
             </h2>
-            {present.map((key) => {
-              const cfg = agents[key]!;
+            {keys.map((key) => {
+              const cfg = agents[key] ?? defaultAgentConfig(key);
+              const unconfigured = !agents[key];
               const role = writerRole(key);
               const styleChoices = role ? (panelsByRole.get(role) ?? []) : [];
               return (
@@ -126,12 +169,24 @@ export function AgentsPanel() {
                   key={key}
                   agentKey={key}
                   agentConfig={cfg}
+                  unconfigured={unconfigured}
                   stylePanelChoices={styleChoices}
                   modelChoices={MODEL_CHOICES}
                   onChange={(next) => { void handleChange(key, next); }}
                 />
               );
             })}
+            {hasTopicExpert && (
+              <button
+                type="button"
+                onClick={handleAddTopicExpert}
+                className="mt-1 px-2 py-0.5 text-xs border rounded"
+                style={{ borderColor: "var(--border)" }}
+                data-testid="add-topic-expert-btn"
+              >
+                + 新增 topic_expert
+              </button>
+            )}
           </section>
         );
       })}
