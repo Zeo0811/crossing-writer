@@ -78,3 +78,56 @@ describe("ArticleStore CRUD + merge", () => {
     expect(merged).toContain("<!-- section:closing -->");
   });
 });
+
+describe("ArticleStore splitMerged + fallback", () => {
+  async function seed(dir: string) {
+    const s = new ArticleStore(dir);
+    await s.init();
+    await s.writeSection("opening", { key: "opening", frontmatter: { section: "opening", last_agent: "a", last_updated_at: "t" }, body: "OPEN" });
+    await s.writeSection("practice.case-01", { key: "practice.case-01", frontmatter: { section: "practice.case-01", last_agent: "a", last_updated_at: "t" }, body: "## Case 1 — X\nP1" });
+    await s.writeSection("closing", { key: "closing", frontmatter: { section: "closing", last_agent: "a", last_updated_at: "t" }, body: "CLOSE" });
+    return s;
+  }
+
+  it("splitMerged parses editor content back to section map when markers intact", async () => {
+    const dir = makeDir();
+    const s = await seed(dir);
+    const merged = await s.mergeFinal();
+    const edited = merged
+      .replace("OPEN", "OPEN EDITED")
+      .replace("P1", "P1 EDITED");
+    const split = s.splitMerged(edited);
+    expect(split.ok).toBe(true);
+    expect(split.sections!["opening"]).toContain("OPEN EDITED");
+    expect(split.sections!["practice.case-01"]).toContain("P1 EDITED");
+    expect(split.sections!["closing"]).toContain("CLOSE");
+  });
+
+  it("splitMerged falls back to H1/H2 headings when markers stripped", async () => {
+    const dir = makeDir();
+    const s = await seed(dir);
+    const stripped = [
+      "---\ntype: article_draft\n---",
+      "OPEN",
+      "## Case 1 — X",
+      "P1 EDITED",
+      "# 结尾",
+      "CLOSE",
+    ].join("\n\n");
+    const split = s.splitMerged(stripped);
+    expect(split.ok).toBe(true);
+    expect(split.fallbackUsed).toBe("h-headings");
+    expect(split.sections!["practice.case-01"]).toContain("P1 EDITED");
+  });
+
+  it("splitMerged returns ok=false when both marker and H1/H2 fallback fail; backupBroken creates _broken_backup_*.md", async () => {
+    const dir = makeDir();
+    const s = await seed(dir);
+    const garbled = "完全乱掉的内容没有任何边界线索";
+    const split = s.splitMerged(garbled);
+    expect(split.ok).toBe(false);
+    const backupPath = await s.backupBroken(garbled);
+    expect(backupPath).toMatch(/_broken_backup_\d+\.md$/);
+    expect(readFileSync(backupPath, "utf-8")).toBe(garbled);
+  });
+});
