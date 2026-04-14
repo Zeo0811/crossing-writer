@@ -7,6 +7,7 @@ import Database from "better-sqlite3";
 vi.mock("@crossing/agents", () => {
   return {
     runSectionSlicer: vi.fn(),
+    DEFAULT_SECTION_SLICER_MODEL: "claude-sonnet-4-5",
     StyleDistillerSnippetsAgent: vi.fn(),
     StyleDistillerStructureAgent: vi.fn(),
     StyleDistillerComposerAgent: vi.fn(),
