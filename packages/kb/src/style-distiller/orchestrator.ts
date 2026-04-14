@@ -179,16 +179,23 @@ export async function runDistill(options: DistillOptions, ctx: DistillContext): 
       const batches: ArticleSample[][] = [];
       for (let i = 0; i < samplePool.length; i += BATCH_SIZE) batches.push(samplePool.slice(i, i + BATCH_SIZE));
       const all: SnippetCandidate[] = [];
+      let failedBatches = 0;
       for (let i = 0; i < batches.length; i += 1) {
-        const out = await agent.harvest({
-          account,
-          batchIndex: i,
-          totalBatches: batches.length,
-          articles: batches[i]!.map((a) => ({ id: a.id, title: a.title, published_at: a.published_at, word_count: a.word_count, body_plain: a.body_plain })),
-        });
-        all.push(...out.candidates);
-        emit(onEvent, { step: "snippets", phase: "batch_progress", account, stats: { batch: i + 1, total_batches: batches.length, candidates_so_far: all.length } });
+        try {
+          const out = await agent.harvest({
+            account,
+            batchIndex: i,
+            totalBatches: batches.length,
+            articles: batches[i]!.map((a) => ({ id: a.id, title: a.title, published_at: a.published_at, word_count: a.word_count, body_plain: a.body_plain })),
+          });
+          all.push(...out.candidates);
+          emit(onEvent, { step: "snippets", phase: "batch_progress", account, stats: { batch: i + 1, total_batches: batches.length, candidates_so_far: all.length } });
+        } catch (err) {
+          failedBatches += 1;
+          emit(onEvent, { step: "snippets", phase: "batch_progress", account, stats: { batch: i + 1, total_batches: batches.length, candidates_so_far: all.length, failed_batch_error: (err as Error).message } });
+        }
       }
+      if (all.length === 0) throw new Error(`snippets: all ${batches.length} batches failed`);
       const grouped = aggregateSnippets(all);
       const yaml = snippetsToYaml(grouped);
       writeFileSync(join(distillDir, "snippets.yaml"), yaml, "utf-8");

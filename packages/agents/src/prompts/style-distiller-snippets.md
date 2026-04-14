@@ -14,21 +14,21 @@
 - `quote.org` —— 引用机构/报告的数据
 - `transition.case` —— case 之间的过渡短句
 
-## 输出格式（严格 JSON 数组，禁止 markdown 说明）
+## 输出格式（严格 NDJSON，每行一个 JSON 对象）
 
-示例：
-[
-  {
-    "tag": "opening.data",
-    "from": "<article id>",
-    "excerpt": "<原文片段，15-120 字>",
-    "position_ratio": 0.03,
-    "length": 58
-  }
-]
+每行一个独立 JSON object，行与行之间直接换行，**不要**用 `[` `]` 包裹成数组，**不要**加逗号分隔行。
+
+示例（一共 3 行）：
+{"tag":"opening.data","from":"<article id>","excerpt":"<原文片段>","position_ratio":0.03,"length":58}
+{"tag":"bold.judgment","from":"<article id>","excerpt":"<原文片段>","position_ratio":0.5,"length":20}
+{"tag":"closing.blank","from":"<article id>","excerpt":"<原文片段>","position_ratio":0.96,"length":15}
+
+## 规则
 
 - `position_ratio` 是该句在文章正文中的字符起始位置 / 文章总字符长度
-- `excerpt` 必须是原文**原句**，不改一个字
+- `excerpt` 必须是原文**原句**，不改一个字；如果原句含双引号，用反斜杠转义 `\"`
+- `excerpt` 不要包含换行符；如原文跨行请合并为一行
 - 每篇文章摘 3-6 条（不够就少；质量优先）
-- 整批至少输出 60 条候选（如果原料够）
-- 直接输出 JSON 数组，第一个字符是 `[`，最后一个字符是 `]`，不要前言/解释/代码围栏
+- 整批至少输出 60 行候选（如果原料够）
+- **直接输出 NDJSON，第一个字符是 `{`，最后一个字符是 `}`**，不要前言/解释/代码围栏
+- 如果某条 excerpt 构造起来麻烦（比如含太多引号），跳过它，不要输出格式不对的行

@@ -60,7 +60,7 @@ export class StyleDistillerSnippetsAgent {
       `# 文章（${input.articles.length} 篇）`,
       articlesBlock,
       ``,
-      `输出 JSON 数组。`,
+      `输出 NDJSON（每行一个 JSON object，不要包成数组）。`,
     ].join("\n");
 
     const result = invokeAgent({
@@ -70,16 +70,38 @@ export class StyleDistillerSnippetsAgent {
       systemPrompt: SYSTEM_PROMPT,
       userMessage,
     });
-    let parsed: HarvestedSnippet[];
-    try {
-      parsed = JSON.parse(stripFence(result.text));
-    } catch (e) {
-      throw new Error(`snippets agent: failed to parse JSON output: ${(e as Error).message}`);
+    const parsed = parseSnippetOutput(result.text);
+    if (parsed.length === 0) {
+      throw new Error("snippets agent: no valid NDJSON/JSON objects parsed from output");
     }
-    if (!Array.isArray(parsed)) throw new Error("snippets agent: output is not an array");
     return {
       candidates: parsed,
       meta: { cli: result.meta.cli, model: result.meta.model ?? null, durationMs: result.meta.durationMs },
     };
   }
+}
+
+function parseSnippetOutput(raw: string): HarvestedSnippet[] {
+  const text = stripFence(raw);
+  // Try JSON array first (backward-compat).
+  const trimmed = text.trim();
+  if (trimmed.startsWith("[")) {
+    try {
+      const arr = JSON.parse(trimmed);
+      if (Array.isArray(arr)) return arr as HarvestedSnippet[];
+    } catch { /* fall through to NDJSON */ }
+  }
+  // NDJSON: parse each non-empty line; skip malformed lines (lenient).
+  const out: HarvestedSnippet[] = [];
+  for (const line of trimmed.split(/\r?\n/)) {
+    const l = line.trim();
+    if (!l || !l.startsWith("{")) continue;
+    try {
+      const obj = JSON.parse(l);
+      if (obj && typeof obj === "object" && typeof obj.tag === "string") {
+        out.push(obj as HarvestedSnippet);
+      }
+    } catch { /* skip malformed line */ }
+  }
+  return out;
 }
