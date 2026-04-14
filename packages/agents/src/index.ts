@@ -29,4 +29,6 @@ export { PracticeStitcherAgent } from "./roles/practice-stitcher-agent.js";
 export type { StitcherInput, StitcherOutput, StitcherCase } from "./roles/practice-stitcher-agent.js";
 export { WriterClosingAgent } from "./roles/writer-closing-agent.js";
 export type { WriterClosingInput } from "./roles/writer-closing-agent.js";
+export { StyleCriticAgent } from "./roles/style-critic-agent.js";
+export type { StyleCriticInput, StyleCriticOutput } from "./roles/style-critic-agent.js";
 export const VERSION = "0.2.0";
