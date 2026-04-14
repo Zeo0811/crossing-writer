@@ -7,7 +7,7 @@ import { runWriter, type WriterAgentKey, type WriterConfig } from "../services/w
 import { ArticleStore, type SectionKey } from "../services/article-store.js";
 import {
   WriterOpeningAgent, WriterPracticeAgent, WriterClosingAgent,
-  PracticeStitcherAgent, type ReferenceAccountKb,
+  PracticeStitcherAgent, invokeAgent, type ReferenceAccountKb,
 } from "@crossing/agents";
 import { readFile } from "node:fs/promises";
 import { appendEvent } from "../services/event-log.js";
@@ -203,7 +203,40 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
         let newBody = "";
         const pDir = join(deps.projectsDir, req.params.id);
 
-        if (agentKey === "writer.opening") {
+        // Surgical edit mode: bypass section agent, use a minimal "editor" prompt.
+        if (selected) {
+          const systemPrompt = [
+            "你是\"十字路口文本外科医生\"。任务：接收一段 markdown + 要改的片段 + 改写要求，输出**原段落的完整 markdown，仅把指定片段替换为修改后的版本，其余字符（含标点、换行、空格）逐字保留**。",
+            "",
+            "严格规则：",
+            "- 不许改其他句子、不许加段、不许删段",
+            "- 不许前言、不许说明、不许元评论",
+            "- 直接输出修改后的完整段落，第一个字符就是段落第一个字符",
+            "- 如果片段在段落中找不到，原样输出输入段落",
+          ].join("\n");
+          const userMessage = [
+            "# 原段落",
+            existing.body,
+            "",
+            "# 要替换的片段",
+            "<<<",
+            selected,
+            ">>>",
+            "",
+            "# 改写要求",
+            userHint || "(无额外要求，请让这段更简练、保持原意)",
+            "",
+            "输出完整段落 markdown。",
+          ].join("\n");
+          const out = invokeAgent({
+            agentKey: `${agentKey}.surgical`,
+            cli: cliModel.cli as "claude" | "codex",
+            model: cliModel.model,
+            systemPrompt,
+            userMessage,
+          });
+          newBody = out.text;
+        } else if (agentKey === "writer.opening") {
           const brief = existsSync(join(pDir, "brief/brief.md")) ? await readFile(join(pDir, "brief/brief.md"), "utf-8") : "";
           const mission = existsSync(join(pDir, "mission/selected.md")) ? await readFile(join(pDir, "mission/selected.md"), "utf-8") : "";
           const po = existsSync(join(pDir, "context/product-overview.md")) ? await readFile(join(pDir, "context/product-overview.md"), "utf-8") : "";
