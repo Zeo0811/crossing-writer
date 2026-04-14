@@ -178,6 +178,69 @@ describe("runRoleDistill", () => {
     expect(result.version).toBe(3);
   });
 
+  it("SP-15: runs snippets and structure concurrently once slicer is done", async () => {
+    const body = "intro. practice. closing.";
+    setupDb([{ id: "a1", account: "acc", body, published_at: "2026-04-01" }]);
+    vi.mocked(agents.runSectionSlicer).mockResolvedValue({
+      slices: [{ start_char: 0, end_char: 6, role: "opening" }],
+      meta: { cli: "claude", model: null, durationMs: 1 },
+    });
+
+    const order: string[] = [];
+    const delayedHarvest = vi.fn(async () => {
+      order.push("snippets:start");
+      await new Promise((r) => setTimeout(r, 40));
+      order.push("snippets:end");
+      return { candidates: [], meta: { cli: "claude", model: null, durationMs: 40 } };
+    });
+    const delayedDistill = vi.fn(async () => {
+      order.push("structure:start");
+      await new Promise((r) => setTimeout(r, 40));
+      order.push("structure:end");
+      return { text: "s", meta: { cli: "claude", model: null, durationMs: 40 } };
+    });
+    (agents.StyleDistillerSnippetsAgent as any).mockImplementation(() => ({ harvest: delayedHarvest }));
+    (agents.StyleDistillerStructureAgent as any).mockImplementation(() => ({ distill: delayedDistill }));
+
+    await runRoleDistill(
+      { account: "acc", role: "opening" },
+      { sqlitePath, vaultPath: vault },
+    );
+
+    // Both starts must appear before either end -> concurrent execution.
+    const snippetsStart = order.indexOf("snippets:start");
+    const structureStart = order.indexOf("structure:start");
+    const firstEnd = Math.min(order.indexOf("snippets:end"), order.indexOf("structure:end"));
+    expect(snippetsStart).toBeLessThan(firstEnd);
+    expect(structureStart).toBeLessThan(firstEnd);
+  });
+
+  it("SP-15: propagates failure if either parallel phase rejects, composer not called", async () => {
+    const body = "intro. practice. closing.";
+    setupDb([{ id: "a1", account: "acc", body, published_at: "2026-04-01" }]);
+    vi.mocked(agents.runSectionSlicer).mockResolvedValue({
+      slices: [{ start_char: 0, end_char: 6, role: "opening" }],
+      meta: { cli: "claude", model: null, durationMs: 1 },
+    });
+
+    const composeSpy = vi.fn(async () => ({
+      kbMd: "x",
+      meta: { cli: "claude", model: null, durationMs: 1 },
+    }));
+    (agents.StyleDistillerSnippetsAgent as any).mockImplementation(() => ({
+      harvest: vi.fn(async () => { throw new Error("snippet boom"); }),
+    }));
+    (agents.StyleDistillerStructureAgent as any).mockImplementation(() => ({
+      distill: vi.fn(async () => ({ text: "s", meta: { cli: "claude", model: null, durationMs: 1 } })),
+    }));
+    (agents.StyleDistillerComposerAgent as any).mockImplementation(() => ({ compose: composeSpy }));
+
+    await expect(
+      runRoleDistill({ account: "acc", role: "opening" }, { sqlitePath, vaultPath: vault }),
+    ).rejects.toThrow(/snippet boom/);
+    expect(composeSpy).not.toHaveBeenCalled();
+  });
+
   it("filters slices by role (only role-matching slices enter corpus)", async () => {
     const body = "AAAA_BBBB_CCCC";
     setupDb([{ id: "a1", account: "acc", body, published_at: "2026-04-01" }]);

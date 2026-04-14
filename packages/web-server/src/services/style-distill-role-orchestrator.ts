@@ -198,42 +198,49 @@ async function runSnippetsStructureComposer(params: {
   } = params;
   const corpus = roleTexts.join("\n\n---\n\n");
 
+  // SP-15: snippets + structure only depend on the slicer output (not on each
+  // other), so run them concurrently. Composer still waits on both. If either
+  // rejects, Promise.all propagates and we never call composer.
   const snippetsAgent = new StyleDistillerSnippetsAgent(
     cliModelPerStep?.snippets ?? { cli: "claude" },
   );
-  const snippetsRes = await snippetsAgent.harvest({
-    account,
-    batchIndex: 0,
-    totalBatches: 1,
-    articles: [
-      {
-        id: "corpus",
-        title: `${account} ${role} corpus`,
-        published_at: new Date().toISOString().slice(0, 10),
-        word_count: corpus.length,
-        body_plain: corpus,
-      },
-    ],
-  });
-  onPhase?.({ phase: "snippets_done", count: snippetsRes.candidates.length });
-
   const structureAgent = new StyleDistillerStructureAgent(
     cliModelPerStep?.structure ?? { cli: "claude" },
   );
-  const structureRes = await structureAgent.distill({
-    account,
-    samples: [
-      {
-        id: "corpus",
-        title: `${account} ${role} corpus`,
-        published_at: new Date().toISOString().slice(0, 10),
-        word_count: corpus.length,
-        body_plain: corpus,
-      },
-    ],
-    quantSummary: `role=${role} slices=${roleTexts.length} source_articles=${articles.length}`,
-  });
-  onPhase?.({ phase: "structure_done" });
+  const corpusArticle = {
+    id: "corpus",
+    title: `${account} ${role} corpus`,
+    published_at: new Date().toISOString().slice(0, 10),
+    word_count: corpus.length,
+    body_plain: corpus,
+  };
+
+  const snippetsPromise = snippetsAgent
+    .harvest({
+      account,
+      batchIndex: 0,
+      totalBatches: 1,
+      articles: [corpusArticle],
+    })
+    .then((res) => {
+      onPhase?.({ phase: "snippets_done", count: res.candidates.length });
+      return res;
+    });
+  const structurePromise = structureAgent
+    .distill({
+      account,
+      samples: [corpusArticle],
+      quantSummary: `role=${role} slices=${roleTexts.length} source_articles=${articles.length}`,
+    })
+    .then((res) => {
+      onPhase?.({ phase: "structure_done" });
+      return res;
+    });
+
+  const [snippetsRes, structureRes] = await Promise.all([
+    snippetsPromise,
+    structurePromise,
+  ]);
 
   const composerAgent = new StyleDistillerComposerAgent(
     cliModelPerStep?.composer ?? { cli: "claude" },
