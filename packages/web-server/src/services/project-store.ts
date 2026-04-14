@@ -65,6 +65,11 @@ export interface Project {
     all_complete: boolean;
     submitted_at: string | null;
   };
+  writer_config?: {
+    cli_model_per_agent?: Record<string, { cli: string; model?: string }>;
+    reference_accounts_per_agent?: Record<string, string[]>;
+  };
+  writer_failed_sections?: string[];
   runs: Array<{
     id: string;
     stage: string;
