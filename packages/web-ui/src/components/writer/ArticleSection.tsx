@@ -4,10 +4,16 @@ import { useWriterSections } from "../../hooks/useWriterSections";
 import { useProjectStream } from "../../hooks/useProjectStream";
 import { useTextSelection } from "../../hooks/useTextSelection";
 import {
+  getAgentConfigs,
   getFinal,
+  getProjectOverride,
+  listConfigStylePanels,
   rewriteSectionStream,
+  type AgentConfigEntry,
+  type StylePanel,
   type ToolUsageFrontmatter,
 } from "../../api/writer-client";
+import { mergeAllAgentConfigs } from "../../utils/merge-agent-config";
 import { SelectionBubble } from "./SelectionBubble";
 import { InlineComposer, type AnchorRect } from "./InlineComposer";
 
@@ -80,6 +86,56 @@ const TITLE: Record<string, string> = {
   closing: "📝 结尾",
 };
 
+function sectionAgentKey(key: string): string | null {
+  if (key === "opening") return "writer.opening";
+  if (key === "closing") return "writer.closing";
+  if (key.startsWith("practice.case-")) return "writer.practice";
+  return null;
+}
+
+function StyleBadge({
+  sectionKey,
+  effective,
+  panels,
+}: {
+  sectionKey: string;
+  effective: Record<string, AgentConfigEntry>;
+  panels: StylePanel[];
+}) {
+  const agentKey = sectionAgentKey(sectionKey);
+  if (!agentKey) return null;
+  const cfg = effective[agentKey];
+  const binding = cfg?.styleBinding;
+  if (!binding) {
+    return (
+      <span
+        data-testid={`style-badge-${sectionKey}`}
+        className="text-xs ml-2"
+        style={{ color: "var(--red, #ef4444)" }}
+      >
+        ⚠️ 未绑定
+      </span>
+    );
+  }
+  const active = panels
+    .filter((p) => p.account === binding.account && p.role === binding.role && p.status === "active" && !p.is_legacy)
+    .sort((a, b) => b.version - a.version);
+  const v = active[0]?.version;
+  const text = v !== undefined
+    ? `🎨 ${binding.account}/${binding.role} v${v}`
+    : `⚠️ 未绑定`;
+  const color = v !== undefined ? undefined : "var(--red, #ef4444)";
+  return (
+    <span
+      data-testid={`style-badge-${sectionKey}`}
+      className="text-xs ml-2 font-mono"
+      style={color ? { color } : undefined}
+    >
+      {text}
+    </span>
+  );
+}
+
 function sectionTitle(key: string): string {
   if (TITLE[key]) return TITLE[key]!;
   if (key.startsWith("practice.case-")) return `📝 ${key.slice("practice.".length)}`;
@@ -99,6 +155,25 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const selection = useTextSelection(bodyRef);
   const [selectionRewriteOpen, setSelectionRewriteOpen] = useState<{ key: string; text: string; rect: AnchorRect } | null>(null);
+  const [effectiveAgents, setEffectiveAgents] = useState<Record<string, AgentConfigEntry>>({});
+  const [stylePanels, setStylePanels] = useState<StylePanel[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [cfgs, override, panels] = await Promise.all([
+          getAgentConfigs(),
+          getProjectOverride(projectId).catch(() => ({ agents: {} })),
+          listConfigStylePanels().catch(() => ({ panels: [] })),
+        ]);
+        if (cancelled) return;
+        setEffectiveAgents(mergeAllAgentConfigs(cfgs.agents, override));
+        setStylePanels(panels.panels);
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [projectId]);
 
   const reload = useCallback(async () => {
     if (status === "evidence_ready" || status === "writing_configuring" || status === "writing_running") return;
@@ -211,7 +286,10 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
           return (
             <section key={key} className="group relative border rounded p-3 bg-white hover:border-blue-400">
               <header className="flex justify-between items-center text-xs text-gray-500 mb-2">
-                <span className="font-mono">{sectionTitle(key)}</span>
+                <span className="font-mono">
+                  {sectionTitle(key)}
+                  <StyleBadge sectionKey={key} effective={effectiveAgents} panels={stylePanels} />
+                </span>
                 <div className="flex gap-1">
                   {supported && !isBusy && hasSelection && (
                     <button
