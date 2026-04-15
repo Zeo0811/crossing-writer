@@ -44,6 +44,9 @@ const configPath = process.env.CROSSING_CONFIG
 
 export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyInstance> {
   const cfg = overrideConfig ?? loadServerConfig(configPath);
+  // Grant all agent CLI invocations access to vault files (brief images, style panels, wiki, refs).
+  // Claude CLI's --add-dir whitelist is read from this env by model-adapter on every spawn.
+  if (cfg.vaultPath) process.env.CROSSING_VAULT_PATH = cfg.vaultPath;
   const app = Fastify({ logger: true });
   app.decorate("crossingConfig", cfg);
 

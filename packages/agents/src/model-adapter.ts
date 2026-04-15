@@ -61,7 +61,11 @@ export function invokeAgent(opts: InvokeOptions): AgentResult {
   const claudePrompt = images.length
     ? `${fullPrompt}\n\n附加图片：\n${images.map((p) => `@${p}`).join("\n")}`
     : fullPrompt;
-  const addDirArgs = (opts.addDirs ?? []).flatMap((d) => ["--add-dir", d]);
+  const envVault = process.env.CROSSING_VAULT_PATH?.trim();
+  const allDirs = new Set<string>();
+  if (envVault) allDirs.add(envVault);
+  for (const d of opts.addDirs ?? []) if (d) allDirs.add(d);
+  const addDirArgs = Array.from(allDirs).flatMap((d) => ["--add-dir", d]);
   const args = [
     "-p", "-",
     ...addDirArgs,
