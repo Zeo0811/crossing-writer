@@ -47,3 +47,25 @@ describe("POST /api/projects/:id/archive", () => {
     expect(res.statusCode).toBe(404);
   });
 });
+
+describe("POST /api/projects/:id/restore", () => {
+  it("moves project back from archive", async () => {
+    const { app, store } = await mkApp();
+    const created = (
+      await app.inject({ method: "POST", url: "/api/projects", payload: { name: "Charlie" } })
+    ).json();
+    await app.inject({ method: "POST", url: `/api/projects/${created.id}/archive` });
+    const res = await app.inject({ method: "POST", url: `/api/projects/${created.id}/restore` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().ok).toBe(true);
+    expect(existsSync(store.projectDir(created.id))).toBe(true);
+    expect(existsSync(store.archiveDir(created.id))).toBe(false);
+  });
+
+  it("returns 404 when archived project missing", async () => {
+    const { app } = await mkApp();
+    const res = await app.inject({ method: "POST", url: "/api/projects/nope/restore" });
+    expect(res.statusCode).toBe(404);
+    expect(res.json().error).toBe("project_not_found");
+  });
+});

@@ -41,4 +41,19 @@ export function registerProjectsRoutes(app: FastifyInstance, deps: ProjectsDeps)
       throw e;
     }
   });
+
+  app.post<{ Params: { id: string } }>("/api/projects/:id/restore", async (req, reply) => {
+    try {
+      await deps.store.restore(req.params.id);
+      return reply.code(200).send({ ok: true, id: req.params.id });
+    } catch (e: any) {
+      if (e instanceof ProjectConflictError) {
+        return reply.code(409).send({ error: "name_conflict", detail: e.message });
+      }
+      if (/project_not_found/.test(e?.message ?? "")) {
+        return reply.code(404).send({ error: "project_not_found" });
+      }
+      throw e;
+    }
+  });
 }
