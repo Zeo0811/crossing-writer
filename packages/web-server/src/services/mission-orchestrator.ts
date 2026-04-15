@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { TopicExpert, Coordinator, resolveAgent, type AgentConfig } from "@crossing/agents";
+import { TopicExpert, Coordinator, resolveAgent, stripAgentPreamble, type AgentConfig } from "@crossing/agents";
 import type { SearchCtx } from "@crossing/kb";
 import type { ProjectStore } from "./project-store.js";
 import type { ExpertRegistry } from "./expert-registry.js";
@@ -192,7 +192,7 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
     addDirs,
   });
   const candidatesPath = "mission/candidates.md";
-  await writeFile(join(projectDir, candidatesPath), candidatesResult.text, "utf-8");
+  await writeFile(join(projectDir, candidatesPath), stripAgentPreamble(candidatesResult.text), "utf-8");
   await appendEvent(projectDir, {
     type: "coordinator.candidates_ready",
     output_path: candidatesPath,
@@ -251,7 +251,7 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
     images: briefImages,
     addDirs,
   });
-  await writeFile(join(projectDir, candidatesPath), aggregated.text, "utf-8");
+  await writeFile(join(projectDir, candidatesPath), stripAgentPreamble(aggregated.text), "utf-8");
 
   // done
   const final = await store.get(projectId);

@@ -1,5 +1,6 @@
 export { invokeAgent } from "./model-adapter.js";
 export type { InvokeOptions, AgentResult } from "./model-adapter.js";
+export { stripAgentPreamble } from "./util/strip-preamble.js";
 export { AgentBase } from "./agent-base.js";
 export type { AgentOptions } from "./agent-base.js";
 export { loadPrompt } from "./prompts/index.js";

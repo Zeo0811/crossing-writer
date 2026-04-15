@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { BriefAnalyst, resolveAgent, type AgentConfig } from "@crossing/agents";
+import { BriefAnalyst, resolveAgent, stripAgentPreamble, type AgentConfig } from "@crossing/agents";
 import type { ProjectStore } from "./project-store.js";
 import { appendEvent } from "./event-log.js";
 
@@ -78,7 +78,7 @@ export async function analyzeBrief(opts: AnalyzeBriefOpts): Promise<void> {
     });
 
     const summaryPath = "brief/brief-summary.md";
-    await writeFile(join(projectDir, summaryPath), result.text, "utf-8");
+    await writeFile(join(projectDir, summaryPath), stripAgentPreamble(result.text), "utf-8");
 
     await store.update(projectId, {
       status: "brief_ready",

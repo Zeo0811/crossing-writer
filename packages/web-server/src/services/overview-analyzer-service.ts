@@ -1,6 +1,6 @@
 import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { ProductOverviewAgent, resolveAgent } from "@crossing/agents";
+import { ProductOverviewAgent, resolveAgent, stripAgentPreamble } from "@crossing/agents";
 import type { ProjectStore } from "./project-store.js";
 import type { ImageStore } from "./image-store.js";
 import { appendEvent } from "./event-log.js";
@@ -65,7 +65,7 @@ export async function analyzeOverview(opts: AnalyzeOverviewOpts): Promise<string
 
     const outPath = join(projectDir, "context/product-overview.md");
     await mkdir(join(projectDir, "context"), { recursive: true });
-    await writeFile(outPath, result.text, "utf-8");
+    await writeFile(outPath, stripAgentPreamble(result.text), "utf-8");
 
     await opts.store.update(opts.projectId, {
       status: "overview_ready",
