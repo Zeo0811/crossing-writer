@@ -139,4 +139,26 @@ export function registerBriefRoutes(app: FastifyInstance, deps: BriefDeps) {
       return buf;
     },
   );
+
+  app.post<{ Params: { id: string } }>(
+    "/api/projects/:id/brief/reanalyze",
+    async (req, reply) => {
+      const { id } = req.params;
+      const project = await deps.store.get(id);
+      if (!project) return reply.code(404).send({ error: "project not found" });
+      if (!project.brief?.md_path) return reply.code(400).send({ error: "no brief uploaded" });
+      setImmediate(() => {
+        analyzeBrief({
+          projectId: id,
+          projectsDir: deps.projectsDir,
+          store: deps.store,
+          cli: deps.cli,
+          agents: deps.agents,
+          defaultCli: deps.defaultCli,
+          fallbackCli: deps.fallbackCli,
+        }).catch((err) => app.log.error({ err, projectId: id }, "reanalyzeBrief failed"));
+      });
+      return reply.code(202).send({ ok: true, status: "reanalyzing" });
+    },
+  );
 }

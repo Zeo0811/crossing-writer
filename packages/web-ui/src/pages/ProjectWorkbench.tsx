@@ -352,6 +352,20 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
                   ) : (
                     <>
                       <BriefSummaryCard projectId={projectId} />
+                      <div className="mt-2 flex items-center gap-2">
+                        <button
+                          type="button"
+                          className="text-xs px-2 py-1 border rounded hover:bg-bg-2"
+                          onClick={async () => {
+                            const res = await fetch(`/api/projects/${projectId}/brief/reanalyze`, { method: "POST" });
+                            if (res.ok) refetch();
+                            else window.alert?.(`重新解析失败: HTTP ${res.status}`);
+                          }}
+                        >
+                          🔄 重新解析 Brief
+                        </button>
+                        <span className="text-xs text-meta">（会覆盖 brief-summary.md）</span>
+                      </div>
                       <TopicExpertSummonButton
                         projectId={projectId}
                         briefSummary={project?.brief?.summary ?? undefined}
