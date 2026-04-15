@@ -136,7 +136,20 @@ function rightPanel(status: string, projectId: string, onRefetch: () => void, ev
     case "overview_failed":
       return (
         <div className="space-y-4 p-4">
-          <FailureCard title="产品概览生成失败" fail={findLastFailure(events)} />
+          <FailureCard
+            title="产品概览生成失败"
+            fail={findLastFailure(events)}
+            onRetry={async () => {
+              const { generateOverview } = await import("../api/client");
+              try {
+                await generateOverview(projectId, { productUrls: [], userDescription: "" });
+                onRefetch();
+              } catch (e) {
+                window.alert?.(`重试失败：${String(e)}`);
+              }
+            }}
+          />
+          <div className="text-xs text-meta px-1">或在下面修改 URL / 补充描述 / 加/删图片后再提交：</div>
           <OverviewIntakeForm projectId={projectId} />
         </div>
       );
