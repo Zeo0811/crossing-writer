@@ -82,7 +82,7 @@ export class StyleCriticAgent {
       "按 system prompt 格式输出。",
     ].join("\n");
 
-    const result = invokeAgent({
+    const result = await invokeAgent({
       agentKey: "style_critic",
       cli: this.opts.cli,
       model: this.opts.model,

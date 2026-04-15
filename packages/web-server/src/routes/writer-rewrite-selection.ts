@@ -136,7 +136,7 @@ export function registerWriterRewriteSelectionRoutes(
             .filter((m) => m.role !== "system")
             .map((m) => `[${m.role}]\n${m.content}`)
             .join("\n\n");
-          const r = invokeAgent({
+          const r = await invokeAgent({
             agentKey: `${runner.agentKey}.selection`,
             cli,
             model,

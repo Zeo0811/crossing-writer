@@ -56,7 +56,7 @@ export class StyleDistillerStructureAgent {
       `按 system prompt 输出 10 节结构提炼 markdown。`,
     ].join("\n");
 
-    const result = invokeAgent({
+    const result = await invokeAgent({
       agentKey: "style_distiller.structure",
       cli: this.opts.cli,
       model: this.opts.model,

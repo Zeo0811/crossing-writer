@@ -20,11 +20,11 @@ export class AgentBase {
     return template.replace(/\{\{(\w+)\}\}/g, (_, name) => vars[name] ?? "");
   }
 
-  run(
+  async run(
     userMessage: string,
     extraVars?: Record<string, string>,
     extra?: { images?: string[]; addDirs?: string[] },
-  ): AgentResult {
+  ): Promise<AgentResult> {
     const vars = { ...this.opts.vars, ...extraVars };
     const systemPrompt = this.interpolate(this.opts.systemPromptTemplate, vars);
     return invokeAgent({

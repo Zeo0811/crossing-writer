@@ -3,8 +3,8 @@ import { AgentBase } from "../src/agent-base.js";
 import * as ma from "../src/model-adapter.js";
 
 describe("AgentBase", () => {
-  it("calls invokeAgent with resolved cli and interpolated prompt", () => {
-    const spy = vi.spyOn(ma, "invokeAgent").mockReturnValue({
+  it("calls invokeAgent with resolved cli and interpolated prompt", async () => {
+    const spy = vi.spyOn(ma, "invokeAgent").mockResolvedValue({
       text: "ok",
       meta: { cli: "claude", durationMs: 10 },
     });
@@ -16,7 +16,7 @@ describe("AgentBase", () => {
       cli: "claude",
     });
 
-    const out = agent.run("please analyze this");
+    const out = await agent.run("please analyze this");
     expect(out.text).toBe("ok");
     expect(spy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -27,8 +27,8 @@ describe("AgentBase", () => {
     );
   });
 
-  it("interpolates multiple variables", () => {
-    const spy = vi.spyOn(ma, "invokeAgent").mockReturnValue({
+  it("interpolates multiple variables", async () => {
+    const spy = vi.spyOn(ma, "invokeAgent").mockResolvedValue({
       text: "",
       meta: { cli: "codex", durationMs: 0 },
     });
@@ -39,14 +39,14 @@ describe("AgentBase", () => {
       vars: { a: "A", b: "B" },
       cli: "codex",
     });
-    agent.run("msg");
+    await agent.run("msg");
     expect(spy).toHaveBeenCalledWith(
       expect.objectContaining({ systemPrompt: "A and B" }),
     );
   });
 
-  it("merges extraVars over constructor vars", () => {
-    const spy = vi.spyOn(ma, "invokeAgent").mockReturnValue({
+  it("merges extraVars over constructor vars", async () => {
+    const spy = vi.spyOn(ma, "invokeAgent").mockResolvedValue({
       text: "",
       meta: { cli: "claude", durationMs: 0 },
     });
@@ -56,14 +56,14 @@ describe("AgentBase", () => {
       vars: { a: "base-a", b: "base-b" },
       cli: "claude",
     });
-    agent.run("", { b: "override-b" });
+    await agent.run("", { b: "override-b" });
     expect(spy).toHaveBeenCalledWith(
       expect.objectContaining({ systemPrompt: "base-a override-b" }),
     );
   });
 
-  it("leaves unknown placeholders as empty string", () => {
-    const spy = vi.spyOn(ma, "invokeAgent").mockReturnValue({
+  it("leaves unknown placeholders as empty string", async () => {
+    const spy = vi.spyOn(ma, "invokeAgent").mockResolvedValue({
       text: "",
       meta: { cli: "claude", durationMs: 0 },
     });
@@ -73,7 +73,7 @@ describe("AgentBase", () => {
       vars: {},
       cli: "claude",
     });
-    agent.run("");
+    await agent.run("");
     expect(spy).toHaveBeenCalledWith(
       expect.objectContaining({ systemPrompt: "hi  end" }),
     );

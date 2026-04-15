@@ -48,7 +48,7 @@ export class PracticeStitcherAgent {
       `请按 system prompt 格式输出 ${input.cases.length - 1} 条过渡。`,
     ].join("\n");
 
-    const result = invokeAgent({
+    const result = await invokeAgent({
       agentKey: "practice.stitcher",
       cli: this.opts.cli,
       model: this.opts.model,

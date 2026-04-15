@@ -51,7 +51,7 @@ export class TopicExpert {
     };
   }
 
-  round1(input: Round1Input) {
+  async round1(input: Round1Input): Promise<AgentResult> {
     const template = loadPrompt("topic-expert-round1");
     const base = new AgentBase({
       key: `topic_expert.${this.opts.name}`,
@@ -69,7 +69,7 @@ export class TopicExpert {
     return base.run("", undefined, { images: input.images, addDirs: input.addDirs });
   }
 
-  round2(input: Round2Input) {
+  async round2(input: Round2Input): Promise<AgentResult> {
     const template = loadPrompt("topic-expert-round2");
     const base = new AgentBase({
       key: `topic_expert.${this.opts.name}`,
@@ -86,7 +86,7 @@ export class TopicExpert {
     return base.run("", undefined, { images: input.images, addDirs: input.addDirs });
   }
 
-  round3(input: Round3Input) {
+  async round3(input: Round3Input): Promise<AgentResult> {
     const template = loadPrompt("topic-expert-round3");
     const base = new AgentBase({
       key: `topic_expert.${this.opts.name}`,
@@ -141,7 +141,7 @@ export async function invokeTopicExpert(
     if (args.briefSummary === undefined || args.refsPack === undefined) {
       throw new Error("invokeTopicExpert(score): requires briefSummary and refsPack");
     }
-    result = expert.round1({
+    result = await expert.round1({
       projectId: args.projectId,
       runId: args.runId,
       briefSummary: args.briefSummary,
@@ -151,7 +151,7 @@ export async function invokeTopicExpert(
     if (args.candidatesMd === undefined) {
       throw new Error("invokeTopicExpert(structure): requires candidatesMd");
     }
-    result = expert.round2({
+    result = await expert.round2({
       projectId: args.projectId,
       runId: args.runId,
       candidatesMd: args.candidatesMd,
@@ -160,7 +160,7 @@ export async function invokeTopicExpert(
     if (args.currentDraft === undefined) {
       throw new Error("invokeTopicExpert(continue): requires currentDraft");
     }
-    result = expert.round3({
+    result = await expert.round3({
       projectId: args.projectId,
       runId: args.runId,
       currentDraft: args.currentDraft,

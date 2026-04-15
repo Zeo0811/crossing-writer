@@ -49,7 +49,7 @@ export class ProductOverviewAgent {
       "请按 system prompt 要求输出 product-overview markdown。",
     ].join("\n");
 
-    const result = invokeAgent({
+    const result = await invokeAgent({
       agentKey: "product_overview",
       cli: this.opts.cli,
       model: this.opts.model,

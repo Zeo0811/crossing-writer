@@ -1,5 +1,6 @@
 import { AgentBase } from "../agent-base.js";
 import { loadPrompt } from "../prompts/index.js";
+import type { AgentResult } from "../model-adapter.js";
 
 export interface CoordinatorOpts {
   cli: "claude" | "codex";
@@ -27,7 +28,7 @@ export interface Round2AggregateInput {
 export class Coordinator {
   constructor(private opts: CoordinatorOpts) {}
 
-  round1Synthesize(input: Round1SynthInput) {
+  async round1Synthesize(input: Round1SynthInput): Promise<AgentResult> {
     const template = loadPrompt("coordinator-round1");
     const base = new AgentBase({
       key: "coordinator",
@@ -48,7 +49,7 @@ export class Coordinator {
     return base.run("", undefined, { images: input.images, addDirs: input.addDirs });
   }
 
-  round2Aggregate(input: Round2AggregateInput) {
+  async round2Aggregate(input: Round2AggregateInput): Promise<AgentResult> {
     const template = loadPrompt("coordinator-round2");
     const base = new AgentBase({
       key: "coordinator",

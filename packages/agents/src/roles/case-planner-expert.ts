@@ -48,7 +48,7 @@ export class CasePlannerExpert {
       "# 我的 KB",
       this.opts.kbMarkdown,
     ].join("\n");
-    const r = invokeAgent({
+    const r = await invokeAgent({
       agentKey: `case_expert.${this.opts.name}`,
       cli: this.opts.cli,
       model: this.opts.model,
@@ -62,7 +62,7 @@ export class CasePlannerExpert {
     const sys = R2
       .replace("{{round1Draft}}", input.round1Draft)
       .replace("{{toolResults}}", input.toolResults);
-    const r = invokeAgent({
+    const r = await invokeAgent({
       agentKey: `case_expert.${this.opts.name}`,
       cli: this.opts.cli,
       model: this.opts.model,

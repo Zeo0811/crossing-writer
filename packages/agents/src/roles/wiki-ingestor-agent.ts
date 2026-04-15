@@ -103,7 +103,7 @@ export class WikiIngestorAgent {
       `输出 NDJSON。第一字符必须是 "{"。`,
     ].join("\n");
 
-    const result = invokeAgent({
+    const result = await invokeAgent({
       agentKey: "wiki.ingestor",
       cli: this.opts.cli,
       model: this.opts.model,

@@ -78,7 +78,7 @@ export class WriterClosingAgent {
       "请按 system prompt 要求产出结尾段。",
     ].join("\n");
 
-    const result = invokeAgent({
+    const result = await invokeAgent({
       agentKey: "writer.closing",
       cli: this.opts.cli,
       model: this.opts.model,

@@ -95,7 +95,7 @@ export class WriterPracticeAgent {
       "请按 system prompt 要求产出该 case 实测小节。",
     ].join("\n");
 
-    const result = invokeAgent({
+    const result = await invokeAgent({
       agentKey: "writer.practice",
       cli: this.opts.cli,
       model: this.opts.model,

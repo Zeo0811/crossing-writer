@@ -203,7 +203,7 @@ function invokerFor(agentKey: string, cli: "claude" | "codex", model?: string) {
       .filter((m) => m.role !== "system")
       .map((m) => `[${m.role}]\n${m.content}`)
       .join("\n\n");
-    const result = invokeAgent({
+    const result = await invokeAgent({
       agentKey,
       cli,
       model,

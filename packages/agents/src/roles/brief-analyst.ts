@@ -1,5 +1,6 @@
 import { AgentBase } from "../agent-base.js";
 import { loadPrompt } from "../prompts/index.js";
+import type { AgentResult } from "../model-adapter.js";
 
 export interface BriefAnalyzeInput {
   projectId: string;
@@ -25,7 +26,7 @@ export class BriefAnalyst {
     });
   }
 
-  analyze(input: BriefAnalyzeInput) {
+  async analyze(input: BriefAnalyzeInput): Promise<AgentResult> {
     return this.base.run(
       "",
       {

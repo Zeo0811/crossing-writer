@@ -1,27 +1,49 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { writeFileSync } from "node:fs";
+import { EventEmitter } from "node:events";
 
 vi.mock("node:child_process", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:child_process")>();
-  return { ...actual, spawnSync: vi.fn() };
+  return { ...actual, spawn: vi.fn() };
 });
 
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { invokeAgent } from "../src/model-adapter.js";
 
+type SpawnResult = { status: number | null; stdout?: string; stderr?: string };
+
+function mockChild(result: SpawnResult, sideEffect?: (args: readonly string[]) => void) {
+  return ((_cmd: string, args: readonly string[]) => {
+    if (sideEffect) sideEffect(args);
+    const child = new EventEmitter() as any;
+    const stdout = new EventEmitter() as any;
+    const stderr = new EventEmitter() as any;
+    const stdin = { end: (_?: unknown) => {} };
+    child.stdout = stdout;
+    child.stderr = stderr;
+    child.stdin = stdin;
+    child.kill = () => {};
+    process.nextTick(() => {
+      if (result.stdout) stdout.emit("data", Buffer.from(result.stdout));
+      if (result.stderr) stderr.emit("data", Buffer.from(result.stderr));
+      child.emit("close", result.status);
+    });
+    return child;
+  }) as any;
+}
+
 describe("invokeAgent", () => {
-  beforeEach(() => { vi.mocked(spawnSync).mockReset(); });
+  beforeEach(() => { vi.mocked(spawn).mockReset(); });
 
-  it("invokes codex exec with --output-last-message for codex cli", () => {
-    vi.mocked(spawnSync).mockImplementation(((cmd: string, args: readonly string[]) => {
-      const outIdx = args.indexOf("--output-last-message");
-      if (outIdx >= 0) writeFileSync(args[outIdx + 1]!, "mocked response");
-      return { status: 0, stdout: Buffer.from(""), stderr: Buffer.from("") } as any;
-    }) as any);
+  it("invokes codex exec with --output-last-message for codex cli", async () => {
+    vi.mocked(spawn).mockImplementation(
+      mockChild({ status: 0 }, (args) => {
+        const outIdx = args.indexOf("--output-last-message");
+        if (outIdx >= 0) writeFileSync(args[outIdx + 1]!, "mocked response");
+      }),
+    );
 
-    const result = invokeAgent({
+    const result = await invokeAgent({
       agentKey: "topic_expert.赛博禅心",
       cli: "codex",
       systemPrompt: "you are an expert",
@@ -30,20 +52,16 @@ describe("invokeAgent", () => {
 
     expect(result.text).toBe("mocked response");
     expect(result.meta.cli).toBe("codex");
-    const call = vi.mocked(spawnSync).mock.calls[0]!;
+    const call = vi.mocked(spawn).mock.calls[0]!;
     expect(call[0]).toBe("codex");
     expect(call[1]).toContain("exec");
     expect(call[1]).toContain("--output-last-message");
   });
 
-  it("invokes claude -p for claude cli", () => {
-    vi.mocked(spawnSync).mockReturnValue({
-      status: 0,
-      stdout: Buffer.from("claude response"),
-      stderr: Buffer.from(""),
-    } as any);
+  it("invokes claude -p for claude cli", async () => {
+    vi.mocked(spawn).mockImplementation(mockChild({ status: 0, stdout: "claude response" }));
 
-    const result = invokeAgent({
+    const result = await invokeAgent({
       agentKey: "brief_analyst",
       cli: "claude",
       systemPrompt: "you analyze briefs",
@@ -51,54 +69,52 @@ describe("invokeAgent", () => {
     });
 
     expect(result.text).toBe("claude response");
-    const call = vi.mocked(spawnSync).mock.calls[0]!;
+    const call = vi.mocked(spawn).mock.calls[0]!;
     expect(call[0]).toBe("claude");
     expect(call[1]).toContain("-p");
   });
 
-  it("throws on non-zero exit with stderr content", () => {
-    vi.mocked(spawnSync).mockReturnValue({
-      status: 1,
-      stdout: Buffer.from(""),
-      stderr: Buffer.from("auth error"),
-    } as any);
+  it("throws on non-zero exit with stderr content", async () => {
+    vi.mocked(spawn).mockImplementation(mockChild({ status: 1, stderr: "auth error" }));
 
-    expect(() =>
-      invokeAgent({ agentKey: "x", cli: "claude", systemPrompt: "", userMessage: "" })
-    ).toThrow(/auth error/);
+    await expect(
+      invokeAgent({ agentKey: "x", cli: "claude", systemPrompt: "", userMessage: "" }),
+    ).rejects.toThrow(/auth error/);
   });
 
-  it("passes model option for codex via -m flag", () => {
-    vi.mocked(spawnSync).mockImplementation(((cmd: string, args: readonly string[]) => {
-      const outIdx = args.indexOf("--output-last-message");
-      if (outIdx >= 0) writeFileSync(args[outIdx + 1]!, "ok");
-      return { status: 0, stdout: Buffer.from(""), stderr: Buffer.from("") } as any;
-    }) as any);
+  it("passes model option for codex via -m flag", async () => {
+    vi.mocked(spawn).mockImplementation(
+      mockChild({ status: 0 }, (args) => {
+        const outIdx = args.indexOf("--output-last-message");
+        if (outIdx >= 0) writeFileSync(args[outIdx + 1]!, "ok");
+      }),
+    );
 
-    invokeAgent({
+    await invokeAgent({
       agentKey: "x",
       cli: "codex",
       systemPrompt: "s",
       userMessage: "u",
       model: "gpt-5.4",
     });
-    const call = vi.mocked(spawnSync).mock.calls[0]!;
+    const call = vi.mocked(spawn).mock.calls[0]!;
     expect(call[1]).toContain("-m");
     expect(call[1]).toContain("gpt-5.4");
   });
 });
 
 describe("invokeAgent with images", () => {
-  beforeEach(() => { vi.mocked(spawnSync).mockReset(); });
+  beforeEach(() => { vi.mocked(spawn).mockReset(); });
 
-  it("passes -i <path> per image for codex cli", () => {
-    vi.mocked(spawnSync).mockImplementation(((cmd: string, args: readonly string[]) => {
-      const outIdx = args.indexOf("--output-last-message");
-      if (outIdx >= 0) writeFileSync(args[outIdx + 1]!, "ok");
-      return { status: 0, stdout: Buffer.from(""), stderr: Buffer.from("") } as any;
-    }) as any);
+  it("passes --image=<path> per image for codex cli", async () => {
+    vi.mocked(spawn).mockImplementation(
+      mockChild({ status: 0 }, (args) => {
+        const outIdx = args.indexOf("--output-last-message");
+        if (outIdx >= 0) writeFileSync(args[outIdx + 1]!, "ok");
+      }),
+    );
 
-    invokeAgent({
+    await invokeAgent({
       agentKey: "product_overview",
       cli: "codex",
       systemPrompt: "describe images",
@@ -106,20 +122,36 @@ describe("invokeAgent with images", () => {
       images: ["/abs/img-1.png", "/abs/img-2.png"],
     });
 
-    const call = vi.mocked(spawnSync).mock.calls[0]!;
+    const call = vi.mocked(spawn).mock.calls[0]!;
     const args = call[1] as string[];
     expect(args).toContain("--image=/abs/img-1.png");
     expect(args).toContain("--image=/abs/img-2.png");
   });
 
-  it("embeds @<path> references in prompt for claude cli", () => {
-    vi.mocked(spawnSync).mockReturnValue({
-      status: 0,
-      stdout: Buffer.from("ok"),
-      stderr: Buffer.from(""),
-    } as any);
+  it("embeds @<path> references in prompt for claude cli", async () => {
+    let capturedInput: Buffer | undefined;
+    vi.mocked(spawn).mockImplementation(((_cmd: string, _args: readonly string[]) => {
+      const child = new EventEmitter() as any;
+      const stdout = new EventEmitter() as any;
+      const stderr = new EventEmitter() as any;
+      const stdin = {
+        end: (b?: unknown) => {
+          if (b instanceof Buffer) capturedInput = b;
+          else if (typeof b === "string") capturedInput = Buffer.from(b);
+        },
+      };
+      child.stdout = stdout;
+      child.stderr = stderr;
+      child.stdin = stdin;
+      child.kill = () => {};
+      process.nextTick(() => {
+        stdout.emit("data", Buffer.from("ok"));
+        child.emit("close", 0);
+      });
+      return child;
+    }) as any);
 
-    invokeAgent({
+    await invokeAgent({
       agentKey: "x",
       cli: "claude",
       systemPrompt: "sys",
@@ -127,31 +159,25 @@ describe("invokeAgent with images", () => {
       images: ["/abs/a.png", "/abs/b.png"],
     });
 
-    const call = vi.mocked(spawnSync).mock.calls[0]!;
+    const call = vi.mocked(spawn).mock.calls[0]!;
     const args = call[1] as string[];
-    const spawnOpts = call[2] as { input?: Buffer | string };
     expect(args[0]).toBe("-p");
     expect(args[1]).toBe("-");
-    const prompt = Buffer.isBuffer(spawnOpts.input) ? spawnOpts.input.toString("utf-8") : (spawnOpts.input ?? "");
+    const prompt = capturedInput ? capturedInput.toString("utf-8") : "";
     expect(prompt).toContain("@/abs/a.png");
     expect(prompt).toContain("@/abs/b.png");
     expect(args).not.toContain("--image");
   });
 
-  it("no-op when images is empty or undefined", () => {
-    vi.mocked(spawnSync).mockReturnValue({
-      status: 0, stdout: Buffer.from("ok"), stderr: Buffer.from(""),
-    } as any);
-    invokeAgent({
+  it("no-op when images is empty or undefined", async () => {
+    vi.mocked(spawn).mockImplementation(mockChild({ status: 0, stdout: "ok" }));
+    await invokeAgent({
       agentKey: "x", cli: "claude",
       systemPrompt: "", userMessage: "",
     });
-    const call = vi.mocked(spawnSync).mock.calls[0]!;
+    const call = vi.mocked(spawn).mock.calls[0]!;
     const args = call[1] as string[];
     expect(args.some((a: string) => a === "--image" || a.startsWith("--image="))).toBe(false);
     expect(args).not.toContain("-i");
-    // no image refs in prompt either
-    const prompt = args[1] as string;
-    expect(prompt).not.toMatch(/@\//);
   });
 });

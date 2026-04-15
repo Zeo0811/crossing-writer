@@ -155,7 +155,7 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
         cli: expertResolved.cli,
         model: expertResolved.model,
       });
-      const out = agent.round1({ projectId, runId, briefSummary, refsPack, images: briefImages, addDirs });
+      const out = await agent.round1({ projectId, runId, briefSummary, refsPack, images: briefImages, addDirs });
       await writeFile(join(projectDir, `mission/round1/${name}.md`), out.text, "utf-8");
       round1Results.push({ name, text: out.text });
       await appendEvent(projectDir, {
@@ -181,7 +181,7 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
     model: coordResolved.model ?? null,
   });
   const coord = new Coordinator({ cli: coordResolved.cli, model: coordResolved.model });
-  const candidatesResult = coord.round1Synthesize({
+  const candidatesResult = await coord.round1Synthesize({
     projectId,
     runId,
     briefSummary,
@@ -227,7 +227,7 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
         cli: expertResolved.cli,
         model: expertResolved.model,
       });
-      const out = agent.round2({ projectId, runId, candidatesMd: candidatesResult.text, images: briefImages, addDirs });
+      const out = await agent.round2({ projectId, runId, candidatesMd: candidatesResult.text, images: briefImages, addDirs });
       await writeFile(join(projectDir, `mission/round2/${name}.md`), out.text, "utf-8");
       round2Results.push({ name, text: out.text });
       await appendEvent(projectDir, {
@@ -245,7 +245,7 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
     cli: coordResolved.cli,
     model: coordResolved.model ?? null,
   });
-  const aggregated = coord.round2Aggregate({
+  const aggregated = await coord.round2Aggregate({
     candidatesMd: candidatesResult.text,
     round2Bundle: bundle(round2Results),
     images: briefImages,

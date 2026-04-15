@@ -24,7 +24,7 @@ export class CaseCoordinator {
     for (const o of input.expertOutputs) {
       parts.push("", `## 专家: ${o.expert}`, o.text);
     }
-    const r = invokeAgent({
+    const r = await invokeAgent({
       agentKey: "case_coordinator",
       cli: this.opts.cli,
       model: this.opts.model,

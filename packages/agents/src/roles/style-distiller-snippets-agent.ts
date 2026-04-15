@@ -63,7 +63,7 @@ export class StyleDistillerSnippetsAgent {
       `输出 NDJSON（每行一个 JSON object，不要包成数组）。`,
     ].join("\n");
 
-    const result = invokeAgent({
+    const result = await invokeAgent({
       agentKey: "style_distiller.snippets",
       cli: this.opts.cli,
       model: this.opts.model,

@@ -69,7 +69,7 @@ export async function analyzeBrief(opts: AnalyzeBriefOpts): Promise<void> {
     }
 
     const analyst = new BriefAnalyst({ cli: resolved.cli, model: resolved.model });
-    const result = analyst.analyze({
+    const result = await analyst.analyze({
       projectId,
       briefBody,
       productInfo,

@@ -90,7 +90,7 @@ export class WriterOpeningAgent {
       "请按 system prompt 要求产出开头段正文。",
     ].join("\n");
 
-    const result = invokeAgent({
+    const result = await invokeAgent({
       agentKey: "writer.opening",
       cli: this.opts.cli,
       model: this.opts.model,

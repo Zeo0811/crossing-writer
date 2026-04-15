@@ -281,7 +281,7 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
             "",
             "输出完整段落 markdown。",
           ].join("\n");
-          const out = invokeAgent({
+          const out = await invokeAgent({
             agentKey: `${agentKey}.surgical`,
             cli: cliModel.cli as "claude" | "codex",
             model: cliModel.model,
@@ -294,7 +294,7 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
             const sys = messages.find((m) => m.role === "system")?.content ?? "";
             const userParts = messages.filter((m) => m.role !== "system")
               .map((m) => `[${m.role}]\n${m.content}`).join("\n\n");
-            const r = invokeAgent({
+            const r = await invokeAgent({
               agentKey,
               cli: cliModel.cli as "claude" | "codex",
               model: cliModel.model,

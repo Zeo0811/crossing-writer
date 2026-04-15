@@ -77,7 +77,7 @@ export class StyleDistillerComposerAgent {
       `按 system prompt 合成正文（不写 frontmatter）。`,
     ].join("\n");
 
-    const result = invokeAgent({
+    const result = await invokeAgent({
       agentKey: "style_distiller.composer",
       cli: this.opts.cli,
       model: this.opts.model,

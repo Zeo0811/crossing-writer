@@ -96,7 +96,7 @@ export async function runSectionSlicer(
 
   const userMessage = `Article body:\n\n${articleBody}`;
 
-  const result = invokeAgent({
+  const result = await invokeAgent({
     agentKey: "section_slicer",
     cli: opts.cli,
     model: opts.model ?? DEFAULT_SECTION_SLICER_MODEL,
