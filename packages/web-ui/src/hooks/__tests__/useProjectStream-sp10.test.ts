@@ -33,6 +33,7 @@ describe("useProjectStream SP-10 distill + run.blocked events", () => {
   const sp10Types = [
     "distill.started",
     "distill.slicer_progress",
+    "distill.slicer_cache_hit",
     "distill.composer_done",
     "distill.finished",
     "distill.failed",

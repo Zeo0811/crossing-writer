@@ -5,7 +5,38 @@ vi.mock("../src/model-adapter.js", () => ({
 }));
 
 import { invokeAgent } from "../src/model-adapter.js";
-import { runSectionSlicer } from "../src/roles/section-slicer.js";
+import {
+  runSectionSlicer,
+  DEFAULT_SECTION_SLICER_MODEL,
+} from "../src/roles/section-slicer.js";
+
+describe("section_slicer defaults (SP-15)", () => {
+  it("exports claude-sonnet-4-5 as the default model for speed", () => {
+    expect(DEFAULT_SECTION_SLICER_MODEL).toBe("claude-sonnet-4-5");
+  });
+
+  it("runSectionSlicer passes the default model to invokeAgent when opts.model is undefined", async () => {
+    (invokeAgent as any).mockReset();
+    (invokeAgent as any).mockReturnValue({
+      text: "[]",
+      meta: { cli: "claude", model: DEFAULT_SECTION_SLICER_MODEL, durationMs: 1 },
+    });
+    await runSectionSlicer("hello", { cli: "claude" });
+    const call = (invokeAgent as any).mock.calls[0][0];
+    expect(call.model).toBe(DEFAULT_SECTION_SLICER_MODEL);
+  });
+
+  it("respects an explicit opts.model override", async () => {
+    (invokeAgent as any).mockReset();
+    (invokeAgent as any).mockReturnValue({
+      text: "[]",
+      meta: { cli: "claude", model: "claude-opus-4-6", durationMs: 1 },
+    });
+    await runSectionSlicer("hello", { cli: "claude", model: "claude-opus-4-6" });
+    const call = (invokeAgent as any).mock.calls[0][0];
+    expect(call.model).toBe("claude-opus-4-6");
+  });
+});
 
 describe("runSectionSlicer", () => {
   beforeEach(() => {

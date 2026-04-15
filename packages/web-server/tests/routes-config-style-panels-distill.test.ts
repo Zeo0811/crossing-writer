@@ -73,6 +73,64 @@ describe("config-style-panels distill SSE route", () => {
     expect(r.statusCode).toBe(400);
   });
 
+  it("SP-15: forwards slicer_cache_hit as distill.slicer_cache_hit SSE frame", async () => {
+    const fakeRun = vi.fn(async (_input: any, ctx: any) => {
+      ctx.onEvent({ phase: "started", account: "A", role: "opening", run_id: "rd-1" });
+      ctx.onEvent({
+        phase: "slicer_cache_hit",
+        article_id: "a1",
+        cache_key: "deadbeefdeadbeef",
+        cached_at: "2026-04-14T00:00:00Z",
+      });
+      ctx.onEvent({ phase: "composer_done", panel_path: "/tmp/p.md" });
+      return { panelPath: "/tmp/p.md", version: 1 };
+    });
+    const app = Fastify();
+    registerConfigStylePanelsDistillRoutes(app, {
+      vaultPath: "/tmp",
+      sqlitePath: "/tmp/x.db",
+      stylePanelStore: {} as any,
+      runRoleDistill: fakeRun as any,
+    });
+    const r = await app.inject({
+      method: "POST",
+      url: "/api/config/style-panels/distill",
+      payload: { account: "A", role: "opening" },
+    });
+    expect(r.body).toContain("event: distill.slicer_cache_hit");
+    expect(r.body).toContain('"article_id":"a1"');
+    expect(r.body).toContain('"cache_key":"deadbeefdeadbeef"');
+  });
+
+  it("SP-15: forwards slicer_cache_hit under distill-all as slicer_cache_hit frame", async () => {
+    const fakeRunAll = vi.fn(async (_input: any, ctx: any) => {
+      ctx.onEvent({ phase: "all.started", account: "A", run_id: "rd-1" });
+      ctx.onEvent({
+        phase: "slicer_cache_hit",
+        article_id: "a1",
+        cache_key: "cafebabecafebabe",
+        cached_at: "2026-04-14T00:00:00Z",
+      });
+      ctx.onEvent({ phase: "all.finished", results: [] });
+      return { results: [] };
+    });
+    const app = Fastify();
+    registerConfigStylePanelsDistillRoutes(app, {
+      vaultPath: "/tmp",
+      sqlitePath: "/tmp/x.db",
+      stylePanelStore: {} as any,
+      runRoleDistill: vi.fn() as any,
+      runRoleDistillAll: fakeRunAll as any,
+    });
+    const r = await app.inject({
+      method: "POST",
+      url: "/api/config/style-panels/distill-all",
+      payload: { account: "A" },
+    });
+    expect(r.body).toContain("event: slicer_cache_hit");
+    expect(r.body).toContain('"cache_key":"cafebabecafebabe"');
+  });
+
   it("emits distill.failed when orchestrator throws", async () => {
     const fakeRun = vi.fn(async (_input: any, ctx: any) => {
       ctx.onEvent({ phase: "started", account: "A", role: "opening", run_id: "rd-x" });

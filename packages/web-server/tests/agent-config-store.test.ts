@@ -1,5 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
-import { createAgentConfigStore, type AgentConfigEntry } from "../src/services/agent-config-store.js";
+import {
+  createAgentConfigStore,
+  DEFAULT_AGENT_CONFIGS,
+  type AgentConfigEntry,
+} from "../src/services/agent-config-store.js";
 
 function fakeConfigStore(initial: Record<string, AgentConfigEntry> = {}) {
   let current: any = { agents: { ...initial } };
@@ -106,6 +110,26 @@ describe("AgentConfigStore", () => {
       await s.set(key, { agentKey: key, model: { cli: "claude" } });
       expect(s.get(key)).not.toBeNull();
     }
+  });
+
+  it("SP-15: seeds section_slicer default to claude-sonnet-4-5", () => {
+    const s = createAgentConfigStore(fakeConfigStore() as any);
+    const entry = s.get("section_slicer");
+    expect(entry).not.toBeNull();
+    expect(entry!.model.cli).toBe("claude");
+    expect(entry!.model.model).toBe("claude-sonnet-4-5");
+    expect(DEFAULT_AGENT_CONFIGS.section_slicer.model.model).toBe("claude-sonnet-4-5");
+  });
+
+  it("SP-15: user-set section_slicer model overrides the default", async () => {
+    const cs = fakeConfigStore();
+    const s = createAgentConfigStore(cs as any);
+    await s.set("section_slicer", {
+      agentKey: "section_slicer",
+      model: { cli: "claude", model: "claude-opus-4-6" },
+    });
+    const entry = s.get("section_slicer");
+    expect(entry!.model.model).toBe("claude-opus-4-6");
   });
 
   it("rejects malformed topic_expert subkey", async () => {

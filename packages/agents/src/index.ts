@@ -45,7 +45,7 @@ export { StyleDistillerSnippetsAgent } from "./roles/style-distiller-snippets-ag
 export type { SnippetBatchArticle, SnippetHarvestInput, HarvestedSnippet, SnippetHarvestOutput } from "./roles/style-distiller-snippets-agent.js";
 export { StyleDistillerComposerAgent } from "./roles/style-distiller-composer-agent.js";
 export type { ComposerInput, ComposerOutput } from "./roles/style-distiller-composer-agent.js";
-export { runSectionSlicer } from "./roles/section-slicer.js";
+export { runSectionSlicer, DEFAULT_SECTION_SLICER_MODEL } from "./roles/section-slicer.js";
 export type {
   SectionSlice,
   SectionRole,

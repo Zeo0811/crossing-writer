@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import Database from "better-sqlite3";
 import {
   runSectionSlicer,
+  DEFAULT_SECTION_SLICER_MODEL,
   StyleDistillerSnippetsAgent,
   StyleDistillerStructureAgent,
   StyleDistillerComposerAgent,
@@ -9,6 +10,7 @@ import {
 } from "@crossing/agents";
 import { StylePanelStore } from "./style-panel-store.js";
 import type { StylePanel, StylePanelFrontmatter } from "./style-panel-types.js";
+import { SlicerCache, SLICER_PROMPT_HASH } from "./slicer-cache.js";
 
 export type RoleDistillRole = "opening" | "practice" | "closing";
 
@@ -39,6 +41,12 @@ export interface RoleDistillCtx {
 export type RoleDistillEvent =
   | { phase: "started"; account: string; role: RoleDistillRole; run_id: string }
   | { phase: "slicer_progress"; processed: number; total: number }
+  | {
+      phase: "slicer_cache_hit";
+      article_id: string;
+      cache_key: string;
+      cached_at: string;
+    }
   | { phase: "snippets_done"; count: number }
   | { phase: "structure_done" }
   | { phase: "composer_done"; panel_path: string }
@@ -55,6 +63,12 @@ export interface AllRolesDistillCtx extends Omit<RoleDistillCtx, "onEvent"> {
 export type AllRolesDistillEvent =
   | { phase: "all.started"; account: string; run_id: string }
   | { phase: "slicer_progress"; processed: number; total: number }
+  | {
+      phase: "slicer_cache_hit";
+      article_id: string;
+      cache_key: string;
+      cached_at: string;
+    }
   | { phase: "role_started"; role: RoleDistillRole }
   | {
       phase: "role_done";
@@ -142,14 +156,62 @@ async function runSlicerPhase(
   concurrency: number,
   slicerOpts: CliModel,
   onProgress: (processed: number, total: number) => void,
+  cache: SlicerCache | null,
+  onCacheHit?: (ev: {
+    article_id: string;
+    cache_key: string;
+    cached_at: string;
+  }) => void,
 ): Promise<SlicerResult[]> {
+  // SP-15: resolve slicer model once for cache-key computation. Fall back to
+  // the agent's built-in default (sonnet-4.5) when caller didn't specify.
+  const slicerModelForKey = slicerOpts.model ?? DEFAULT_SECTION_SLICER_MODEL;
+
   let processed = 0;
   onProgress(0, articles.length);
   const slicerResults = await mapWithConcurrency(
     articles,
     concurrency,
-    async (a) => {
+    async (a): Promise<SlicerResult> => {
+      // Cache lookup
+      let key: string | null = null;
+      if (cache) {
+        key = cache.computeKey({
+          model: slicerModelForKey,
+          body: a.body_plain,
+          promptHash: SLICER_PROMPT_HASH,
+        });
+        const hit = await cache.get(key);
+        if (hit && Array.isArray(hit.slices)) {
+          onCacheHit?.({
+            article_id: a.id,
+            cache_key: key,
+            cached_at: hit.cached_at ?? "",
+          });
+          return {
+            articleId: a.id,
+            body: a.body_plain,
+            slices: hit.slices as SectionSlice[],
+          };
+        }
+      }
+
       const r = await runSectionSlicer(a.body_plain, slicerOpts);
+      // Best-effort cache write — never surface failures to the main flow.
+      if (cache && key) {
+        try {
+          await cache.set(key, {
+            article_id: a.id,
+            slicer_model: slicerModelForKey,
+            slicer_prompt_hash: SLICER_PROMPT_HASH,
+            slices: r.slices,
+          });
+        } catch (err) {
+          console.warn(
+            `[slicer-cache] write failed for ${a.id}: ${(err as Error).message}`,
+          );
+        }
+      }
       return { articleId: a.id, body: a.body_plain, slices: r.slices };
     },
     () => {
@@ -198,42 +260,49 @@ async function runSnippetsStructureComposer(params: {
   } = params;
   const corpus = roleTexts.join("\n\n---\n\n");
 
+  // SP-15: snippets + structure only depend on the slicer output (not on each
+  // other), so run them concurrently. Composer still waits on both. If either
+  // rejects, Promise.all propagates and we never call composer.
   const snippetsAgent = new StyleDistillerSnippetsAgent(
     cliModelPerStep?.snippets ?? { cli: "claude" },
   );
-  const snippetsRes = await snippetsAgent.harvest({
-    account,
-    batchIndex: 0,
-    totalBatches: 1,
-    articles: [
-      {
-        id: "corpus",
-        title: `${account} ${role} corpus`,
-        published_at: new Date().toISOString().slice(0, 10),
-        word_count: corpus.length,
-        body_plain: corpus,
-      },
-    ],
-  });
-  onPhase?.({ phase: "snippets_done", count: snippetsRes.candidates.length });
-
   const structureAgent = new StyleDistillerStructureAgent(
     cliModelPerStep?.structure ?? { cli: "claude" },
   );
-  const structureRes = await structureAgent.distill({
-    account,
-    samples: [
-      {
-        id: "corpus",
-        title: `${account} ${role} corpus`,
-        published_at: new Date().toISOString().slice(0, 10),
-        word_count: corpus.length,
-        body_plain: corpus,
-      },
-    ],
-    quantSummary: `role=${role} slices=${roleTexts.length} source_articles=${articles.length}`,
-  });
-  onPhase?.({ phase: "structure_done" });
+  const corpusArticle = {
+    id: "corpus",
+    title: `${account} ${role} corpus`,
+    published_at: new Date().toISOString().slice(0, 10),
+    word_count: corpus.length,
+    body_plain: corpus,
+  };
+
+  const snippetsPromise = snippetsAgent
+    .harvest({
+      account,
+      batchIndex: 0,
+      totalBatches: 1,
+      articles: [corpusArticle],
+    })
+    .then((res) => {
+      onPhase?.({ phase: "snippets_done", count: res.candidates.length });
+      return res;
+    });
+  const structurePromise = structureAgent
+    .distill({
+      account,
+      samples: [corpusArticle],
+      quantSummary: `role=${role} slices=${roleTexts.length} source_articles=${articles.length}`,
+    })
+    .then((res) => {
+      onPhase?.({ phase: "structure_done" });
+      return res;
+    });
+
+  const [snippetsRes, structureRes] = await Promise.all([
+    snippetsPromise,
+    structurePromise,
+  ]);
 
   const composerAgent = new StyleDistillerComposerAgent(
     cliModelPerStep?.composer ?? { cli: "claude" },
@@ -305,11 +374,20 @@ export async function runRoleDistill(
       throw new Error(`no articles found for account: ${input.account}`);
     }
 
+    const cache = new SlicerCache({ vaultRoot: ctx.vaultPath });
     const slicerResults = await runSlicerPhase(
       articles,
       concurrency,
       ctx.cliModelPerStep?.slicer ?? { cli: "claude" as const },
       (processed, total) => emit({ phase: "slicer_progress", processed, total }),
+      cache,
+      (ev) =>
+        emit({
+          phase: "slicer_cache_hit",
+          article_id: ev.article_id,
+          cache_key: ev.cache_key,
+          cached_at: ev.cached_at,
+        }),
     );
 
     const roleTexts = extractRoleCorpus(slicerResults, input.role);
@@ -356,12 +434,21 @@ export async function runRoleDistillAll(
     return { results };
   }
 
-  // Slicer runs ONCE for all roles
+  // Slicer runs ONCE for all roles (shared cache across roles).
+  const cache = new SlicerCache({ vaultRoot: ctx.vaultPath });
   const slicerResults = await runSlicerPhase(
     articles,
     concurrency,
     ctx.cliModelPerStep?.slicer ?? { cli: "claude" as const },
     (processed, total) => emit({ phase: "slicer_progress", processed, total }),
+    cache,
+    (ev) =>
+      emit({
+        phase: "slicer_cache_hit",
+        article_id: ev.article_id,
+        cache_key: ev.cache_key,
+        cached_at: ev.cached_at,
+      }),
   );
 
   // For each role with non-empty corpus, run snippets→structure→composer in parallel across roles.

@@ -55,6 +55,19 @@ export interface AgentConfigStore {
   remove(agentKey: string): Promise<void>;
 }
 
+/**
+ * SP-15: built-in defaults for agents whose preferred model is known upfront.
+ * User-level config in `config.json#agents` takes precedence; this map is only
+ * consulted when the key is missing from the persisted config. Surfaces the
+ * slicer default (sonnet-4.5) to callers that resolve via the store.
+ */
+export const DEFAULT_AGENT_CONFIGS: Record<string, AgentConfigEntry> = {
+  section_slicer: {
+    agentKey: "section_slicer",
+    model: { cli: "claude", model: "claude-sonnet-4-5" },
+  },
+};
+
 function isAllowedAgentKey(key: string): boolean {
   if ((AGENT_KEY_ALLOWLIST as readonly string[]).includes(key)) return true;
   if (TOPIC_EXPERT_SPECIALTY_RE.test(key)) return true;
@@ -97,7 +110,9 @@ export function createAgentConfigStore(configStore: ConfigStore): AgentConfigSto
     getAll,
     get(agentKey) {
       const all = getAll();
-      return all[agentKey] ?? null;
+      if (all[agentKey]) return all[agentKey];
+      // Fall back to built-in defaults (SP-15).
+      return DEFAULT_AGENT_CONFIGS[agentKey] ?? null;
     },
     async set(agentKey, cfg) {
       validate(agentKey, cfg);

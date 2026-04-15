@@ -55,6 +55,8 @@ const EVENT_TYPES = [
   // SP-10: role-scoped distill + run gating
   "distill.started",
   "distill.slicer_progress",
+  // SP-15: slicer cache hit (per article)
+  "distill.slicer_cache_hit",
   "distill.composer_done",
   "distill.finished",
   "distill.failed",
