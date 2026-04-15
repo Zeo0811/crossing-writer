@@ -1,4 +1,5 @@
-import { mkdir, readFile, writeFile, readdir } from "node:fs/promises";
+import { mkdir, readFile, writeFile, readdir, rename, rm, access } from "node:fs/promises";
+import { constants as fsConstants } from "node:fs";
 import { join } from "node:path";
 import type { ProjectStatus, ProjectStage } from "../state/state-machine.js";
 
@@ -83,6 +84,22 @@ export interface Project {
   schema_version: 1;
 }
 
+export class ProjectConflictError extends Error {
+  constructor(public readonly id: string, msg: string) {
+    super(msg);
+    this.name = "ProjectConflictError";
+  }
+}
+
+export class ConfirmationMismatchError extends Error {
+  constructor(public readonly expected: string) {
+    super(`confirmation_mismatch: expected ${expected}`);
+    this.name = "ConfirmationMismatchError";
+  }
+}
+
+const ARCHIVE_DIRNAME = "_archive";
+
 function slugify(s: string): string {
   return s
     .toLowerCase()
@@ -96,6 +113,10 @@ export class ProjectStore {
 
   projectDir(id: string): string {
     return join(this.root, id);
+  }
+
+  archiveDir(id: string): string {
+    return join(this.root, ARCHIVE_DIRNAME, id);
   }
 
   async create(input: { name: string }): Promise<Project> {
@@ -166,6 +187,7 @@ export class ProjectStore {
       const out: Project[] = [];
       for (const e of entries) {
         if (!e.isDirectory()) continue;
+        if (e.name.startsWith("_")) continue; // skip _archive and other metadata dirs
         const p = await this.get(e.name);
         if (p) out.push(p);
       }
@@ -186,5 +208,86 @@ export class ProjectStore {
       "utf-8",
     );
     return merged;
+  }
+
+  async isArchived(id: string): Promise<boolean> {
+    try {
+      await access(join(this.archiveDir(id), "project.json"), fsConstants.F_OK);
+      return true;
+    } catch { return false; }
+  }
+
+  private async pathExists(path: string): Promise<boolean> {
+    try {
+      await access(path, fsConstants.F_OK);
+      return true;
+    } catch { return false; }
+  }
+
+  async archive(id: string): Promise<void> {
+    const src = this.projectDir(id);
+    if (!(await this.pathExists(join(src, "project.json")))) {
+      throw new Error(`project_not_found: ${id}`);
+    }
+    const dst = this.archiveDir(id);
+    if (await this.pathExists(dst)) {
+      throw new ProjectConflictError(id, `already_archived: ${id}`);
+    }
+    await mkdir(join(this.root, ARCHIVE_DIRNAME), { recursive: true });
+    await rename(src, dst);
+  }
+
+  async restore(id: string): Promise<void> {
+    const src = this.archiveDir(id);
+    if (!(await this.pathExists(join(src, "project.json")))) {
+      throw new Error(`project_not_found: ${id}`);
+    }
+    const dst = this.projectDir(id);
+    if (await this.pathExists(dst)) {
+      throw new ProjectConflictError(id, `name_conflict: ${id} already exists in active`);
+    }
+    await rename(src, dst);
+  }
+
+  async destroy(id: string, opts: { confirmSlug: string }): Promise<{ removedPath: string }> {
+    let target: string | null = null;
+    let projJson: string | null = null;
+    const activeFile = join(this.projectDir(id), "project.json");
+    const archivedFile = join(this.archiveDir(id), "project.json");
+    if (await this.pathExists(activeFile)) {
+      target = this.projectDir(id);
+      projJson = activeFile;
+    } else if (await this.pathExists(archivedFile)) {
+      target = this.archiveDir(id);
+      projJson = archivedFile;
+    } else {
+      throw new Error(`project_not_found: ${id}`);
+    }
+    const raw = await readFile(projJson, "utf-8");
+    const p = JSON.parse(raw) as Project;
+    if (p.slug !== opts.confirmSlug) {
+      throw new ConfirmationMismatchError(p.slug);
+    }
+    await rm(target, { recursive: true, force: true });
+    return { removedPath: target };
+  }
+
+  async listArchived(): Promise<Project[]> {
+    const archiveRoot = join(this.root, ARCHIVE_DIRNAME);
+    try {
+      const entries = await readdir(archiveRoot, { withFileTypes: true });
+      const out: Project[] = [];
+      for (const e of entries) {
+        if (!e.isDirectory()) continue;
+        try {
+          const raw = await readFile(join(archiveRoot, e.name, "project.json"), "utf-8");
+          out.push(JSON.parse(raw) as Project);
+        } catch { /* skip */ }
+      }
+      return out.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+    } catch (e: any) {
+      if (e.code === "ENOENT") return [];
+      throw e;
+    }
   }
 }
