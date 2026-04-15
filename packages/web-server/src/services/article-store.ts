@@ -1,4 +1,18 @@
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+
+/**
+ * Rewrite `![alt](case-XX/screenshots/FILE.png)` refs (and recordings/generated) to the
+ * evidence HTTP endpoint so they render in the browser.
+ */
+export function rewriteCaseImageRefs(body: string, projectId: string): string {
+  return body.replace(
+    /!\[([^\]]*)\]\((case-[\w-]+)\/(screenshots|recordings|generated)\/([^)]+)\)/g,
+    (_match, alt, caseId, kind, filename) => {
+      const enc = encodeURIComponent(filename.trim());
+      return `![${alt}](/api/projects/${encodeURIComponent(projectId)}/evidence/${caseId}/files/${kind}/${enc})`;
+    },
+  );
+}
 import { existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import yaml from "js-yaml";
@@ -160,19 +174,20 @@ export class ArticleStore {
     const refAccounts = new Set<string>();
     for (const s of sections) for (const a of s.frontmatter.reference_accounts ?? []) refAccounts.add(a);
 
+    const projectId = this.projectDir.split("/").pop() ?? "";
     const topFm = {
       type: "article_draft",
-      project_id: this.projectDir.split("/").pop() ?? "",
+      project_id: projectId,
       produced_at: new Date().toISOString(),
       reference_accounts_summary: [...refAccounts],
     };
 
     const parts: string[] = [];
     parts.push(`---\n${yaml.dump(topFm, { lineWidth: 200 }).trim()}\n---\n`);
-    if (open) parts.push(`<!-- section:opening -->\n${open.body}`);
+    if (open) parts.push(`<!-- section:opening -->\n${rewriteCaseImageRefs(open.body, projectId)}`);
     for (let i = 0; i < practice.length; i++) {
       const p = practice[i]!;
-      parts.push(`<!-- section:${p.key} -->\n${p.body}`);
+      parts.push(`<!-- section:${p.key} -->\n${rewriteCaseImageRefs(p.body, projectId)}`);
       if (i < practice.length - 1) {
         const next = practice[i + 1]!;
         const trKey = `${p.key.slice("practice.".length)}-to-${next.key.slice("practice.".length)}`;
@@ -181,7 +196,7 @@ export class ArticleStore {
         }
       }
     }
-    if (close) parts.push(`<!-- section:closing -->\n${close.body}`);
+    if (close) parts.push(`<!-- section:closing -->\n${rewriteCaseImageRefs(close.body, projectId)}`);
     return parts.join("\n\n");
   }
 
