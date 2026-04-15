@@ -16,6 +16,11 @@ vi.mock("../../src/api/client", () => ({
   getSelectedCases: vi.fn(async () => null),
   listOverviewImages: vi.fn(async () => []),
   listCaseExperts: vi.fn(async () => []),
+  getProjectChecklist: vi.fn(async () => ({
+    projectId: "p1",
+    generatedAt: "2026-04-18T00:00:00Z",
+    items: [],
+  })),
 }));
 
 vi.mock("../../src/hooks/useProjectStream", () => ({
