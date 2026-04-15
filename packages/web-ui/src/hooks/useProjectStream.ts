@@ -31,6 +31,8 @@ const EVENT_TYPES = [
   "expert.round2_started", "expert.round2_completed",
   "coordinator.synthesizing", "coordinator.candidates_ready", "coordinator.aggregating",
   "refs_pack.generated",
+  "mission.failed",
+  "agent.warning",
   "overview.started", "overview.completed", "overview.failed",
   "case_expert.round1_started", "case_expert.round1_completed",
   "case_expert.round2_started", "case_expert.round2_completed",
