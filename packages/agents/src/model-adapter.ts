@@ -33,26 +33,38 @@ function runChildProcess(
     const stdoutChunks: Buffer[] = [];
     const stderrChunks: Buffer[] = [];
     let settled = false;
+    let extraErr = "";
     const finish = (status: number | null) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      const stderr = Buffer.concat(stderrChunks).toString("utf-8") + (extraErr ? `\n[adapter] ${extraErr}` : "");
       resolve({
         status,
         stdout: Buffer.concat(stdoutChunks).toString("utf-8"),
-        stderr: Buffer.concat(stderrChunks).toString("utf-8"),
+        stderr,
       });
     };
     const timer = setTimeout(() => {
+      extraErr = `killed after ${opts.timeout}ms timeout`;
       try { child.kill("SIGKILL"); } catch { /* ignore */ }
       finish(null);
     }, opts.timeout);
     child.stdout?.on("data", (c) => stdoutChunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
     child.stderr?.on("data", (c) => stderrChunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
-    child.on("error", () => finish(null));
-    child.on("close", (code) => finish(code));
+    child.on("error", (err) => {
+      extraErr = `spawn error: ${err.message}`;
+      finish(null);
+    });
+    child.on("close", (code, signal) => {
+      if (code === null && signal) extraErr = `killed by signal ${signal}`;
+      finish(code);
+    });
     if (opts.input !== undefined) {
       const buf = Buffer.isBuffer(opts.input) ? opts.input : Buffer.from(opts.input, "utf-8");
+      child.stdin?.on("error", (err) => {
+        extraErr = `stdin error: ${err.message} (buf ${buf.length} bytes)`;
+      });
       child.stdin?.end(buf);
     } else {
       child.stdin?.end();
