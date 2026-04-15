@@ -68,6 +68,7 @@ export function invokeAgent(opts: InvokeOptions): AgentResult {
   const addDirArgs = Array.from(allDirs).flatMap((d) => ["--add-dir", d]);
   const args = [
     "-p", "-",
+    "--dangerously-skip-permissions",
     ...addDirArgs,
     ...(opts.model ? ["--model", opts.model] : []),
   ];
