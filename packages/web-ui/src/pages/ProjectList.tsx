@@ -23,6 +23,7 @@ function statusVariant(status?: string): ChipVariant {
 
 export function ProjectList() {
   const { data, isLoading } = useProjects();
+  const activeItems = data?.items ?? [];
   const { data: cliHealth, loading: cliLoading } = useCliHealth();
   const create = useCreateProject();
   const navigate = useNavigate();
@@ -111,9 +112,9 @@ export function ProjectList() {
 
           {isLoading ? (
             <p className="text-meta text-[13px]">加载中…</p>
-          ) : data?.length ? (
+          ) : activeItems.length ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {data.map((p) => (
+              {activeItems.map((p) => (
                 <Card
                   key={p.id}
                   variant="agent"
