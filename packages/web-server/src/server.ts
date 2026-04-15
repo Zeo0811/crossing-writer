@@ -31,6 +31,7 @@ import { registerConfigProjectOverridesRoutes } from "./routes/config-project-ov
 import { createCliHealthProber } from "./services/cli-health.js";
 import { registerSystemHealthRoutes } from "./routes/system-health.js";
 import { registerProjectImageRoutes } from "./routes/project-images.js";
+import { registerBriefAttachmentsRoutes } from "./routes/brief-attachments.js";
 import { TopicExpertStore } from "./services/topic-expert-store.js";
 import { registerTopicExpertsRoutes } from "./routes/topic-experts.js";
 import { registerTopicExpertConsultRoutes } from "./routes/topic-expert-consult.js";
@@ -192,6 +193,7 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
   });
 
   registerProjectImageRoutes(app, { projectsRoot: configStore.current.projectsDir });
+  registerBriefAttachmentsRoutes(app, { projectsRoot: configStore.current.projectsDir });
 
   const topicExpertStore = new TopicExpertStore(cfg.vaultPath);
   app.decorate("topicExpertStore", topicExpertStore);
