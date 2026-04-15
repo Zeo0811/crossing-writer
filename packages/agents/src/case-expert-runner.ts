@@ -70,6 +70,8 @@ export async function runCaseExpert(
   const r2 = await expert.round2({
     round1Draft: r1.text,
     toolResults: toolResultsText,
+    images: input.images,
+    addDirs: input.addDirs,
   });
   return { final: r2, roundsUsed: 2, toolCallsMade: calls };
 }

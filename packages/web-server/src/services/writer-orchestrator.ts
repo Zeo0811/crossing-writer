@@ -23,6 +23,7 @@ import {
   trimToBudget,
   type ContextBundle,
 } from "./context-bundle-service.js";
+import { collectProjectImages } from "./brief-images.js";
 
 export type WriterAgentKey =
   | "writer.opening" | "writer.practice" | "writer.closing"
@@ -197,7 +198,7 @@ function buildCriticUserMessage(fullArticle: string, sectionKeys: string[], refs
 }
 
 function invokerFor(agentKey: string, cli: "claude" | "codex", model?: string) {
-  return async (messages: ChatMessage[], opts?: { images?: string[] }) => {
+  return async (messages: ChatMessage[], opts?: { images?: string[]; addDirs?: string[] }) => {
     const sys = messages.find((m) => m.role === "system")?.content ?? "";
     const userParts = messages
       .filter((m) => m.role !== "system")
@@ -210,6 +211,7 @@ function invokerFor(agentKey: string, cli: "claude" | "codex", model?: string) {
       systemPrompt: sys,
       userMessage: userParts,
       images: opts?.images,
+      addDirs: opts?.addDirs,
     });
     return {
       text: result.text,
@@ -280,6 +282,10 @@ export async function runWriter(
   }
   // --------------------------------------------------------------------------
 
+  // Collect project images + vault addDirs once per run so every writer agent
+  // receives the same @-ref attachment list.
+  const { images: projectImages, addDirs: projectAddDirs } = await collectProjectImages(pDir);
+
   // SP-19: build + trim a single ContextBundle per run; re-used as a prefix on
   // every writer user message so each agent sees the same project snapshot.
   let ctxBundle: ContextBundle | null = null;
@@ -348,6 +354,8 @@ export async function runWriter(
             buildOpeningUserMessage(briefSummary, missionSummary, productOverview, refs),
             ctxBundle,
           ),
+          images: projectImages,
+          addDirs: projectAddDirs,
           dispatchTool,
           onEvent: toolEventBridge("opening"),
           sectionKey: "opening",
@@ -415,7 +423,8 @@ export async function runWriter(
             buildPracticeUserMessage(c, notesFm, notesBody, shots, refs),
             ctxBundle,
           ),
-          images: shots,
+          images: Array.from(new Set([...shots, ...projectImages])),
+          addDirs: projectAddDirs,
           dispatchTool,
           onEvent: toolEventBridge(sectionKey),
           sectionKey,
@@ -544,6 +553,8 @@ export async function runWriter(
           buildClosingUserMessage(openingBody, stitchedPractice, refs),
           ctxBundle,
         ),
+        images: projectImages,
+        addDirs: projectAddDirs,
         dispatchTool,
         onEvent: toolEventBridge("closing"),
         sectionKey: "closing",
@@ -589,6 +600,8 @@ export async function runWriter(
         buildCriticUserMessage(fullArticle, sectionKeys, refs),
         ctxBundle,
       ),
+      images: projectImages,
+      addDirs: projectAddDirs,
       dispatchTool,
       onEvent: toolEventBridge("style_critic"),
       sectionKey: "style_critic",

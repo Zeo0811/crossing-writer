@@ -18,11 +18,15 @@ export interface Round1Input {
   missionSummary: string;
   productOverview: string;
   inspirationPack: string;
+  images?: string[];
+  addDirs?: string[];
 }
 
 export interface Round2Input {
   round1Draft: string;
   toolResults: string;
+  images?: string[];
+  addDirs?: string[];
 }
 
 export interface CaseResult {
@@ -54,6 +58,8 @@ export class CasePlannerExpert {
       model: this.opts.model,
       systemPrompt: sys,
       userMessage: user,
+      images: input.images,
+      addDirs: input.addDirs,
     });
     return { text: r.text, meta: { cli: r.meta.cli, model: r.meta.model ?? null, durationMs: r.meta.durationMs } };
   }
@@ -68,6 +74,8 @@ export class CasePlannerExpert {
       model: this.opts.model,
       systemPrompt: sys,
       userMessage: "请输出 Round 2 最终 Cases。",
+      images: input.images,
+      addDirs: input.addDirs,
     });
     return { text: r.text, meta: { cli: r.meta.cli, model: r.meta.model ?? null, durationMs: r.meta.durationMs } };
   }

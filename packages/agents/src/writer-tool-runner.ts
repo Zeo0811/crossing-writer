@@ -6,7 +6,7 @@ export interface ChatMessage {
 export interface AgentInvoker {
   invoke(
     messages: ChatMessage[],
-    opts?: { images?: string[] },
+    opts?: { images?: string[]; addDirs?: string[] },
   ): Promise<{ text: string; meta: { cli: string; model?: string; durationMs: number } }>;
 }
 
@@ -78,6 +78,7 @@ export interface WriterRunOptions {
   dispatchTool: (call: ToolCall) => Promise<SkillResult>;
   onEvent?: (ev: WriterToolEvent) => void;
   images?: string[];
+  addDirs?: string[];
 }
 
 export interface WriterRunResult {
@@ -139,7 +140,13 @@ export async function runWriterWithTools(opts: WriterRunOptions): Promise<Writer
   let round = 0;
 
   for (round = 1; round <= maxRounds; round++) {
-    const resp = await opts.agent.invoke(messages, opts.images ? { images: opts.images } : undefined);
+    const invokeOpts: { images?: string[]; addDirs?: string[] } = {};
+    if (opts.images && opts.images.length > 0) invokeOpts.images = opts.images;
+    if (opts.addDirs && opts.addDirs.length > 0) invokeOpts.addDirs = opts.addDirs;
+    const resp = await opts.agent.invoke(
+      messages,
+      Object.keys(invokeOpts).length > 0 ? invokeOpts : undefined,
+    );
     lastText = resp.text;
     lastMeta = { cli: resp.meta.cli, model: resp.meta.model, durationMs: resp.meta.durationMs };
     totalMs += resp.meta.durationMs ?? 0;

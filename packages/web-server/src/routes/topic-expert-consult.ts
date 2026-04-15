@@ -13,6 +13,8 @@ export interface TopicExpertConsultRoutesOpts {
   /** SP-19: forwarded to the consult service so every topic expert sees the
    *  unified [Project Context] snapshot. */
   contextBundleService?: ContextBundleService;
+  /** Forwarded to consult service for brief-image + vault addDirs collection. */
+  projectsDir?: string;
 }
 
 export function registerTopicExpertConsultRoutes(
@@ -71,6 +73,7 @@ export function registerTopicExpertConsultRoutes(
           ...(opts.contextBundleService
             ? { contextBundleService: opts.contextBundleService }
             : {}),
+          ...(opts.projectsDir ? { projectsDir: opts.projectsDir } : {}),
         },
       );
     } catch (err: any) {

@@ -8,6 +8,7 @@ import type { ProjectStore } from "./project-store.js";
 import { appendEvent } from "./event-log.js";
 import { buildInspirationPack } from "./case-inspiration-pack-builder.js";
 import { searchRefs } from "./crossing-kb-search.js";
+import { collectProjectImages } from "./brief-images.js";
 
 export interface RunCasePlanOpts {
   projectId: string;
@@ -28,6 +29,7 @@ export async function runCasePlan(opts: RunCasePlanOpts): Promise<string> {
 
   const missionSummary = await readFile(join(projectDir, "mission/selected.md"), "utf-8");
   const productOverview = await readFile(join(projectDir, "context/product-overview.md"), "utf-8");
+  const { images: projectImages, addDirs: projectAddDirs } = await collectProjectImages(projectDir);
   const inspirationPack = await buildInspirationPack({
     vaultPath: opts.vaultPath,
     sqlitePath: opts.sqlitePath,
@@ -63,7 +65,7 @@ export async function runCasePlan(opts: RunCasePlanOpts): Promise<string> {
 
       const result = await runCaseExpert(
         expert,
-        { missionSummary, productOverview, inspirationPack },
+        { missionSummary, productOverview, inspirationPack, images: projectImages, addDirs: projectAddDirs },
         async (calls: CaseToolCall[]) => {
           for (const c of calls) {
             await appendEvent(projectDir, {
@@ -119,6 +121,7 @@ export async function runCasePlan(opts: RunCasePlanOpts): Promise<string> {
   });
   const synth = await coord.synthesize({
     expertOutputs, missionSummary, productOverview,
+    images: projectImages, addDirs: projectAddDirs,
   });
   const candPath = join(projectDir, "mission/case-plan/candidates.md");
   await mkdir(join(projectDir, "mission/case-plan"), { recursive: true });

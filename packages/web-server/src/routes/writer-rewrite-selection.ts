@@ -14,6 +14,7 @@ import {
 import { dispatchSkill } from "@crossing/kb";
 import { buildSelectionRewriteUserMessage } from "../services/selection-rewrite-builder.js";
 import { appendEvent } from "../services/event-log.js";
+import { collectProjectImages } from "../services/brief-images.js";
 import {
   type ContextBundleService,
   renderContextBlock,
@@ -129,7 +130,7 @@ export function registerWriterRewriteSelectionRoutes(
 
         const invoker = async (
           messages: ChatMessage[],
-          invokeOpts?: { images?: string[] },
+          invokeOpts?: { images?: string[]; addDirs?: string[] },
         ) => {
           const sys = messages.find((m) => m.role === "system")?.content ?? "";
           const userParts = messages
@@ -143,6 +144,7 @@ export function registerWriterRewriteSelectionRoutes(
             systemPrompt: sys,
             userMessage: userParts,
             images: invokeOpts?.images,
+            addDirs: invokeOpts?.addDirs,
           });
           return {
             text: r.text,
@@ -160,9 +162,14 @@ export function registerWriterRewriteSelectionRoutes(
             sqlitePath: deps.sqlitePath,
           });
 
+        const { images: projectImages, addDirs: projectAddDirs } =
+          await collectProjectImages(projectDir);
+
         const result = await (runner.run as any)({
           invokeAgent: invoker,
           userMessage,
+          images: projectImages,
+          addDirs: projectAddDirs,
           dispatchTool,
           sectionKey: req.params.key,
           onEvent: (ev: WriterToolEvent) => {

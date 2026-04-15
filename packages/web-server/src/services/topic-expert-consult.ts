@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import type {
   TopicExpertInvokeType,
   invokeTopicExpert as invokeTopicExpertType,
@@ -8,6 +9,7 @@ import {
   renderContextBlock,
   trimToBudget,
 } from "./context-bundle-service.js";
+import { collectProjectImages } from "./brief-images.js";
 
 export interface ConsultEvent {
   type:
@@ -42,6 +44,10 @@ export interface ConsultDeps {
    *  `[Project Context]` block is prepended to the `briefSummary` sent to
    *  every topic-expert invocation so all agents share the project snapshot. */
   contextBundleService?: ContextBundleService;
+  /** When supplied (plus `projectsDir`), the consult collects brief + context
+   *  images + vault addDirs and forwards them to every topic-expert call so
+   *  claude sees them as attachments. */
+  projectsDir?: string;
 }
 
 export async function runTopicExpertConsult(
@@ -51,6 +57,21 @@ export async function runTopicExpertConsult(
   const concurrency = deps.concurrency ?? 3;
   const succeeded: string[] = [];
   const failed: string[] = [];
+
+  // Collect attachments once for the whole consult so every expert invocation
+  // sees the same @-ref image list + vault addDirs.
+  let projectImages: string[] = [];
+  let projectAddDirs: string[] = [];
+  if (deps.projectsDir) {
+    try {
+      const pDir = join(deps.projectsDir, args.projectId);
+      const collected = await collectProjectImages(pDir);
+      projectImages = collected.images;
+      projectAddDirs = collected.addDirs;
+    } catch {
+      /* non-fatal */
+    }
+  }
 
   // SP-19: build a single bundle per consult and reuse on every expert call.
   let contextBlock = "";
@@ -86,6 +107,8 @@ export async function runTopicExpertConsult(
         invokeType: args.invokeType,
         projectId: args.projectId,
         runId: `topic-consult-${Date.now()}`,
+        images: projectImages,
+        addDirs: projectAddDirs,
       };
       if (args.invokeType === "score") {
         invokeArgs.briefSummary = `${contextBlock}${args.brief ?? ""}`;

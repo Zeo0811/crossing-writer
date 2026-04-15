@@ -205,6 +205,7 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     store: topicExpertStore,
     invoke: invokeTopicExpert,
     contextBundleService,
+    projectsDir: cfg.projectsDir,
   });
 
   const cliHealthProber = createCliHealthProber();

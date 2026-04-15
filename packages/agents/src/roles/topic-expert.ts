@@ -119,6 +119,8 @@ export interface InvokeTopicExpertArgs {
   candidatesMd?: string;
   currentDraft?: string;
   focus?: string;
+  images?: string[];
+  addDirs?: string[];
 }
 
 export interface InvokeTopicExpertResult {
@@ -146,6 +148,8 @@ export async function invokeTopicExpert(
       runId: args.runId,
       briefSummary: args.briefSummary,
       refsPack: args.refsPack,
+      images: args.images,
+      addDirs: args.addDirs,
     });
   } else if (args.invokeType === "structure") {
     if (args.candidatesMd === undefined) {
@@ -155,6 +159,8 @@ export async function invokeTopicExpert(
       projectId: args.projectId,
       runId: args.runId,
       candidatesMd: args.candidatesMd,
+      images: args.images,
+      addDirs: args.addDirs,
     });
   } else if (args.invokeType === "continue") {
     if (args.currentDraft === undefined) {
@@ -165,6 +171,8 @@ export async function invokeTopicExpert(
       runId: args.runId,
       currentDraft: args.currentDraft,
       focus: args.focus,
+      images: args.images,
+      addDirs: args.addDirs,
     });
   } else {
     throw new Error(`invokeTopicExpert: unknown invokeType ${args.invokeType}`);

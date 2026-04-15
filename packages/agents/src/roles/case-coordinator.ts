@@ -10,6 +10,8 @@ export interface SynthesizeInput {
   expertOutputs: Array<{ expert: string; text: string }>;
   missionSummary: string;
   productOverview: string;
+  images?: string[];
+  addDirs?: string[];
 }
 
 export class CaseCoordinator {
@@ -30,6 +32,8 @@ export class CaseCoordinator {
       model: this.opts.model,
       systemPrompt: SYSTEM,
       userMessage: parts.join("\n"),
+      images: input.images,
+      addDirs: input.addDirs,
     });
     return { text: r.text, meta: { cli: r.meta.cli, model: r.meta.model ?? null, durationMs: r.meta.durationMs } };
   }

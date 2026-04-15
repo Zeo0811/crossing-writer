@@ -40,9 +40,10 @@ export interface WriterOutput {
 }
 
 export interface RunWriterOpeningOpts {
-  invokeAgent: (messages: ChatMessage[], opts?: { images?: string[] }) => Promise<{ text: string; meta: { cli: string; model?: string; durationMs: number } }>;
+  invokeAgent: (messages: ChatMessage[], opts?: { images?: string[]; addDirs?: string[] }) => Promise<{ text: string; meta: { cli: string; model?: string; durationMs: number } }>;
   userMessage: string;
   images?: string[];
+  addDirs?: string[];
   pinnedContext?: string;
   dispatchTool: (call: ToolCall) => Promise<SkillResult>;
   onEvent?: (ev: WriterToolEvent) => void;
@@ -61,6 +62,7 @@ export async function runWriterOpening(opts: RunWriterOpeningOpts): Promise<Writ
     dispatchTool: opts.dispatchTool,
     onEvent: opts.onEvent,
     images: opts.images,
+    addDirs: opts.addDirs,
     maxRounds: opts.maxRounds,
   });
 }
