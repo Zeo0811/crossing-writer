@@ -180,6 +180,10 @@ describe("ContextBundleService — T3 token budget", () => {
     expect(trimmed.frontmatter.opening).toBeDefined();
   });
 
+  it("estimateTokens is length/4 heuristic", () => {
+    expect(estimateTokens("1234567890")).toBe(3);
+  });
+
   it("does not mark _truncated if under budget", () => {
     const small: ContextBundle = {
       projectId: "p",
@@ -194,5 +198,49 @@ describe("ContextBundleService — T3 token budget", () => {
     };
     const r = trimToBudget(small, 6000);
     expect(r._truncated).toBeUndefined();
+  });
+});
+
+describe("ContextBundleService — T4 buildLite", () => {
+  it("only reads requested fields, skips other stores", async () => {
+    const env = makeEnv();
+    const project = await env.projectStore.create({ name: "Lite" });
+    const pDir = join(env.projectsDir, project.id);
+    mkdirSync(join(pDir, "brief"), { recursive: true });
+    writeFileSync(join(pDir, "brief", "brief.md"), "BRIEF-ONLY");
+
+    const agentsSpy = vi.spyOn(env.agentConfigStore, "getAll");
+    const overrideSpy = vi.spyOn(env.projectOverrideStore, "get");
+
+    const svc = new ContextBundleService({
+      projectStore: env.projectStore,
+      projectsDir: env.projectsDir,
+      stylePanelStore: env.stylePanelStore,
+      agentConfigStore: env.agentConfigStore,
+      projectOverrideStore: env.projectOverrideStore,
+    });
+    const out = await svc.buildLite(project.id, ["brief"]);
+    expect(out.brief?.summary).toBe("BRIEF-ONLY");
+    expect(out.sections).toBeUndefined();
+    expect(out.agents).toBeUndefined();
+    expect(out.styles).toBeUndefined();
+    expect(agentsSpy).not.toHaveBeenCalled();
+    expect(overrideSpy).not.toHaveBeenCalled();
+  });
+
+  it("reads agents when requested", async () => {
+    const env = makeEnv();
+    const project = await env.projectStore.create({ name: "LiteAgents" });
+    const agentsSpy = vi.spyOn(env.agentConfigStore, "getAll");
+    const svc = new ContextBundleService({
+      projectStore: env.projectStore,
+      projectsDir: env.projectsDir,
+      stylePanelStore: env.stylePanelStore,
+      agentConfigStore: env.agentConfigStore,
+      projectOverrideStore: env.projectOverrideStore,
+    });
+    const out = await svc.buildLite(project.id, ["agents"]);
+    expect(out.agents).toBeDefined();
+    expect(agentsSpy).toHaveBeenCalled();
   });
 });
