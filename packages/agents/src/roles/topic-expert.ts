@@ -15,12 +15,16 @@ export interface Round1Input {
   runId: string;
   briefSummary: string;
   refsPack: string;
+  images?: string[];
+  addDirs?: string[];
 }
 
 export interface Round2Input {
   projectId: string;
   runId: string;
   candidatesMd: string;
+  images?: string[];
+  addDirs?: string[];
 }
 
 export interface Round3Input {
@@ -28,6 +32,8 @@ export interface Round3Input {
   runId: string;
   currentDraft: string;
   focus?: string;
+  images?: string[];
+  addDirs?: string[];
 }
 
 export type TopicExpertInvokeType = "score" | "structure" | "continue";
@@ -60,7 +66,7 @@ export class TopicExpert {
       cli: this.opts.cli,
       model: this.opts.model,
     });
-    return base.run("");
+    return base.run("", undefined, { images: input.images, addDirs: input.addDirs });
   }
 
   round2(input: Round2Input) {
@@ -77,7 +83,7 @@ export class TopicExpert {
       cli: this.opts.cli,
       model: this.opts.model,
     });
-    return base.run("");
+    return base.run("", undefined, { images: input.images, addDirs: input.addDirs });
   }
 
   round3(input: Round3Input) {
@@ -95,7 +101,7 @@ export class TopicExpert {
       cli: this.opts.cli,
       model: this.opts.model,
     });
-    return base.run("");
+    return base.run("", undefined, { images: input.images, addDirs: input.addDirs });
   }
 }
 

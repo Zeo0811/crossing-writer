@@ -13,11 +13,15 @@ export interface Round1SynthInput {
   refsPack: string;
   round1Bundle: string;
   experts: string[];
+  images?: string[];
+  addDirs?: string[];
 }
 
 export interface Round2AggregateInput {
   candidatesMd: string;
   round2Bundle: string;
+  images?: string[];
+  addDirs?: string[];
 }
 
 export class Coordinator {
@@ -41,7 +45,7 @@ export class Coordinator {
       cli: this.opts.cli,
       model: this.opts.model,
     });
-    return base.run("");
+    return base.run("", undefined, { images: input.images, addDirs: input.addDirs });
   }
 
   round2Aggregate(input: Round2AggregateInput) {
@@ -56,6 +60,6 @@ export class Coordinator {
       cli: this.opts.cli,
       model: this.opts.model,
     });
-    return base.run("");
+    return base.run("", undefined, { images: input.images, addDirs: input.addDirs });
   }
 }

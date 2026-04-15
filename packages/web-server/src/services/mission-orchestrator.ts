@@ -73,6 +73,32 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
     "utf-8",
   );
 
+  // Collect brief-attached images from brief.md + brief-summary.md so downstream
+  // coordinator + topic-expert agents can read them via @-ref + --add-dir.
+  const briefDir = join(projectDir, "brief");
+  let briefBody = "";
+  if (project.brief.md_path) {
+    try {
+      briefBody = await readFile(join(projectDir, project.brief.md_path), "utf-8");
+    } catch {
+      briefBody = "";
+    }
+  }
+  const imgPaths = new Set<string>();
+  const imgRe = /!\[[^\]]*\]\(([^)]+)\)/g;
+  for (const src of [briefBody, briefSummary]) {
+    let m: RegExpExecArray | null;
+    while ((m = imgRe.exec(src)) !== null) {
+      const ref = m[1]!;
+      if (ref.startsWith("http://") || ref.startsWith("https://")) continue;
+      if (ref.startsWith("/")) { imgPaths.add(ref); continue; }
+      imgPaths.add(join(briefDir, ref));
+    }
+    imgRe.lastIndex = 0;
+  }
+  const briefImages = Array.from(imgPaths);
+  const addDirs = [briefDir];
+
   // round1
   const fromStatus = project.status;
   await appendEvent(projectDir, { type: "state_changed", from: fromStatus, to: "round1_running" });
@@ -129,7 +155,7 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
         cli: expertResolved.cli,
         model: expertResolved.model,
       });
-      const out = agent.round1({ projectId, runId, briefSummary, refsPack });
+      const out = agent.round1({ projectId, runId, briefSummary, refsPack, images: briefImages, addDirs });
       await writeFile(join(projectDir, `mission/round1/${name}.md`), out.text, "utf-8");
       round1Results.push({ name, text: out.text });
       await appendEvent(projectDir, {
@@ -162,6 +188,8 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
     refsPack,
     round1Bundle: bundle(round1Results),
     experts,
+    images: briefImages,
+    addDirs,
   });
   const candidatesPath = "mission/candidates.md";
   await writeFile(join(projectDir, candidatesPath), candidatesResult.text, "utf-8");
@@ -199,7 +227,7 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
         cli: expertResolved.cli,
         model: expertResolved.model,
       });
-      const out = agent.round2({ projectId, runId, candidatesMd: candidatesResult.text });
+      const out = agent.round2({ projectId, runId, candidatesMd: candidatesResult.text, images: briefImages, addDirs });
       await writeFile(join(projectDir, `mission/round2/${name}.md`), out.text, "utf-8");
       round2Results.push({ name, text: out.text });
       await appendEvent(projectDir, {
@@ -220,6 +248,8 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
   const aggregated = coord.round2Aggregate({
     candidatesMd: candidatesResult.text,
     round2Bundle: bundle(round2Results),
+    images: briefImages,
+    addDirs,
   });
   await writeFile(join(projectDir, candidatesPath), aggregated.text, "utf-8");
 
