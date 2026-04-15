@@ -7,9 +7,9 @@ export function SettingsPage() {
   return (
     <div className="rounded border border-[var(--hair)] bg-[var(--bg-1)] overflow-hidden">
       <header className="flex items-center justify-between px-6 h-12 border-b border-[var(--hair)]">
-        <h1 className="text-base text-[var(--heading)] font-semibold">设置</h1>
+        <h1 className="text-lg text-[var(--heading)] font-semibold">设置</h1>
       </header>
-      <main className="p-6 space-y-4 max-w-[680px]">
+      <main className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
         <Group title="外观">
           <Row label="主题">
             <div className="flex items-center gap-1 p-1 rounded border border-[var(--hair)]">

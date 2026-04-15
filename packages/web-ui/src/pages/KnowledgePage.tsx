@@ -88,7 +88,7 @@ export function KnowledgePage() {
   return (
     <div data-testid="page-knowledge" className="rounded border border-[var(--hair)] bg-[var(--bg-1)] overflow-hidden">
       <header className="flex items-center justify-between px-6 h-12 border-b border-[var(--hair)]">
-        <h1 className="text-base font-semibold text-[var(--heading)]">知识库</h1>
+        <h1 className="text-lg font-semibold text-[var(--heading)]">知识库</h1>
         <div className="text-xs text-[var(--meta)]" style={{ fontFamily: "var(--font-mono)" }}>
           {status && `${status.total} 条 · 上次入库 ${status.last_ingest_at ?? "—"}`}
         </div>

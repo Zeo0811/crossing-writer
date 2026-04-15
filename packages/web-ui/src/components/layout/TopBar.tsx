@@ -95,7 +95,7 @@ function CliChip({
   const label = `${name}_${status}`;
   return (
     <span className="relative" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
-      <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-sm border border-[var(--hair)] bg-[var(--bg-1)] text-[11px] text-[var(--meta)] cursor-default">
+      <span className="inline-flex items-center gap-1.5 px-2.5 h-8 rounded border border-[var(--hair)] bg-[var(--bg-1)] text-[11px] text-[var(--meta)] cursor-default">
         <span
           className="w-1.5 h-1.5 rounded-full"
           style={{ background: color, boxShadow: isReady ? `0 0 6px ${color}` : "none" }}

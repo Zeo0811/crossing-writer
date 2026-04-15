@@ -21,7 +21,7 @@ export function ConfigWorkbench() {
       className="rounded border border-[var(--hair)] bg-[var(--bg-1)] overflow-hidden"
     >
       <header className="flex items-center justify-between px-6 h-12 border-b border-[var(--hair)]">
-        <h1 className="text-base font-semibold text-[var(--heading)]">配置</h1>
+        <h1 className="text-lg font-semibold text-[var(--heading)]">配置</h1>
       </header>
       <div role="tablist" className="flex items-center gap-1 px-6 pt-3 border-b border-[var(--hair)]">
         {TABS.map((t) => {

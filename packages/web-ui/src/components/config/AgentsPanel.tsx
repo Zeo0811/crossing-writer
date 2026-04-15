@@ -159,7 +159,7 @@ export function AgentsPanel() {
             <h2 className="text-sm font-semibold mb-3 text-[var(--heading)]">
               {step.label}
             </h2>
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {keys.map((key) => {
               const cfg = agents[key] ?? defaultAgentConfig(key);
               const unconfigured = !agents[key];

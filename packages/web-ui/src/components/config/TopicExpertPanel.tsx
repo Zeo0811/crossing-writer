@@ -56,14 +56,8 @@ export function TopicExpertPanel({ api }: Props = {}) {
     }
   };
 
-  const onSoftDelete = async (name: string) => {
-    if (!globalThis.confirm?.(`软删除 ${name} ?`)) return;
-    await delApi(name, { mode: "soft" });
-    await refresh();
-  };
-
   const onHardDelete = async (name: string) => {
-    const typed = globalThis.prompt?.(`硬删除 ${name}。请输入专家名确认：`);
+    const typed = globalThis.prompt?.(`删除 ${name}。请输入专家名确认：`);
     if (typed !== name) return;
     await delApi(name, { mode: "hard" });
     await refresh();
@@ -156,7 +150,7 @@ export function TopicExpertPanel({ api }: Props = {}) {
                 />
               </div>
               <div className="text-xs text-[var(--meta)] truncate">{e.distilled_at ?? "—"}</div>
-              <div className="flex items-center gap-1 justify-end">
+              <div className="flex items-center gap-3 justify-end">
                 <button
                   onClick={() => onRedistill(e.name)}
                   data-testid={`te-redistill-${e.name}`}
@@ -164,21 +158,12 @@ export function TopicExpertPanel({ api }: Props = {}) {
                 >
                   重蒸
                 </button>
-                <span className="text-[var(--faint)] text-xs">·</span>
-                <button
-                  onClick={() => onSoftDelete(e.name)}
-                  data-testid={`te-soft-${e.name}`}
-                  className="text-xs text-[var(--meta)] hover:text-[var(--heading)]"
-                >
-                  软删
-                </button>
-                <span className="text-[var(--faint)] text-xs">·</span>
                 <button
                   onClick={() => onHardDelete(e.name)}
                   data-testid={`te-hard-${e.name}`}
-                  className="text-xs text-[var(--red)] hover:underline"
+                  className="text-xs text-[var(--meta)] hover:text-[var(--red)]"
                 >
-                  硬删
+                  删除
                 </button>
               </div>
               {distillLog[e.name] && (

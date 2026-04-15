@@ -56,7 +56,7 @@ export function AgentCard({
 
   const isWriter = agentKey.startsWith("writer.");
   const bound = Boolean(local.styleBinding);
-  const statusLabel = bound ? "● ACTIVE" : "◉ style_not_bound";
+  const statusLabel = bound ? "风格已绑定" : "未绑定风格";
   const statusColor = bound ? "var(--accent)" : "var(--amber)";
 
   const grouped = useMemo(() => {
@@ -111,34 +111,36 @@ export function AgentCard({
   return (
     <div
       data-testid={`agent-card-${agentKey}`}
-      className="border border-l-2 border-l-accent border-hair rounded-[6px] p-4 mb-3 bg-bg-2"
+      className="rounded bg-[var(--bg-2)] p-4"
     >
-      <header className="flex items-center justify-between mb-3">
-        <span className="font-mono-term text-sm flex items-center gap-2 text-heading">
-          <span className="font-pixel text-[11px] tracking-[0.08em] text-accent">AGENT:</span>
-          {agentKey}
+      <header className="flex items-center justify-between mb-3 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-sm font-semibold text-[var(--heading)] truncate" style={{ fontFamily: "var(--font-mono)" }}>
+            {agentKey}
+          </span>
           {unconfigured && (
             <span
               data-testid="agent-unconfigured-badge"
-              className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--amber-bg)] text-amber border border-[var(--amber-hair)]"
+              className="text-[10px] px-1.5 py-0.5 rounded-sm bg-[var(--amber-bg)] text-[var(--amber)] whitespace-nowrap"
             >
-              ⚠️ 尚未配置（保存即创建）
+              尚未配置
             </span>
           )}
-        </span>
-        <span className="text-xs" style={{ color: statusColor }}>
+        </div>
+        <span className="inline-flex items-center gap-1.5 text-[11px] shrink-0" style={{ color: statusColor }}>
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: statusColor }} />
           {statusLabel}
         </span>
       </header>
 
-      <div className="grid grid-cols-[80px_1fr] gap-y-2 gap-x-3 items-center text-sm">
-        <label>🤖 MODEL</label>
+      <div className="grid grid-cols-[70px_1fr] gap-y-2 gap-x-3 items-center text-sm">
+        <label className="text-xs text-[var(--meta)]">模型</label>
         <select
           data-testid="agent-model-select"
           value={modelKey(local.model)}
           onChange={handleModel}
-          className="border rounded px-2 py-1 bg-transparent"
-          style={{ borderColor: "var(--border)" }}
+          className="bg-[var(--bg-1)] border border-[var(--hair)] rounded px-2 py-1 text-xs text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
+          style={{ fontFamily: "var(--font-mono)" }}
         >
           {modelChoices.map((m) => (
             <option key={modelKey(m)} value={modelKey(m)}>
@@ -149,22 +151,18 @@ export function AgentCard({
 
         {isWriter && (
           <>
-            <label>🎨 STYLE</label>
+            <label className="text-xs text-[var(--meta)]">风格</label>
             <select
               data-testid="agent-style-select"
               value={local.styleBinding ? styleKey(local.styleBinding.account, local.styleBinding.role) : ""}
               onChange={handleStyle}
-              className="border rounded px-2 py-1 bg-transparent"
-              style={{ borderColor: "var(--border)" }}
+              className="bg-[var(--bg-1)] border border-[var(--hair)] rounded px-2 py-1 text-xs text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
             >
-              <option value="">(none)</option>
+              <option value="">未绑定</option>
               {grouped.map(([account, panels]) => (
                 <optgroup key={account} label={account}>
                   {panels.map((p) => (
-                    <option
-                      key={`${p.account}-${p.role}-${p.version}`}
-                      value={styleKey(p.account, p.role)}
-                    >
+                    <option key={`${p.account}-${p.role}-${p.version}`} value={styleKey(p.account, p.role)}>
                       {account} / {p.role} v{p.version}
                     </option>
                   ))}
@@ -172,33 +170,35 @@ export function AgentCard({
               ))}
             </select>
 
-            <label>🔧 TOOLS</label>
+            <label className="text-xs text-[var(--meta)]">工具</label>
             <div className="flex gap-4">
               {WRITER_TOOLS.map((t) => (
-                <label key={t} className="flex items-center gap-1 cursor-pointer">
+                <label key={t} className="flex items-center gap-1.5 cursor-pointer text-xs text-[var(--body)]">
                   <input
                     type="checkbox"
                     aria-label={t}
                     checked={Boolean(local.tools?.[t])}
                     onChange={(e) => handleTool(t, e.target.checked)}
+                    className="accent-[var(--accent)]"
                   />
-                  <span>{t}</span>
+                  <span style={{ fontFamily: "var(--font-mono)" }}>{t}</span>
                 </label>
               ))}
             </div>
           </>
         )}
 
-        <label>📝 PROMPT</label>
+        <label className="text-xs text-[var(--meta)]">Prompt</label>
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs opacity-80">{local.promptVersion ?? "(unversioned)"}</span>
+          <span className="text-xs text-[var(--meta)]" style={{ fontFamily: "var(--font-mono)" }}>
+            {local.promptVersion ?? "未版本化"}
+          </span>
           <button
             type="button"
             onClick={handleEditPrompt}
-            className="px-2 py-0.5 text-xs border rounded"
-            style={{ borderColor: "var(--border)" }}
+            className="text-xs text-[var(--accent)] hover:underline"
           >
-            EDIT
+            编辑
           </button>
         </div>
       </div>
