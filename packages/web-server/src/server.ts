@@ -157,6 +157,7 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     agentConfigStore,
     projectOverrideStore,
     stylePanelStore,
+    contextBundleService,
   });
 
   registerWriterRewriteSelectionRoutes(app, {
