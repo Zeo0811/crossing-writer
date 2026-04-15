@@ -68,7 +68,10 @@ export function invokeAgent(opts: InvokeOptions): AgentResult {
   const addDirArgs = Array.from(allDirs).flatMap((d) => ["--add-dir", d]);
   const args = [
     "-p", "-",
-    "--dangerously-skip-permissions",
+    // Disable all built-in tools so claude emits the prompt's required output as text instead
+    // of silently using Write/Edit. Our writer-tool-runner uses a text-block tool protocol that
+    // parses claude's stdout, so it is unaffected.
+    "--tools", "",
     ...addDirArgs,
     ...(opts.model ? ["--model", opts.model] : []),
   ];
