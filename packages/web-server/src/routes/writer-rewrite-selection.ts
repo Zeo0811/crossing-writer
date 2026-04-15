@@ -14,6 +14,11 @@ import {
 import { dispatchSkill } from "@crossing/kb";
 import { buildSelectionRewriteUserMessage } from "../services/selection-rewrite-builder.js";
 import { appendEvent } from "../services/event-log.js";
+import {
+  type ContextBundleService,
+  renderContextBlock,
+  trimToBudget,
+} from "../services/context-bundle-service.js";
 
 export interface RewriteSelectionDeps {
   store: ProjectStore;
@@ -27,6 +32,9 @@ export interface RewriteSelectionDeps {
           key: string,
         ): Promise<{ cli?: string; model?: string } | undefined>;
       };
+  /** SP-19: optional unified ContextBundle service — when supplied, a
+   *  `[Project Context]` block is prepended to the rewrite user message. */
+  contextBundleService?: ContextBundleService;
 }
 
 interface Body {
@@ -97,11 +105,23 @@ export function registerWriterRewriteSelectionRoutes(
           match_index: 0,
         });
 
-        const userMessage = buildSelectionRewriteUserMessage({
+        let userMessage = buildSelectionRewriteUserMessage({
           sectionBody: body,
           selectedText: selected_text,
           userPrompt: user_prompt,
         });
+        // SP-19: prepend unified project-context block so the selection-rewrite
+        // agent shares the same project snapshot as the main writer run.
+        if (deps.contextBundleService) {
+          try {
+            const bundle = trimToBudget(
+              await deps.contextBundleService.build(project.id),
+            );
+            userMessage = `${renderContextBlock(bundle)}\n\n${userMessage}`;
+          } catch {
+            /* degrade silently to legacy prompt */
+          }
+        }
 
         const cfg = (await (deps.configStore as any).get(runner.agentKey)) ?? {};
         const cli = (cfg.cli ?? "claude") as "claude" | "codex";

@@ -1,0 +1,246 @@
+import { describe, it, expect, vi } from "vitest";
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { ProjectStore } from "../src/services/project-store.js";
+import { ProjectOverrideStore } from "../src/services/project-override-store.js";
+import { StylePanelStore } from "../src/services/style-panel-store.js";
+import { createAgentConfigStore, type AgentConfigEntry } from "../src/services/agent-config-store.js";
+import { ArticleStore } from "../src/services/article-store.js";
+import {
+  ContextBundleService,
+  mergeAgentOverrides,
+  trimToBudget,
+  estimateTokens,
+  type ContextBundle,
+} from "../src/services/context-bundle-service.js";
+
+function fakeConfigStore(initial: Record<string, AgentConfigEntry> = {}) {
+  let current: any = { agents: { ...initial } };
+  return {
+    get current() { return current; },
+    update: vi.fn(async (patch: any) => {
+      if (patch.agents !== undefined) current = { ...current, agents: patch.agents };
+    }),
+  };
+}
+
+export function makeEnv() {
+  const root = mkdtempSync(join(tmpdir(), "cbs-"));
+  const projectsDir = join(root, "projects");
+  const vaultPath = join(root, "vault");
+  mkdirSync(projectsDir, { recursive: true });
+  mkdirSync(vaultPath, { recursive: true });
+  const projectStore = new ProjectStore(projectsDir);
+  const stylePanelStore = new StylePanelStore(vaultPath);
+  const cs = fakeConfigStore();
+  const agentConfigStore = createAgentConfigStore(cs as any);
+  const projectOverrideStore = new ProjectOverrideStore(projectsDir);
+  return { root, projectsDir, vaultPath, projectStore, stylePanelStore, agentConfigStore, projectOverrideStore, cs };
+}
+
+describe("ContextBundleService — T1 shape", () => {
+  it("build() returns bundle with all required keys for a skeletal project", async () => {
+    const env = makeEnv();
+    const project = await env.projectStore.create({ name: "T1 Shape" });
+    const svc = new ContextBundleService({
+      projectStore: env.projectStore,
+      projectsDir: env.projectsDir,
+      stylePanelStore: env.stylePanelStore,
+      agentConfigStore: env.agentConfigStore,
+      projectOverrideStore: env.projectOverrideStore,
+    });
+    const bundle = await svc.build(project.id);
+    expect(bundle.projectId).toBe(project.id);
+    expect(typeof bundle.builtAt).toBe("string");
+    expect(bundle.brief).toBeDefined();
+    expect(bundle.sections).toBeDefined();
+    expect(bundle.frontmatter).toBeDefined();
+    expect(bundle.styles).toBeDefined();
+    expect(bundle.agents).toBeDefined();
+    expect(bundle.recentEdits).toBeInstanceOf(Array);
+    expect(bundle.recentToolUses).toBeInstanceOf(Array);
+  });
+});
+
+describe("ContextBundleService — T2 composition", () => {
+  it("reads brief + sections + frontmatter + recentEdits + tool uses", async () => {
+    const env = makeEnv();
+    const project = await env.projectStore.create({ name: "Composed" });
+    const pDir = join(env.projectsDir, project.id);
+    // brief + mission + product overview
+    mkdirSync(join(pDir, "brief"), { recursive: true });
+    writeFileSync(join(pDir, "brief", "brief.md"), "BRIEF-BODY");
+    mkdirSync(join(pDir, "mission"), { recursive: true });
+    writeFileSync(join(pDir, "mission", "selected.md"), "TOPIC-X");
+    mkdirSync(join(pDir, "context"), { recursive: true });
+    writeFileSync(join(pDir, "context", "product-overview.md"), "PROD-CTX");
+    // sections
+    const articles = new ArticleStore(pDir);
+    await articles.init();
+    await articles.writeSection("opening", {
+      key: "opening",
+      frontmatter: {
+        section: "opening",
+        last_agent: "writer.opening",
+        last_updated_at: "2026-04-10T00:00:00Z",
+        manually_edited: false,
+        tools_used: [{ tool: "search_wiki", ts: "2026-04-10T00:00:00Z", ok: true }],
+      } as any,
+      body: "opening-body",
+    });
+    await articles.writeSection("practice.case-01" as any, {
+      key: "practice.case-01" as any,
+      frontmatter: {
+        section: "practice.case-01",
+        last_agent: "writer.practice",
+        last_updated_at: "2026-04-11T00:00:00Z",
+        manually_edited: true,
+      } as any,
+      body: "practice-body",
+    });
+
+    const svc = new ContextBundleService({
+      projectStore: env.projectStore,
+      projectsDir: env.projectsDir,
+      stylePanelStore: env.stylePanelStore,
+      agentConfigStore: env.agentConfigStore,
+      projectOverrideStore: env.projectOverrideStore,
+    });
+    const bundle = await svc.build(project.id);
+    expect(bundle.brief.summary).toBe("BRIEF-BODY");
+    expect(bundle.brief.topic).toBe("TOPIC-X");
+    expect(bundle.productContext).toBe("PROD-CTX");
+    const keys = bundle.sections.map((s) => s.key);
+    expect(keys).toContain("opening");
+    expect(keys).toContain("practice.case-01");
+    expect(bundle.frontmatter["opening"]!["last_agent"]).toBe("writer.opening");
+    // recentEdits sorted desc by at
+    expect(bundle.recentEdits[0]!.section).toBe("practice.case-01");
+    expect(bundle.recentEdits[0]!.kind).toBe("manual");
+    expect(bundle.recentToolUses[0]?.tool).toBe("search_wiki");
+  });
+
+  it("merges agent overrides per-field (override wins)", async () => {
+    const base = {
+      "writer.opening": {
+        agentKey: "writer.opening",
+        model: { cli: "claude" as const, model: "opus" },
+        styleBinding: { account: "A", role: "opening" as const },
+        tools: { search_wiki: true },
+      },
+    };
+    const merged = mergeAgentOverrides(base, {
+      "writer.opening": { model: { cli: "codex" as const } },
+    });
+    expect(merged["writer.opening"]!.model.cli).toBe("codex");
+    expect(merged["writer.opening"]!.model.model).toBe("opus");
+    expect(merged["writer.opening"]!.styleBinding!.account).toBe("A");
+  });
+});
+
+describe("ContextBundleService — T3 token budget", () => {
+  function pad(n: number, prefix = "x"): string {
+    return prefix.repeat(n);
+  }
+
+  it("trims in drop-order: toolUses -> edits -> productContext -> brief.summary", () => {
+    const big: ContextBundle = {
+      projectId: "p1",
+      builtAt: "2026-04-10T00:00:00Z",
+      brief: { summary: pad(10000, "s") },
+      productContext: pad(10000, "p"),
+      sections: [{ key: "opening", body: "body", manually_edited: false, tools_used: [] }],
+      frontmatter: { opening: { last_agent: "writer.opening" } },
+      styles: {
+        opening: { account: "A", role: "opening", version: 1, bodyExcerpt: pad(500, "o") },
+      },
+      agents: {},
+      recentEdits: Array.from({ length: 20 }, (_, i) => ({
+        section: `s${i}`,
+        at: `2026-04-${String(i + 1).padStart(2, "0")}T00:00:00Z`,
+        kind: "agent",
+      })),
+      recentToolUses: Array.from({ length: 30 }, (_, i) => ({
+        section: "opening",
+        tool: `tool-${i}-${pad(50)}`,
+      })),
+    };
+
+    const before = JSON.parse(JSON.stringify(big)) as ContextBundle;
+    expect(estimateTokens(JSON.stringify(before))).toBeGreaterThan(6000);
+
+    const trimmed = trimToBudget(big, 6000);
+    expect(trimmed._truncated).toBe(true);
+    expect(estimateTokens(JSON.stringify(trimmed))).toBeLessThanOrEqual(6000);
+    // toolUses were dropped before edits
+    expect(trimmed.recentToolUses.length).toBeLessThan(before.recentToolUses.length);
+    // sections/frontmatter/agents preserved
+    expect(trimmed.sections.length).toBe(1);
+    expect(trimmed.frontmatter.opening).toBeDefined();
+  });
+
+  it("estimateTokens is length/4 heuristic", () => {
+    expect(estimateTokens("1234567890")).toBe(3);
+  });
+
+  it("does not mark _truncated if under budget", () => {
+    const small: ContextBundle = {
+      projectId: "p",
+      builtAt: "t",
+      brief: { summary: "s" },
+      sections: [],
+      frontmatter: {},
+      styles: {},
+      agents: {},
+      recentEdits: [],
+      recentToolUses: [],
+    };
+    const r = trimToBudget(small, 6000);
+    expect(r._truncated).toBeUndefined();
+  });
+});
+
+describe("ContextBundleService — T4 buildLite", () => {
+  it("only reads requested fields, skips other stores", async () => {
+    const env = makeEnv();
+    const project = await env.projectStore.create({ name: "Lite" });
+    const pDir = join(env.projectsDir, project.id);
+    mkdirSync(join(pDir, "brief"), { recursive: true });
+    writeFileSync(join(pDir, "brief", "brief.md"), "BRIEF-ONLY");
+
+    const agentsSpy = vi.spyOn(env.agentConfigStore, "getAll");
+    const overrideSpy = vi.spyOn(env.projectOverrideStore, "get");
+
+    const svc = new ContextBundleService({
+      projectStore: env.projectStore,
+      projectsDir: env.projectsDir,
+      stylePanelStore: env.stylePanelStore,
+      agentConfigStore: env.agentConfigStore,
+      projectOverrideStore: env.projectOverrideStore,
+    });
+    const out = await svc.buildLite(project.id, ["brief"]);
+    expect(out.brief?.summary).toBe("BRIEF-ONLY");
+    expect(out.sections).toBeUndefined();
+    expect(out.agents).toBeUndefined();
+    expect(out.styles).toBeUndefined();
+    expect(agentsSpy).not.toHaveBeenCalled();
+    expect(overrideSpy).not.toHaveBeenCalled();
+  });
+
+  it("reads agents when requested", async () => {
+    const env = makeEnv();
+    const project = await env.projectStore.create({ name: "LiteAgents" });
+    const agentsSpy = vi.spyOn(env.agentConfigStore, "getAll");
+    const svc = new ContextBundleService({
+      projectStore: env.projectStore,
+      projectsDir: env.projectsDir,
+      stylePanelStore: env.stylePanelStore,
+      agentConfigStore: env.agentConfigStore,
+      projectOverrideStore: env.projectOverrideStore,
+    });
+    const out = await svc.buildLite(project.id, ["agents"]);
+    expect(out.agents).toBeDefined();
+    expect(agentsSpy).toHaveBeenCalled();
+  });
+});

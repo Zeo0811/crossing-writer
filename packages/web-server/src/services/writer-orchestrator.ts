@@ -17,6 +17,12 @@ import type { ProjectStore } from "./project-store.js";
 import { appendEvent } from "./event-log.js";
 import { ArticleStore, type SectionKey } from "./article-store.js";
 import type { StylePanel } from "./style-panel-types.js";
+import {
+  type ContextBundleService,
+  renderContextBlock,
+  trimToBudget,
+  type ContextBundle,
+} from "./context-bundle-service.js";
 
 export type WriterAgentKey =
   | "writer.opening" | "writer.practice" | "writer.closing"
@@ -74,6 +80,18 @@ export interface RunWriterOpts {
   /** Optional SSE-style event sink used by SP-10 for `run.blocked`. Existing
    *  per-section events are still written via appendEvent regardless. */
   onEvent?: (ev: { type: string; [k: string]: unknown }) => void;
+  /** SP-19: optional unified context bundle service. When supplied, a
+   *  `[Project Context]` block (built + trimmed) is prepended to every writer
+   *  agent user message so all agents share the same project snapshot. */
+  contextBundleService?: ContextBundleService;
+}
+
+function prependContextBlock(
+  userMessage: string,
+  bundle: ContextBundle | null,
+): string {
+  if (!bundle) return userMessage;
+  return `${renderContextBlock(bundle)}\n\n${userMessage}`;
 }
 
 interface ParsedCase {
@@ -262,6 +280,17 @@ export async function runWriter(
   }
   // --------------------------------------------------------------------------
 
+  // SP-19: build + trim a single ContextBundle per run; re-used as a prefix on
+  // every writer user message so each agent sees the same project snapshot.
+  let ctxBundle: ContextBundle | null = null;
+  if (opts.contextBundleService) {
+    try {
+      ctxBundle = trimToBudget(await opts.contextBundleService.build(opts.projectId));
+    } catch {
+      ctxBundle = null;
+    }
+  }
+
   const selectedRaw = await readFile(join(pDir, "mission/case-plan/selected-cases.md"), "utf-8");
   const cases = parseSelectedCases(selectedRaw);
   const missionSummary = existsSync(join(pDir, "mission/selected.md"))
@@ -315,7 +344,10 @@ export async function runWriter(
         const openingStyle = resolvedStyles["writer.opening"];
         const result: WriterRunResult = await runWriterOpening({
           invokeAgent: invokerFor("writer.opening", openingResolved.cli, openingResolved.model),
-          userMessage: buildOpeningUserMessage(briefSummary, missionSummary, productOverview, refs),
+          userMessage: prependContextBlock(
+            buildOpeningUserMessage(briefSummary, missionSummary, productOverview, refs),
+            ctxBundle,
+          ),
           dispatchTool,
           onEvent: toolEventBridge("opening"),
           sectionKey: "opening",
@@ -379,7 +411,10 @@ export async function runWriter(
         const practiceStyle = resolvedStyles["writer.practice"];
         const result: WriterRunResult = await runWriterPractice({
           invokeAgent: invokerFor("writer.practice", practiceResolved.cli, practiceResolved.model),
-          userMessage: buildPracticeUserMessage(c, notesFm, notesBody, shots, refs),
+          userMessage: prependContextBlock(
+            buildPracticeUserMessage(c, notesFm, notesBody, shots, refs),
+            ctxBundle,
+          ),
           images: shots,
           dispatchTool,
           onEvent: toolEventBridge(sectionKey),
@@ -505,7 +540,10 @@ export async function runWriter(
       const closingStyle = resolvedStyles["writer.closing"];
       const result: WriterRunResult = await runWriterClosing({
         invokeAgent: invokerFor("writer.closing", closingResolved.cli, closingResolved.model),
-        userMessage: buildClosingUserMessage(openingBody, stitchedPractice, refs),
+        userMessage: prependContextBlock(
+          buildClosingUserMessage(openingBody, stitchedPractice, refs),
+          ctxBundle,
+        ),
         dispatchTool,
         onEvent: toolEventBridge("closing"),
         sectionKey: "closing",
@@ -547,7 +585,10 @@ export async function runWriter(
     const refs = await loadReferenceAccountKb(opts.vaultPath, criticResolved.referenceAccounts);
     const result: WriterRunResult = await runStyleCritic({
       invokeAgent: invokerFor("style_critic", criticResolved.cli, criticResolved.model),
-      userMessage: buildCriticUserMessage(fullArticle, sectionKeys, refs),
+      userMessage: prependContextBlock(
+        buildCriticUserMessage(fullArticle, sectionKeys, refs),
+        ctxBundle,
+      ),
       dispatchTool,
       onEvent: toolEventBridge("style_critic"),
       sectionKey: "style_critic",

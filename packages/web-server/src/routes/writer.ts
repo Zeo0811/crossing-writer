@@ -9,6 +9,7 @@ import type { StylePanelStore } from "../services/style-panel-store.js";
 import { mergeAgentConfig } from "../services/config-merger.js";
 import { resolveStyleBinding } from "../services/style-binding-resolver.js";
 import { runWriter, type WriterAgentKey, type WriterConfig, type ResolveStyleForAgent } from "../services/writer-orchestrator.js";
+import type { ContextBundleService } from "../services/context-bundle-service.js";
 import { ArticleStore, type SectionKey } from "../services/article-store.js";
 import {
   WriterOpeningAgent, WriterPracticeAgent, WriterClosingAgent,
@@ -29,6 +30,9 @@ export interface WriterDeps {
   agentConfigStore?: AgentConfigStore;
   projectOverrideStore?: ProjectOverrideStore;
   stylePanelStore?: StylePanelStore;
+  /** SP-19 optional — when provided, the orchestrator prepends a unified
+   *  [Project Context] block to every writer user message. */
+  contextBundleService?: ContextBundleService;
 }
 
 const SECTION_AGENT_TO_CONFIG_KEY: Record<string, string> = {
@@ -138,6 +142,7 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
             sqlitePath: deps.sqlitePath,
             writerConfig,
             ...(resolveStyleForAgent ? { resolveStyleForAgent } : {}),
+            ...(deps.contextBundleService ? { contextBundleService: deps.contextBundleService } : {}),
             onEvent: async (ev) => {
               try {
                 const { appendEvent } = await import("../services/event-log.js");
@@ -436,6 +441,7 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
             vaultPath: deps.vaultPath, sqlitePath: deps.sqlitePath,
             writerConfig, sectionsToRun: failed,
             ...(resolveStyleForAgent ? { resolveStyleForAgent } : {}),
+            ...(deps.contextBundleService ? { contextBundleService: deps.contextBundleService } : {}),
           });
         } catch {}
       })();
