@@ -150,6 +150,35 @@ export function registerEvidenceRoutes(app: FastifyInstance, deps: EvidenceDeps)
     },
   );
 
+  app.get<{ Params: { id: string; caseId: string; kind: string; filename: string } }>(
+    "/api/projects/:id/evidence/:caseId/files/:kind/:filename",
+    async (req, reply) => {
+      const { id, caseId, kind, filename } = req.params;
+      if (!VALID_KINDS.has(kind as EvidenceKind)) return reply.code(400).send({ error: "invalid kind" });
+      if (filename.includes("/") || filename.includes("..") || filename.includes("\\")) {
+        return reply.code(400).send({ error: "invalid filename" });
+      }
+      const { readFileSync, existsSync } = await import("node:fs");
+      const { extname } = await import("node:path");
+      const decoded = decodeURIComponent(filename);
+      const abs = join(deps.projectsDir, id, "evidence", caseId, kind, decoded);
+      if (!existsSync(abs)) return reply.code(404).send({ error: "not found" });
+      const ext = extname(decoded).toLowerCase();
+      const mime =
+        ext === ".png" ? "image/png" :
+        ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" :
+        ext === ".gif" ? "image/gif" :
+        ext === ".webp" ? "image/webp" :
+        ext === ".mp4" ? "video/mp4" :
+        ext === ".webm" ? "video/webm" :
+        ext === ".mov" ? "video/quicktime" :
+        "application/octet-stream";
+      reply.header("content-type", mime);
+      reply.header("cache-control", "private, max-age=3600");
+      return reply.send(readFileSync(abs));
+    },
+  );
+
   const VALID_SEVERITY = new Set(["major", "minor", "positive"]);
 
   function validateNotesFrontmatter(fm: any, expectedCaseId: string): string | null {
