@@ -32,9 +32,9 @@ export function CommandPalette() {
       { id: "nav-style", group: "导航", label: "Style Panels", hint: "/style-panels", run: () => nav("/mock/style-panels") },
       { id: "nav-config", group: "导航", label: "Config Workbench", hint: "/config", run: () => nav("/mock/config") },
       { id: "nav-settings", group: "导航", label: "Settings", hint: "/settings", run: () => nav("/mock/settings") },
-      { id: "act-new", group: "操作", label: "新建项目", hint: "N", run: () => { nav("/mock"); m.pushToast({ type: "info", message: "演示：新建项目向导即将打开（Checkpoint 2）" }); } },
+      { id: "act-new", group: "操作", label: "新建项目", hint: "N", run: () => { nav("/mock"); } },
       { id: "act-theme", group: "操作", label: m.theme === "dark" ? "切到亮色主题" : "切到深色主题", run: () => m.toggleTheme() },
-      { id: "act-toast-ok", group: "操作", label: "演示 success toast", run: () => m.pushToast({ type: "success", message: "✅ Brief 解析完成" }) },
+      { id: "act-toast-ok", group: "操作", label: "演示 success toast", run: () => m.pushToast({ type: "success", message: "Brief 解析完成" }) },
       { id: "act-toast-err", group: "操作", label: "演示 error toast", run: () => m.pushToast({ type: "error", message: "Mission 生成失败：CLI 超时" }) },
     ];
     for (const p of m.projects) {

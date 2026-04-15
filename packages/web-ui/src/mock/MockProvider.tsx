@@ -39,10 +39,10 @@ export function MockProvider({ children }: { children: ReactNode }) {
     return stored === "light" || stored === "dark" ? stored : "dark";
   });
   const [cliHealth, setCliHealth] = useState<CliHealth>("ok");
-  const [heroStatus, setHeroStatusInner] = useState<HeroStatus>("draft");
+  const [heroStatus, setHeroStatusInner] = useState<HeroStatus>("created");
   const [toasts, setToasts] = useState<MockToast[]>([]);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [switcherOpen, setSwitcherOpen] = useState(true);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
   const [nextId, setNextId] = useState(1);
 
   useEffect(() => {

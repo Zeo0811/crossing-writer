@@ -35,6 +35,19 @@ body {
 }
 * { box-sizing: border-box; }
 
+@keyframes phaseTrailPulse {
+  0%, 100% { opacity: 0.35; transform: scaleX(0.85); }
+  50%      { opacity: 1;    transform: scaleX(1); }
+}
+.phase-trail-bar {
+  animation: phaseTrailPulse 1.6s ease-in-out infinite;
+  transform-origin: center;
+}
+.phase-trail-1 { animation-delay: 0s; }
+.phase-trail-2 { animation-delay: 0.15s; }
+.phase-trail-3 { animation-delay: 0.3s; }
+.phase-trail-4 { animation-delay: 0.45s; }
+
 /* Markdown 渲染补齐：frontmatter 块通常会被 react-markdown 当 thematic break，单独处理下 */
 .prose :where(h1):not(:where([class~="not-prose"] *)) {
   color: var(--accent);
