@@ -199,6 +199,7 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
   registerTopicExpertConsultRoutes(app, {
     store: topicExpertStore,
     invoke: invokeTopicExpert,
+    contextBundleService,
   });
 
   const cliHealthProber = createCliHealthProber();

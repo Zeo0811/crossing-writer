@@ -3,6 +3,11 @@ import type {
   invokeTopicExpert as invokeTopicExpertType,
 } from "@crossing/agents";
 import type { TopicExpertStore } from "./topic-expert-store.js";
+import {
+  type ContextBundleService,
+  renderContextBlock,
+  trimToBudget,
+} from "./context-bundle-service.js";
 
 export interface ConsultEvent {
   type:
@@ -33,6 +38,10 @@ export interface ConsultDeps {
   invoke: typeof invokeTopicExpertType;
   emit: (ev: ConsultEvent) => void;
   concurrency?: number;
+  /** SP-19: optional unified ContextBundle service — when supplied, a
+   *  `[Project Context]` block is prepended to the `briefSummary` sent to
+   *  every topic-expert invocation so all agents share the project snapshot. */
+  contextBundleService?: ContextBundleService;
 }
 
 export async function runTopicExpertConsult(
@@ -42,6 +51,17 @@ export async function runTopicExpertConsult(
   const concurrency = deps.concurrency ?? 3;
   const succeeded: string[] = [];
   const failed: string[] = [];
+
+  // SP-19: build a single bundle per consult and reuse on every expert call.
+  let contextBlock = "";
+  if (deps.contextBundleService) {
+    try {
+      const bundle = trimToBudget(await deps.contextBundleService.build(args.projectId));
+      contextBlock = `${renderContextBlock(bundle)}\n\n`;
+    } catch {
+      contextBlock = "";
+    }
+  }
 
   deps.emit({
     type: "topic_consult.started",
@@ -68,12 +88,12 @@ export async function runTopicExpertConsult(
         runId: `topic-consult-${Date.now()}`,
       };
       if (args.invokeType === "score") {
-        invokeArgs.briefSummary = args.brief ?? "";
+        invokeArgs.briefSummary = `${contextBlock}${args.brief ?? ""}`;
         invokeArgs.refsPack = args.productContext ?? "";
       } else if (args.invokeType === "structure") {
-        invokeArgs.candidatesMd = args.candidatesMd ?? "";
+        invokeArgs.candidatesMd = `${contextBlock}${args.candidatesMd ?? ""}`;
       } else if (args.invokeType === "continue") {
-        invokeArgs.currentDraft = args.currentDraft ?? "";
+        invokeArgs.currentDraft = `${contextBlock}${args.currentDraft ?? ""}`;
         invokeArgs.focus = args.focus;
       }
       const result = await deps.invoke(invokeArgs);

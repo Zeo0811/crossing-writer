@@ -5,10 +5,14 @@ import {
   type ConsultEvent,
 } from "../services/topic-expert-consult.js";
 import type { invokeTopicExpert as invokeTopicExpertType } from "@crossing/agents";
+import type { ContextBundleService } from "../services/context-bundle-service.js";
 
 export interface TopicExpertConsultRoutesOpts {
   store: TopicExpertStore;
   invoke: typeof invokeTopicExpertType;
+  /** SP-19: forwarded to the consult service so every topic expert sees the
+   *  unified [Project Context] snapshot. */
+  contextBundleService?: ContextBundleService;
 }
 
 export function registerTopicExpertConsultRoutes(
@@ -60,7 +64,14 @@ export function registerTopicExpertConsultRoutes(
           currentDraft: body.currentDraft,
           focus: body.focus,
         },
-        { store: opts.store, invoke: opts.invoke, emit },
+        {
+          store: opts.store,
+          invoke: opts.invoke,
+          emit,
+          ...(opts.contextBundleService
+            ? { contextBundleService: opts.contextBundleService }
+            : {}),
+        },
       );
     } catch (err: any) {
       emit({ type: "expert_failed", data: { name: "*", error: String(err?.message ?? err) } });
