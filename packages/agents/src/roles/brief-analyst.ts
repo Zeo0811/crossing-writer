@@ -5,6 +5,8 @@ export interface BriefAnalyzeInput {
   projectId: string;
   briefBody: string;
   productInfo: string;
+  images?: string[];   // absolute paths; passed via @-ref to claude + added to --add-dir
+  addDirs?: string[];  // absolute dirs to grant CLI access to
 }
 
 export class BriefAnalyst {
@@ -24,12 +26,16 @@ export class BriefAnalyst {
   }
 
   analyze(input: BriefAnalyzeInput) {
-    return this.base.run("", {
-      project_id: input.projectId,
-      now: new Date().toISOString(),
-      model_used: this.model ?? "auto",
-      brief_body: input.briefBody,
-      product_info: input.productInfo,
-    });
+    return this.base.run(
+      "",
+      {
+        project_id: input.projectId,
+        now: new Date().toISOString(),
+        model_used: this.model ?? "auto",
+        brief_body: input.briefBody,
+        product_info: input.productInfo,
+      },
+      { images: input.images, addDirs: input.addDirs },
+    );
   }
 }

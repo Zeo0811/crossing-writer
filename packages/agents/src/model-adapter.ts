@@ -11,6 +11,7 @@ export interface InvokeOptions {
   model?: string;
   timeout?: number;
   images?: string[];
+  addDirs?: string[];
 }
 
 export interface AgentResult {
@@ -60,8 +61,10 @@ export function invokeAgent(opts: InvokeOptions): AgentResult {
   const claudePrompt = images.length
     ? `${fullPrompt}\n\n附加图片：\n${images.map((p) => `@${p}`).join("\n")}`
     : fullPrompt;
+  const addDirArgs = (opts.addDirs ?? []).flatMap((d) => ["--add-dir", d]);
   const args = [
     "-p", "-",
+    ...addDirArgs,
     ...(opts.model ? ["--model", opts.model] : []),
   ];
   const proc = spawnSync("claude", args, { encoding: "buffer", timeout, input: Buffer.from(claudePrompt, "utf-8") });

@@ -20,7 +20,11 @@ export class AgentBase {
     return template.replace(/\{\{(\w+)\}\}/g, (_, name) => vars[name] ?? "");
   }
 
-  run(userMessage: string, extraVars?: Record<string, string>): AgentResult {
+  run(
+    userMessage: string,
+    extraVars?: Record<string, string>,
+    extra?: { images?: string[]; addDirs?: string[] },
+  ): AgentResult {
     const vars = { ...this.opts.vars, ...extraVars };
     const systemPrompt = this.interpolate(this.opts.systemPromptTemplate, vars);
     return invokeAgent({
@@ -30,6 +34,8 @@ export class AgentBase {
       systemPrompt,
       userMessage,
       timeout: this.opts.timeout,
+      images: extra?.images,
+      addDirs: extra?.addDirs,
     });
   }
 }

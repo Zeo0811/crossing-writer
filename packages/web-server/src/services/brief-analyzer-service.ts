@@ -54,8 +54,28 @@ export async function analyzeBrief(opts: AnalyzeBriefOpts): Promise<void> {
       briefBody = briefBody.slice(0, MAX_BRIEF_CHARS) + "\n\n…（已截断）";
     }
     const productInfo = JSON.stringify(project.product_info ?? {}, null, 2);
+
+    // Resolve relative image/attachment refs in brief.md to absolute paths.
+    // Brief.md lives under brief/, so refs like ![](images/xxx.png) resolve under brief/.
+    const briefDir = join(projectDir, "brief");
+    const imgPaths = new Set<string>();
+    const imgRe = /!\[[^\]]*\]\(([^)]+)\)/g;
+    let m: RegExpExecArray | null;
+    while ((m = imgRe.exec(briefBody)) !== null) {
+      const ref = m[1]!;
+      if (ref.startsWith("http://") || ref.startsWith("https://")) continue;
+      if (ref.startsWith("/")) { imgPaths.add(ref); continue; }
+      imgPaths.add(join(briefDir, ref));
+    }
+
     const analyst = new BriefAnalyst({ cli: resolved.cli, model: resolved.model });
-    const result = analyst.analyze({ projectId, briefBody, productInfo });
+    const result = analyst.analyze({
+      projectId,
+      briefBody,
+      productInfo,
+      images: Array.from(imgPaths),
+      addDirs: [briefDir],
+    });
 
     const summaryPath = "brief/brief-summary.md";
     await writeFile(join(projectDir, summaryPath), result.text, "utf-8");
