@@ -174,6 +174,31 @@ export async function getSelectedCases(projectId: string): Promise<string | null
 
 export const getProject = (id: string) => api.getProject(id);
 
+export type ChecklistStatus = "done" | "partial" | "blocked" | "todo" | "warning";
+export type ChecklistStepId =
+  | "brief" | "topic" | "case" | "evidence"
+  | "styleBindings" | "draft" | "review";
+export interface ChecklistItem {
+  step: ChecklistStepId;
+  status: ChecklistStatus;
+  reason?: string;
+  link?: string;
+}
+export interface ProjectChecklistPayload {
+  projectId: string;
+  items: ChecklistItem[];
+  generatedAt: string;
+}
+
+export async function getProjectChecklist(
+  projectId: string,
+  init?: RequestInit,
+): Promise<ProjectChecklistPayload> {
+  const res = await fetch(`/api/projects/${projectId}/checklist`, init);
+  if (!res.ok) throw new Error(`checklist fetch failed: ${res.status}`);
+  return res.json();
+}
+
 export const apiMission = {
   start: (projectId: string, experts: string[]) =>
     request<{ ok: true; status: string }>(`/api/projects/${projectId}/mission/start`, {
