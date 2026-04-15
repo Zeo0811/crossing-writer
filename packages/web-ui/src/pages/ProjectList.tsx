@@ -237,7 +237,7 @@ function EmptyState({ tab, q, onNew, onClear }: { tab: Tab; q: string; onNew: ()
   }
   if (tab === "archived") {
     return (
-      <div className="border border-dashed border-[var(--hair)] rounded p-16 text-center">
+      <div className="border border-dashed border-[var(--hair)] rounded p-16 text-center flex flex-col items-center">
         <PixelEmptyArt size={72} />
         <p className="text-[var(--meta)] mt-4">归档区是空的</p>
       </div>

@@ -92,9 +92,7 @@ export function PhaseSteps({ status }: { status: ProjectStatus }) {
         return (
           <div key={p.id} className="flex items-center gap-1.5">
             <div className={`relative ${cls}`}>
-              <span className="tabular-nums opacity-80" style={{ fontFamily: "var(--font-pixel)", fontSize: "10px" }}>
-                {String(i + 1).padStart(2, "0")}
-              </span>
+              <span className="tabular-nums opacity-80">{String(i + 1).padStart(2, "0")}</span>
               <span>{p.label}</span>
               {state === "done" && <span className="text-[10px]">✓</span>}
               {isCurrent && !isFailed && <span className="w-1 h-1 rounded-full bg-[var(--accent-on)] animate-pulse" />}

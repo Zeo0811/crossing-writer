@@ -21,15 +21,15 @@ interface StepGroup {
 
 const STEPS: StepGroup[] = [
   {
-    label: "Step 1 选题/解读",
+    label: "选题 / 需求解析",
     agentKeys: ["brief_analyst", "coordinator", "topic_expert", "product_overview"],
   },
   {
-    label: "Step 2 案例策划",
+    label: "Case 规划",
     agentKeys: ["case_coordinator", "case_planner_expert"],
   },
   {
-    label: "Step 4 初稿",
+    label: "初稿创作",
     agentKeys: [
       "writer.opening",
       "writer.practice",
@@ -39,7 +39,7 @@ const STEPS: StepGroup[] = [
     ],
   },
   {
-    label: "Step 蒸馏工具",
+    label: "辅助工具",
     agentKeys: [
       "style_distiller.composer",
       "style_distiller.snippets",
@@ -115,8 +115,8 @@ export function AgentsPanel() {
     return map;
   }, [panels]);
 
-  if (loading) return <div>Loading…</div>;
-  if (error) return <div style={{ color: "var(--red)" }}>Error: {error}</div>;
+  if (loading) return <div className="text-sm text-[var(--meta)] p-4">加载中…</div>;
+  if (error) return <div className="text-sm text-[var(--red)] p-4">错误：{error}</div>;
 
   function handleAddTopicExpert() {
     // eslint-disable-next-line no-alert
@@ -149,16 +149,17 @@ export function AgentsPanel() {
   }
 
   return (
-    <div>
-      {error && <div style={{ color: "var(--red)" }}>Error: {error}</div>}
+    <div className="space-y-6">
+      {error && <div className="text-sm text-[var(--red)]">错误：{error}</div>}
       {STEPS.map((step) => {
         const keys = expandStepKeys(step);
         const hasTopicExpert = step.agentKeys.includes("topic_expert");
         return (
-          <section key={step.label} className="mb-6">
-            <h2 className="text-sm font-semibold mb-2 text-accent font-pixel tracking-[0.06em]">
+          <section key={step.label}>
+            <h2 className="text-sm font-semibold mb-3 text-[var(--heading)]">
               {step.label}
             </h2>
+            <div className="space-y-2">
             {keys.map((key) => {
               const cfg = agents[key] ?? defaultAgentConfig(key);
               const unconfigured = !agents[key];
@@ -176,14 +177,15 @@ export function AgentsPanel() {
                 />
               );
             })}
+            </div>
             {hasTopicExpert && (
               <button
                 type="button"
                 onClick={handleAddTopicExpert}
-                className="mt-1 px-2 py-0.5 text-xs border rounded border-hair text-body hover:text-accent hover:border-accent bg-transparent cursor-pointer"
+                className="mt-2 px-3 py-1.5 text-xs rounded border border-[var(--hair-strong)] text-[var(--meta)] hover:text-[var(--accent)] hover:border-[var(--accent-soft)]"
                 data-testid="add-topic-expert-btn"
               >
-                + 新增 topic_expert
+                ＋ 新增选题专家
               </button>
             )}
           </section>

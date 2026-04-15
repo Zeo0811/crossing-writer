@@ -25,6 +25,14 @@ export function SettingsPage() {
             </div>
           </Row>
         </Group>
+        <Group title="工作目录">
+          <Row label="Vault 路径">
+            <code className="text-xs text-[var(--body)]" style={{ fontFamily: "var(--font-mono)" }}>~/.crossing/vault</code>
+          </Row>
+          <Row label="Projects 目录">
+            <code className="text-xs text-[var(--body)]" style={{ fontFamily: "var(--font-mono)" }}>~/.crossing/projects</code>
+          </Row>
+        </Group>
         <Group title="CLI">
           <Row label="claude">
             <CliStatus status={health?.claude?.status} version={health?.claude?.version} />
@@ -32,9 +40,21 @@ export function SettingsPage() {
           <Row label="codex">
             <CliStatus status={health?.codex?.status} version={health?.codex?.version} />
           </Row>
+          <Row label="默认 CLI">
+            <select className="bg-[var(--bg-2)] border border-[var(--hair)] rounded px-2 py-1 text-xs text-[var(--body)]">
+              <option>claude</option>
+              <option>codex</option>
+            </select>
+          </Row>
+        </Group>
+        <Group title="发布">
+          <Row label="微信公众号">
+            <button className="px-3 py-1 text-xs rounded border border-[var(--hair-strong)] text-[var(--meta)] hover:text-[var(--heading)]">绑定</button>
+          </Row>
         </Group>
         <Group title="关于">
           <Row label="版本"><span className="text-xs text-[var(--meta)]">v1.5.0</span></Row>
+          <Row label="更新日志"><button className="text-xs text-[var(--accent)] hover:underline">查看</button></Row>
         </Group>
       </main>
     </div>
@@ -45,7 +65,7 @@ function CliStatus({ status, version }: { status?: string; version?: string }) {
   const ok = status === "online";
   const color = ok ? "var(--accent)" : "var(--red)";
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs" style={{ color }}>
+    <span className="inline-flex items-center gap-1.5 text-xs">
       <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
       <span style={{ fontFamily: "var(--font-mono)" }}>{status ?? "unknown"}</span>
       {version && <span className="text-[var(--faint)]">· {version}</span>}
