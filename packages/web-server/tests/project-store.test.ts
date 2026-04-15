@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ProjectStore } from "../src/services/project-store.js";
@@ -80,5 +80,18 @@ describe("event-log", () => {
     const dir = mkdtempSync(join(tmpdir(), "ev-"));
     const events = await readEvents(dir);
     expect(events).toEqual([]);
+  });
+});
+
+describe("ProjectStore.list skip metadata", () => {
+  it("ignores directories starting with _", async () => {
+    const store = mkStore();
+    const p = await store.create({ name: "Keep" });
+    // simulate stray metadata dirs at the root
+    mkdirSync(join(store.projectDir("_archive"), "some-id"), { recursive: true });
+    writeFileSync(join(store.projectDir("_archive"), "some-id", "project.json"), "{}");
+    mkdirSync(store.projectDir("_tmp"), { recursive: true });
+    const list = await store.list();
+    expect(list.map((x) => x.id)).toEqual([p.id]);
   });
 });
