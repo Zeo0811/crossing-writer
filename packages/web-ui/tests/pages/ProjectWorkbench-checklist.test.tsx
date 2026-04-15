@@ -117,4 +117,20 @@ describe("ProjectWorkbench + checklist integration", () => {
     });
     expect(screen.queryByTestId("checklist-chip-brief")).toBeNull();
   });
+
+  it("collapse state is scoped per projectId", async () => {
+    localStorage.setItem("checklist_collapsed_p1", "1");
+    localStorage.setItem("checklist_collapsed_p2", "0");
+    render(
+      <ToastProvider>
+        <MemoryRouter initialEntries={["/projects/p2"]}>
+          <Routes>
+            <Route path="/projects/:id" element={<ProjectWorkbench />} />
+          </Routes>
+        </MemoryRouter>
+      </ToastProvider>,
+    );
+    expect(await screen.findByTestId("checklist-chip-brief")).toBeInTheDocument();
+    expect(screen.queryByTestId("checklist-summary")).toBeNull();
+  });
 });
