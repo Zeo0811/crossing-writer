@@ -17,11 +17,11 @@ import {
 type Tab = "browse" | "ingest";
 
 const KIND_LABEL: Record<string, string> = {
-  entity: "实体",
-  event: "事件",
-  author: "作者",
-  source: "来源",
-  note: "笔记",
+  entity: "实体 entity",
+  event: "事件 event",
+  author: "作者 author",
+  source: "来源 source",
+  note: "笔记 note",
 };
 
 export function KnowledgePage() {

@@ -316,36 +316,36 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
           </button>
         </div>
       )}
-      <ProjectChecklist
-        items={checklistData?.items ?? []}
-        collapsed={checklistCollapsed}
-        onToggleCollapsed={toggleChecklistCollapsed}
-        onChipClick={handleChipClick}
-      />
       <header
         data-testid="pw-sidebar-header"
-        className="px-6 py-3 border-b bg-[var(--bg-1)] flex items-center gap-3 border-[var(--hair)]"
+        className="px-6 h-12 border-b bg-[var(--bg-1)] flex items-center gap-3 border-[var(--hair)]"
       >
         {!propProjectId && (
-          <Link to="/" className="text-sm text-meta hover:text-accent no-underline">
-            ← 列表
+          <Link to="/" className="text-sm text-[var(--meta)] hover:text-[var(--accent)] no-underline">
+            ←
           </Link>
         )}
-        <h1 className="font-semibold text-heading m-0">{project.name}</h1>
-        <Chip variant="active">{project.status}</Chip>
+        <h1 className="text-base font-semibold text-[var(--heading)] m-0">{project.name}</h1>
+        <span
+          className="text-[11px] px-2 py-0.5 rounded-sm font-medium whitespace-nowrap"
+          style={{ color: "var(--meta)", background: "var(--bg-2)" }}
+        >
+          {project.status}
+        </span>
+        <div className="flex-1" />
         <AgentStatusBar activeAgents={activeAgents} />
-        <Button
-          variant="secondary"
+        <button
+          type="button"
           onClick={() => setOverrideOpen(true)}
-          className="ml-2"
+          className="text-xs text-[var(--meta)] hover:text-[var(--heading)]"
           title="本项目专属配置"
         >
-          🔧 本项目专属配置
-        </Button>
+          本项目配置
+        </button>
         <button
           type="button"
           onClick={() => setSettingsOpen(true)}
-          className="ml-2 text-lg text-meta hover:text-accent cursor-pointer bg-transparent border-0"
+          className="w-7 h-7 flex items-center justify-center rounded text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"
           aria-label="settings"
           title="设置"
         >
@@ -361,7 +361,7 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
         {/* 左侧：各阶段内容 */}
         <div
           data-testid="pw-sidebar"
-          className="w-3/5 border-r overflow-auto p-6 border-hair bg-bg-0"
+          className="w-3/5 border-r overflow-auto p-6 border-[var(--hair)] bg-[var(--bg-1)]"
         >
           {missingBindings.length > 0 && (
             <div
