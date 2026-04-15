@@ -35,6 +35,8 @@ import { TopicExpertStore } from "./services/topic-expert-store.js";
 import { registerTopicExpertsRoutes } from "./routes/topic-experts.js";
 import { registerTopicExpertConsultRoutes } from "./routes/topic-expert-consult.js";
 import { invokeTopicExpert } from "@crossing/agents";
+import { ContextBundleService } from "./services/context-bundle-service.js";
+import { registerContextRoutes } from "./routes/context.js";
 
 const configPath = process.env.CROSSING_CONFIG
   ?? resolve(process.cwd(), "../../config.json");
@@ -125,6 +127,17 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     );
   }
   const projectOverrideStore = new ProjectOverrideStore(configStore.current.projectsDir);
+
+  // SP-19 unified ContextBundle service — shared by writer/rewrite/topic-expert
+  // routes (injected below) plus the /api/projects/:id/context debug endpoint.
+  const contextBundleService = new ContextBundleService({
+    projectStore: store,
+    projectsDir: configStore.current.projectsDir,
+    stylePanelStore,
+    agentConfigStore,
+    projectOverrideStore,
+  });
+  registerContextRoutes(app, { contextBundleService });
 
   const checklistService = new ProjectChecklistService({
     projectStore: store,
