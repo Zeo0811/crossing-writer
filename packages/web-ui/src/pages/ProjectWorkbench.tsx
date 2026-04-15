@@ -5,7 +5,6 @@ import { useProjectStream } from "../hooks/useProjectStream";
 import { BriefIntakeForm } from "../components/right/BriefIntakeForm";
 import { ExpertSelector } from "../components/right/ExpertSelector";
 import { AgentTimeline } from "../components/status/AgentTimeline";
-import { AgentStatusBar } from "../components/status/AgentStatusBar";
 import { BriefSummaryCard } from "../components/left/BriefSummaryCard";
 import { TopicExpertSummonButton } from "../components/project/TopicExpertSummonButton";
 import { MissionCandidatesPanel } from "../components/left/MissionCandidateCard";
@@ -321,7 +320,7 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [selectedEvidenceCase, setSelectedEvidenceCase] = useState<string | null>(null);
-  const { events, activeAgents, connectionState, lastEventTs } = useProjectStream(projectId);
+  const { events, connectionState, lastEventTs } = useProjectStream(projectId);
 
   function refetch() {
     getProject(projectId).then(setProject).catch(() => {});
@@ -410,7 +409,6 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
           {tone.label}
         </span>
         <div className="flex-1" />
-        <AgentStatusBar activeAgents={activeAgents} />
         <button
           type="button"
           onClick={() => setOverrideOpen(true)}
