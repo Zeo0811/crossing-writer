@@ -221,8 +221,8 @@ export function BriefIntakeForm({
         )}
       </div>
 
-      <fieldset className="rounded border border-[var(--hair)] bg-[var(--bg-1)] p-4 space-y-3">
-        <legend className="px-2 text-xs text-[var(--meta)]">产品信息（可选）</legend>
+      <div className="rounded bg-[var(--bg-2)] p-4 space-y-3">
+        <div className="text-xs text-[var(--meta)] font-semibold">产品信息（可选）</div>
         <div className="grid grid-cols-2 gap-3">
           <Field label="产品名" v={productName} set={setProductName} ph="例：Cursor IDE" />
           <Field label="产品官网" v={productUrl} set={setProductUrl} ph="https://" />
@@ -234,10 +234,10 @@ export function BriefIntakeForm({
             onChange={(e) => setNotes(e.target.value)}
             rows={2}
             placeholder="想强调的角度…"
-            className="w-full bg-[var(--bg-2)] border border-[var(--hair)] rounded px-3 py-2 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)] resize-y"
+            className="w-full bg-[var(--bg-1)] border border-[var(--hair)] rounded px-3 py-2 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)] resize-y"
           />
         </label>
-      </fieldset>
+      </div>
 
       {err && <div className="rounded border border-[var(--red)] bg-[rgba(255,107,107,0.05)] px-3 py-2 text-sm text-[var(--red)]">{err}</div>}
 
@@ -262,7 +262,7 @@ function Field({ label, v, set, ph }: { label: string; v: string; set: (s: strin
         value={v}
         onChange={(e) => set(e.target.value)}
         placeholder={ph}
-        className="w-full bg-[var(--bg-2)] border border-[var(--hair)] rounded px-3 py-2 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
+        className="w-full bg-[var(--bg-1)] border border-[var(--hair)] rounded px-3 py-2 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
       />
     </label>
   );

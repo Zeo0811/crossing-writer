@@ -189,15 +189,17 @@ export function KnowledgePage() {
       )}
 
       {tab === "ingest" && (
-        <div className="p-6 space-y-5">
-          <div className="max-w-[680px]">
-            <IngestForm accounts={accounts} onSubmit={handleIngestStart} />
-          </div>
-          {(ingestStatus !== "idle" || ingestEvents.length > 0 || ingestError) && (
-            <div className="max-w-[860px]">
+        <div className="p-6">
+          <div className="max-w-[880px] space-y-5">
+            <IngestForm
+              accounts={accounts}
+              onSubmit={handleIngestStart}
+              disabled={ingestStatus === "running"}
+            />
+            {(ingestStatus !== "idle" || ingestEvents.length > 0 || ingestError) && (
               <IngestProgressView events={ingestEvents} status={ingestStatus} error={ingestError} />
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
     </div>

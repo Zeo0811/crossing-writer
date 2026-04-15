@@ -120,7 +120,7 @@ function renderPhaseView(props: PhaseViewProps): React.ReactNode {
 
   switch (status) {
     case "created":
-      return <PhasePanel label="录入需求"><BriefIntakeForm projectId={projectId} onUploaded={refetch} /></PhasePanel>;
+      return <BriefIntakeForm projectId={projectId} onUploaded={refetch} />;
 
     case "brief_uploaded":
     case "brief_analyzing":
