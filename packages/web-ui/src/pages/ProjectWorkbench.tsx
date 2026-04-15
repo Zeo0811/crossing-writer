@@ -27,6 +27,7 @@ import { WriterConfigForm } from "../components/writer/WriterConfigForm";
 import { WriterProgressPanel } from "../components/writer/WriterProgressPanel";
 import { ArticleEditor } from "../components/writer/ArticleEditor";
 import { ProjectOverridePanel } from "../components/config/ProjectOverridePanel";
+import { ContextChip } from "../components/project/ContextChip";
 import { TopNav } from "../components/layout/TopNav";
 import { Button } from "../components/ui/Button";
 import { Chip } from "../components/ui/Chip";
@@ -426,6 +427,7 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
           onClose={() => setOverrideOpen(false)}
         />
       )}
+      {projectId && <ContextChip projectId={projectId} />}
     </div>
   );
 }
