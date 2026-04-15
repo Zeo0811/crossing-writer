@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getProject } from "../api/client";
 import { ProjectChecklist, type ChecklistItem } from "../components/project/ProjectChecklist";
@@ -235,6 +235,36 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
     return () => clearInterval(id);
   }, [projectId]);
 
+  // Refetch immediately on SSE state_changed so UI advances without waiting for 2s poll.
+  // Also surface a toast when entering a "done" state of a phase.
+  const [toast, setToast] = useState<string | null>(null);
+  const lastStatusRef = useRef<string | null>(null);
+  useEffect(() => {
+    const latest = events[events.length - 1] as any;
+    if (!latest) return;
+    if (latest.type === "state_changed") {
+      refetch();
+      const toStatus: string | undefined = latest.data?.to;
+      const TRANSITION_TOASTS: Record<string, string> = {
+        brief_ready: "✅ Brief 解析完成，可开始选题",
+        awaiting_mission_pick: "✅ 候选 Mission 已就绪，请选一个",
+        mission_approved: "✅ Mission 已选，下一步：产品概览",
+        overview_ready: "✅ 产品概览完成，可批准进入 Case 规划",
+        awaiting_case_expert_selection: "↪️ 选 Case 专家",
+        case_plan_approved: "✅ Case Plan 已批准，去跑真实测",
+        evidence_ready: "✅ Evidence 齐备，下一步：写作",
+        writing_ready: "✅ 初稿完成！",
+      };
+      if (toStatus && TRANSITION_TOASTS[toStatus] && lastStatusRef.current !== toStatus) {
+        lastStatusRef.current = toStatus;
+        setToast(TRANSITION_TOASTS[toStatus]!);
+        setTimeout(() => setToast((t) => (t === TRANSITION_TOASTS[toStatus] ? null : t)), 4000);
+      }
+    } else if (typeof latest.type === "string" && latest.type.endsWith(".failed")) {
+      refetch();
+    }
+  }, [events.length]);
+
   if (!project) return <div>加载中...</div>;
   const status = project.status;
 
@@ -270,6 +300,22 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
       data-testid="page-project-workbench"
       className="h-screen flex flex-col bg-bg-0 text-body"
     >
+      {toast && (
+        <div
+          role="status"
+          data-testid="state-toast"
+          className="fixed top-4 right-4 z-50 px-4 py-2 rounded border bg-bg-1 border-accent text-body shadow-lg text-sm"
+          style={{ boxShadow: "0 4px 20px rgba(64,255,159,0.15)" }}
+        >
+          {toast}
+          <button
+            className="ml-3 text-meta hover:text-body"
+            onClick={() => setToast(null)}
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <div className="px-4 pt-4">
         <TopNav breadcrumb={["projects", project.name]} />
       </div>
