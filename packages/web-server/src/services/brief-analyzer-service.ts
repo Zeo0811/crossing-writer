@@ -43,7 +43,16 @@ export async function analyzeBrief(opts: AnalyzeBriefOpts): Promise<void> {
   });
 
   try {
-    const briefBody = await readFile(join(projectDir, project.brief.md_path), "utf-8");
+    let briefBody = await readFile(join(projectDir, project.brief.md_path), "utf-8");
+    const MAX_BRIEF_CHARS = 40_000;
+    if (briefBody.length > MAX_BRIEF_CHARS) {
+      await appendEvent(projectDir, {
+        type: "agent.warning",
+        agent: "brief_analyst",
+        message: `brief 过长 (${briefBody.length} chars)，已截断到前 ${MAX_BRIEF_CHARS} 字符。建议检查 docx 是否包含大图`,
+      });
+      briefBody = briefBody.slice(0, MAX_BRIEF_CHARS) + "\n\n…（已截断）";
+    }
     const productInfo = JSON.stringify(project.product_info ?? {}, null, 2);
     const analyst = new BriefAnalyst({ cli: resolved.cli, model: resolved.model });
     const result = analyst.analyze({ projectId, briefBody, productInfo });

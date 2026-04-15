@@ -54,7 +54,10 @@ export function registerBriefRoutes(app: FastifyInstance, deps: BriefDeps) {
         const abs = join(projectDir, rawPath);
         const buf = await data.toBuffer();
         await writeFile(abs, buf);
-        markdown = await extractToMarkdown(buf, data.filename);
+        markdown = await extractToMarkdown(buf, data.filename, {
+          imageSaveDir: join(briefDir, "images"),
+          imageUrlPrefix: "images/",
+        });
         extra = {
           productName: data.fields?.productName?.value ?? null,
           productUrl: data.fields?.productUrl?.value ?? null,
