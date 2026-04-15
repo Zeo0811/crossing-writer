@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getSelectedCases } from "../../api/client";
+import { EvidenceSection } from "../evidence/EvidenceSection";
 
 export function CaseSelectedGuide({ projectId }: { projectId: string }) {
   const [md, setMd] = useState<string | null | undefined>(undefined);
@@ -11,17 +12,13 @@ export function CaseSelectedGuide({ projectId }: { projectId: string }) {
   if (md === undefined) return <div>加载中...</div>;
 
   return (
-    <div className="p-4">
+    <div className="p-4 space-y-4">
       <div className="bg-green-50 border border-green-300 p-3 rounded">
         <h3 className="font-semibold">Case Plan 已批准 ✅</h3>
-        <p className="text-sm">下一步：<strong>去跑真实测</strong></p>
+        <p className="text-sm">下一步：<strong>去跑真实测</strong>，把截图/录屏/笔记传到每个 Case 下。</p>
       </div>
-      <pre className="whitespace-pre-wrap mt-4 text-xs">{md}</pre>
-      <button disabled
-        className="mt-4 bg-gray-300 text-gray-600 px-3 py-1"
-        title="SP-04 未上线">
-        Evidence 上传（SP-04 未上线）
-      </button>
+      <pre className="whitespace-pre-wrap text-xs">{md}</pre>
+      <EvidenceSection projectId={projectId} />
     </div>
   );
 }

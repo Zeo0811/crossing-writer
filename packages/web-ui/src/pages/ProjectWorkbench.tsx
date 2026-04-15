@@ -156,7 +156,12 @@ function rightPanel(status: string, projectId: string, onRefetch: () => void, ev
     case "overview_analyzing":
       return <div className="p-4">正在生成产品概览…</div>;
     case "overview_ready":
-      return <div className="p-4">点左侧卡片里的「批准进入 Case 规划」</div>;
+      return (
+        <div className="p-4 space-y-4">
+          <div className="text-sm text-meta">✅ 概览已生成，可在左侧批准进入 Case 规划。如需补充材料再生成：</div>
+          <OverviewIntakeForm projectId={projectId} />
+        </div>
+      );
     case "awaiting_case_expert_selection":
       return <CaseExpertSelector projectId={projectId} />;
     case "case_planning_failed":
