@@ -154,14 +154,21 @@ export function registerEvidenceRoutes(app: FastifyInstance, deps: EvidenceDeps)
     "/api/projects/:id/evidence/:caseId/files/:kind/:filename",
     async (req, reply) => {
       const { id, caseId, kind, filename } = req.params;
-      if (!VALID_KINDS.has(kind as EvidenceKind)) return reply.code(400).send({ error: "invalid kind" });
+      // Accept both singular ("screenshot") and plural dir names ("screenshots")
+      const dirMap: Record<string, string> = {
+        screenshot: "screenshots", screenshots: "screenshots",
+        recording: "recordings", recordings: "recordings",
+        generated: "generated",
+      };
+      const dirName = dirMap[kind];
+      if (!dirName) return reply.code(400).send({ error: "invalid kind" });
       if (filename.includes("/") || filename.includes("..") || filename.includes("\\")) {
         return reply.code(400).send({ error: "invalid filename" });
       }
       const { readFileSync, existsSync } = await import("node:fs");
       const { extname } = await import("node:path");
       const decoded = decodeURIComponent(filename);
-      const abs = join(deps.projectsDir, id, "evidence", caseId, kind, decoded);
+      const abs = join(deps.projectsDir, id, "evidence", caseId, dirName, decoded);
       if (!existsSync(abs)) return reply.code(404).send({ error: "not found" });
       const ext = extname(decoded).toLowerCase();
       const mime =
