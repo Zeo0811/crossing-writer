@@ -47,6 +47,13 @@ export interface Project {
   tags: string[];
   created_at: string;
   updated_at: string;
+  archived?: boolean;
+}
+
+export interface ProjectListResponse {
+  items: Project[];
+  archived_count?: number;
+  active_count?: number;
 }
 
 export interface Expert {

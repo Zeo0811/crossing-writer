@@ -49,13 +49,15 @@ describe("projects route", () => {
     expect(res.statusCode).toBe(400);
   });
 
-  it("GET /api/projects lists projects", async () => {
+  it("GET /api/projects lists projects with archived_count", async () => {
     const { app } = await mkApp();
     await app.inject({ method: "POST", url: "/api/projects", payload: { name: "A" } });
     await app.inject({ method: "POST", url: "/api/projects", payload: { name: "B" } });
     const res = await app.inject({ method: "GET", url: "/api/projects" });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toHaveLength(2);
+    const body = res.json();
+    expect(body.items).toHaveLength(2);
+    expect(body.archived_count).toBe(0);
   });
 
   it("GET /api/projects/:id returns details", async () => {

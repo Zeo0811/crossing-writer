@@ -17,7 +17,18 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  listProjects: () => request<Project[]>("/api/projects"),
+  listProjects: () => request<{ items: Project[]; archived_count: number }>("/api/projects"),
+  listArchivedProjects: () =>
+    request<{ items: Project[]; active_count: number }>("/api/projects?only_archived=1"),
+  archiveProject: (id: string) =>
+    request<{ ok: true; id: string }>(`/api/projects/${id}/archive`, { method: "POST" }),
+  restoreProject: (id: string) =>
+    request<{ ok: true; id: string }>(`/api/projects/${id}/restore`, { method: "POST" }),
+  destroyProject: (id: string, confirm: string) =>
+    request<{ ok: true; id: string }>(`/api/projects/${id}`, {
+      method: "DELETE",
+      body: JSON.stringify({ confirm }),
+    }),
   createProject: (name: string) =>
     request<Project>("/api/projects", {
       method: "POST",
