@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   uploadOverviewImage, listOverviewImages,
   deleteOverviewImage, generateOverview,
@@ -11,6 +11,9 @@ export function OverviewIntakeForm({ projectId }: { projectId: string }) {
   const [urls, setUrls] = useState<string[]>([]);
   const [urlDraft, setUrlDraft] = useState("");
   const [desc, setDesc] = useState("");
+  const briefInputRef = useRef<HTMLInputElement>(null);
+  const screenshotInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     listOverviewImages(projectId).then(setImages).catch(() => {});
   }, [projectId]);
@@ -46,67 +49,131 @@ export function OverviewIntakeForm({ projectId }: { projectId: string }) {
   const screenshotImgs = images.filter((i) => i.source === "screenshot");
 
   return (
-    <div className="space-y-4 p-4">
-      <section>
-        <h3 className="font-semibold">Brief 配图</h3>
-        <input type="file" multiple accept="image/*"
-          onChange={(e) => onUpload("brief", e.target.files)} />
-        <div className="grid grid-cols-3 gap-2 mt-2">
-          {briefImgs.map((i) => (
-            <div key={i.filename} className="border p-1 text-xs">
-              {i.filename}
-              <button onClick={() => onDelete(i.filename)}>删</button>
-            </div>
-          ))}
-        </div>
-      </section>
+    <div className="space-y-4">
+      <ImageSection
+        label="Brief 配图"
+        images={briefImgs}
+        onPick={() => briefInputRef.current?.click()}
+        onDelete={onDelete}
+        inputRef={briefInputRef}
+        onChange={(fl) => onUpload("brief", fl)}
+      />
+      <ImageSection
+        label="产品截图"
+        images={screenshotImgs}
+        onPick={() => screenshotInputRef.current?.click()}
+        onDelete={onDelete}
+        inputRef={screenshotInputRef}
+        onChange={(fl) => onUpload("screenshot", fl)}
+      />
 
-      <section>
-        <h3 className="font-semibold">产品截图</h3>
-        <input type="file" multiple accept="image/*"
-          onChange={(e) => onUpload("screenshot", e.target.files)} />
-        <div className="grid grid-cols-3 gap-2 mt-2">
-          {screenshotImgs.map((i) => (
-            <div key={i.filename} className="border p-1 text-xs">
-              {i.filename}
-              <button onClick={() => onDelete(i.filename)}>删</button>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <h3 className="font-semibold">产品文档 URL</h3>
+      <section className="space-y-2">
+        <div className="text-xs text-[var(--meta)] font-semibold">产品文档 URL</div>
         <div className="flex gap-2">
-          <input className="flex-1 border px-2" placeholder="https://..."
-            value={urlDraft} onChange={(e) => setUrlDraft(e.target.value)} />
-          <button onClick={addUrl}>添加</button>
+          <input
+            className="flex-1 bg-[var(--bg-2)] border border-[var(--hair)] rounded px-3 py-2 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
+            placeholder="https://…"
+            value={urlDraft}
+            onChange={(e) => setUrlDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") addUrl(); }}
+          />
+          <button
+            onClick={addUrl}
+            className="px-3 py-1.5 text-xs rounded border border-[var(--hair-strong)] text-[var(--meta)] hover:text-[var(--heading)]"
+          >
+            添加
+          </button>
         </div>
-        <ul className="mt-2 text-sm">
-          {urls.map((u, idx) => (
-            <li key={idx}>
-              {u}
-              <button onClick={() => setUrls(urls.filter((_, i) => i !== idx))}>🗑</button>
-            </li>
-          ))}
-        </ul>
+        {urls.length > 0 && (
+          <ul className="space-y-1">
+            {urls.map((u, idx) => (
+              <li key={idx} className="flex items-center gap-2 text-sm px-3 py-2 rounded bg-[var(--bg-2)]">
+                <span className="flex-1 truncate text-[var(--body)]">{u}</span>
+                <button
+                  onClick={() => setUrls(urls.filter((_, i) => i !== idx))}
+                  className="text-[var(--meta)] hover:text-[var(--red)]"
+                  aria-label="remove url"
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
-      <section>
-        <h3 className="font-semibold">补充描述（可选）</h3>
-        <textarea className="w-full border p-2" rows={4}
-          placeholder="补充描述"
-          value={desc} onChange={(e) => setDesc(e.target.value)} />
+      <section className="space-y-2">
+        <div className="text-xs text-[var(--meta)] font-semibold">补充描述（可选）</div>
+        <textarea
+          className="w-full bg-[var(--bg-2)] border border-[var(--hair)] rounded px-3 py-2 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)] resize-y"
+          rows={3}
+          placeholder="想强调的角度…"
+          value={desc}
+          onChange={(e) => setDesc(e.target.value)}
+        />
       </section>
 
-      <ActionButton
-        onClick={submit}
-        disabled={images.length === 0}
-        successMsg="已开始生成，等待 agent 返回..."
-        errorMsg={(e) => `生成失败: ${String(e)}`}
-      >
-        生成产品概览
-      </ActionButton>
+      <div className="flex justify-end">
+        <ActionButton
+          onClick={submit}
+          disabled={images.length === 0}
+          successMsg="已开始生成概览"
+          errorMsg={(e) => `生成失败：${String(e)}`}
+        >
+          生成产品概览 →
+        </ActionButton>
+      </div>
     </div>
+  );
+}
+
+function ImageSection({
+  label, images, onPick, onDelete, inputRef, onChange,
+}: {
+  label: string;
+  images: ProjectImage[];
+  onPick: () => void;
+  onDelete: (filename: string) => void;
+  inputRef: React.RefObject<HTMLInputElement>;
+  onChange: (fl: FileList | null) => void;
+}) {
+  return (
+    <section className="space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="text-xs text-[var(--meta)] font-semibold">{label} ({images.length})</div>
+        <button onClick={onPick} className="text-xs text-[var(--accent)] hover:underline">＋ 添加图片</button>
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          accept="image/*"
+          hidden
+          onChange={(e) => onChange(e.target.files)}
+        />
+      </div>
+      {images.length > 0 ? (
+        <div className="grid grid-cols-4 gap-2">
+          {images.map((i) => (
+            <div key={i.filename} className="relative group rounded bg-[var(--bg-2)] border border-[var(--hair)] p-2 text-xs">
+              <div className="aspect-video bg-[var(--bg-1)] rounded mb-1 flex items-center justify-center text-2xl text-[var(--faint)]">🖼</div>
+              <div className="truncate text-[var(--body)]" title={i.filename}>{i.filename}</div>
+              <button
+                onClick={() => onDelete(i.filename)}
+                className="absolute top-1 right-1 w-5 h-5 rounded bg-[var(--bg-0)] text-[var(--meta)] hover:text-[var(--red)] opacity-0 group-hover:opacity-100 text-xs"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div
+          onClick={onPick}
+          className="rounded border border-dashed border-[var(--hair-strong)] py-6 text-center text-sm text-[var(--meta)] cursor-pointer hover:border-[var(--accent-soft)] hover:bg-[var(--bg-2)]"
+        >
+          点击上传
+        </div>
+      )}
+    </section>
   );
 }

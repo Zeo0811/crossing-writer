@@ -428,7 +428,7 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
         </button>
       </header>
 
-      <div className="px-6 py-4 border-b border-[var(--hair)]">
+      <div className="px-6 pt-4 pb-3">
         <PhaseSteps status={status} />
       </div>
 
