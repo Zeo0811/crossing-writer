@@ -1,0 +1,80 @@
+.checklist-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--hair);
+  flex-wrap: wrap;
+}
+
+.checklist-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--hair);
+  background: var(--bg-2);
+  color: var(--body);
+  font-size: 12px;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.checklist-chip:hover {
+  background: var(--bg-1);
+  border-color: var(--hair-strong);
+}
+
+.checklist-chip[data-status="done"] {
+  color: var(--accent);
+  border-color: var(--accent-soft);
+}
+
+.checklist-chip[data-status="blocked"] {
+  color: var(--red);
+  border-color: var(--red);
+  background: var(--bg-2);
+}
+
+.checklist-chip[data-status="warning"] {
+  color: var(--amber);
+  border-color: var(--amber-hair);
+}
+
+.checklist-chip[data-status="partial"] {
+  color: var(--pink);
+  border-color: var(--pink-shadow);
+}
+
+.checklist-chip[data-status="todo"] {
+  color: var(--meta);
+  border-color: var(--hair);
+}
+
+.checklist-icon {
+  font-size: 10px;
+}
+
+.checklist-toggle {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--hair);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--meta);
+  cursor: pointer;
+}
+
+.checklist-summary {
+  background: var(--bg-2);
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--body);
+  cursor: pointer;
+}
