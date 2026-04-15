@@ -7,7 +7,13 @@ import { ProjectOverrideStore } from "../src/services/project-override-store.js"
 import { StylePanelStore } from "../src/services/style-panel-store.js";
 import { createAgentConfigStore, type AgentConfigEntry } from "../src/services/agent-config-store.js";
 import { ArticleStore } from "../src/services/article-store.js";
-import { ContextBundleService, mergeAgentOverrides } from "../src/services/context-bundle-service.js";
+import {
+  ContextBundleService,
+  mergeAgentOverrides,
+  trimToBudget,
+  estimateTokens,
+  type ContextBundle,
+} from "../src/services/context-bundle-service.js";
 
 function fakeConfigStore(initial: Record<string, AgentConfigEntry> = {}) {
   let current: any = { agents: { ...initial } };
@@ -130,5 +136,63 @@ describe("ContextBundleService — T2 composition", () => {
     expect(merged["writer.opening"]!.model.cli).toBe("codex");
     expect(merged["writer.opening"]!.model.model).toBe("opus");
     expect(merged["writer.opening"]!.styleBinding!.account).toBe("A");
+  });
+});
+
+describe("ContextBundleService — T3 token budget", () => {
+  function pad(n: number, prefix = "x"): string {
+    return prefix.repeat(n);
+  }
+
+  it("trims in drop-order: toolUses -> edits -> productContext -> brief.summary", () => {
+    const big: ContextBundle = {
+      projectId: "p1",
+      builtAt: "2026-04-10T00:00:00Z",
+      brief: { summary: pad(10000, "s") },
+      productContext: pad(10000, "p"),
+      sections: [{ key: "opening", body: "body", manually_edited: false, tools_used: [] }],
+      frontmatter: { opening: { last_agent: "writer.opening" } },
+      styles: {
+        opening: { account: "A", role: "opening", version: 1, bodyExcerpt: pad(500, "o") },
+      },
+      agents: {},
+      recentEdits: Array.from({ length: 20 }, (_, i) => ({
+        section: `s${i}`,
+        at: `2026-04-${String(i + 1).padStart(2, "0")}T00:00:00Z`,
+        kind: "agent",
+      })),
+      recentToolUses: Array.from({ length: 30 }, (_, i) => ({
+        section: "opening",
+        tool: `tool-${i}-${pad(50)}`,
+      })),
+    };
+
+    const before = JSON.parse(JSON.stringify(big)) as ContextBundle;
+    expect(estimateTokens(JSON.stringify(before))).toBeGreaterThan(6000);
+
+    const trimmed = trimToBudget(big, 6000);
+    expect(trimmed._truncated).toBe(true);
+    expect(estimateTokens(JSON.stringify(trimmed))).toBeLessThanOrEqual(6000);
+    // toolUses were dropped before edits
+    expect(trimmed.recentToolUses.length).toBeLessThan(before.recentToolUses.length);
+    // sections/frontmatter/agents preserved
+    expect(trimmed.sections.length).toBe(1);
+    expect(trimmed.frontmatter.opening).toBeDefined();
+  });
+
+  it("does not mark _truncated if under budget", () => {
+    const small: ContextBundle = {
+      projectId: "p",
+      builtAt: "t",
+      brief: { summary: "s" },
+      sections: [],
+      frontmatter: {},
+      styles: {},
+      agents: {},
+      recentEdits: [],
+      recentToolUses: [],
+    };
+    const r = trimToBudget(small, 6000);
+    expect(r._truncated).toBeUndefined();
   });
 });
