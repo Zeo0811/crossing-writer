@@ -6,6 +6,8 @@ import { ToastProvider } from "./components/ui/ToastProvider";
 import { StylePanelsPage } from "./pages/StylePanelsPage.js";
 import { KnowledgePage } from "./pages/KnowledgePage.js";
 import { ConfigWorkbench } from "./pages/ConfigWorkbench";
+import { SettingsPage } from "./pages/SettingsPage";
+import { AppShell } from "./components/layout/AppShell";
 import { MockApp } from "./mock/MockApp";
 
 const qc = new QueryClient();
@@ -30,13 +32,16 @@ export function App() {
     <ToastProvider>
       <QueryClientProvider client={qc}>
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<ProjectList />} />
-            <Route path="/projects/:id" element={<ProjectWorkbench />} />
-            <Route path="/style-panels" element={<StylePanelsPage />} />
-            <Route path="/knowledge" element={<KnowledgePage />} />
-            <Route path="/config" element={<ConfigWorkbench />} />
-          </Routes>
+          <AppShell>
+            <Routes>
+              <Route path="/" element={<ProjectList />} />
+              <Route path="/projects/:id" element={<ProjectWorkbench />} />
+              <Route path="/style-panels" element={<StylePanelsPage />} />
+              <Route path="/knowledge" element={<KnowledgePage />} />
+              <Route path="/config" element={<ConfigWorkbench />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Routes>
+          </AppShell>
         </BrowserRouter>
       </QueryClientProvider>
     </ToastProvider>

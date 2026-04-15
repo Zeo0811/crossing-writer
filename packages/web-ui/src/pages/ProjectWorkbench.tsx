@@ -28,7 +28,7 @@ import { WriterProgressPanel } from "../components/writer/WriterProgressPanel";
 import { ArticleEditor } from "../components/writer/ArticleEditor";
 import { ProjectOverridePanel } from "../components/config/ProjectOverridePanel";
 import { ContextChip } from "../components/project/ContextChip";
-import { TopNav } from "../components/layout/TopNav";
+import { PhaseSteps } from "../components/layout/PhaseSteps";
 import { Button } from "../components/ui/Button";
 import { Chip } from "../components/ui/Chip";
 
@@ -298,7 +298,7 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
   return (
     <div
       data-testid="page-project-workbench"
-      className="h-screen flex flex-col bg-bg-0 text-body"
+      className="rounded border border-[var(--hair)] bg-[var(--bg-1)] overflow-hidden flex flex-col"
     >
       {toast && (
         <div
@@ -316,9 +316,6 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
           </button>
         </div>
       )}
-      <div className="px-4 pt-4">
-        <TopNav breadcrumb={["projects", project.name]} />
-      </div>
       <ProjectChecklist
         items={checklistData?.items ?? []}
         collapsed={checklistCollapsed}
@@ -327,7 +324,7 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
       />
       <header
         data-testid="pw-sidebar-header"
-        className="p-4 border-b bg-bg-1 flex items-center gap-3 border-hair"
+        className="px-6 py-3 border-b bg-[var(--bg-1)] flex items-center gap-3 border-[var(--hair)]"
       >
         {!propProjectId && (
           <Link to="/" className="text-sm text-meta hover:text-accent no-underline">
@@ -355,6 +352,10 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
           ⚙
         </button>
       </header>
+
+      <div className="px-6 py-4 border-b border-[var(--hair)]">
+        <PhaseSteps status={project.status} />
+      </div>
 
       <div className="flex-1 flex overflow-hidden">
         {/* 左侧：各阶段内容 */}

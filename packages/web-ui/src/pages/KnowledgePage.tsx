@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { WikiTree } from "../components/wiki/WikiTree.js";
 import { WikiPagePreview } from "../components/wiki/WikiPagePreview.js";
 import { WikiSearchBox } from "../components/wiki/WikiSearchBox.js";
@@ -63,15 +62,16 @@ export function KnowledgePage() {
   };
 
   return (
-    <div data-testid="page-knowledge" className="flex flex-col h-screen bg-bg-0 text-body">
-      <div className="flex gap-4 border-b border-hair px-4 py-2 items-center bg-bg-1">
-        <Link to="/" className="text-sm text-meta hover:text-accent no-underline">← 返回项目</Link>
-        <h1 className="text-lg font-semibold m-0 text-heading">知识库</h1>
-        <button type="button" role="tab" aria-selected={tab === "browse"} onClick={() => setTab("browse")} className={`px-3 py-1 rounded-[2px] cursor-pointer border-0 ${tab === "browse" ? "bg-accent-fill text-accent font-semibold" : "bg-transparent text-body hover:text-accent"}`}>Browse</button>
-        <button type="button" role="tab" aria-selected={tab === "ingest"} onClick={() => setTab("ingest")} className={`px-3 py-1 rounded-[2px] cursor-pointer border-0 ${tab === "ingest" ? "bg-accent-fill text-accent font-semibold" : "bg-transparent text-body hover:text-accent"}`}>Ingest</button>
-        <div className="ml-auto text-xs text-meta font-mono-term">
-          {status && `${status.total} pages · last_ingest=${status.last_ingest_at ?? "never"}`}
+    <div data-testid="page-knowledge" className="rounded border border-[var(--hair)] bg-[var(--bg-1)] overflow-hidden flex flex-col">
+      <header className="flex items-center justify-between px-6 h-12 border-b border-[var(--hair)]">
+        <h1 className="text-base font-semibold text-[var(--heading)]">知识库</h1>
+        <div className="text-xs text-[var(--meta)]" style={{ fontFamily: "var(--font-mono)" }}>
+          {status && `${status.total} 条 · 上次入库 ${status.last_ingest_at ?? "—"}`}
         </div>
+      </header>
+      <div className="flex items-center gap-1 px-6 pt-3 border-b border-[var(--hair)]">
+        <button type="button" role="tab" aria-selected={tab === "browse"} onClick={() => setTab("browse")} className={`px-4 py-2.5 text-sm border-b-2 -mb-px ${tab === "browse" ? "border-[var(--accent)] text-[var(--heading)]" : "border-transparent text-[var(--meta)] hover:text-[var(--heading)]"}`}>浏览</button>
+        <button type="button" role="tab" aria-selected={tab === "ingest"} onClick={() => setTab("ingest")} className={`px-4 py-2.5 text-sm border-b-2 -mb-px ${tab === "ingest" ? "border-[var(--accent)] text-[var(--heading)]" : "border-transparent text-[var(--meta)] hover:text-[var(--heading)]"}`}>入库</button>
       </div>
 
       {tab === "browse" && (

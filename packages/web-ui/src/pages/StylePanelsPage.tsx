@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { getAccounts, listStylePanels, type AccountRow, type StylePanelEntry, type DistillBody } from "../api/style-panels-client.js";
 import { StylePanelList } from "../components/style-panels/StylePanelList.js";
 import { AccountCandidateList } from "../components/style-panels/AccountCandidateList.js";
@@ -23,11 +22,11 @@ export function StylePanelsPage() {
   const distilledIds = new Set(panels.map((p) => p.id));
 
   return (
-    <div data-testid="page-style-panels" className="max-w-5xl mx-auto p-6 space-y-5 min-h-screen bg-bg-0 text-body">
-      <header className="flex items-center justify-between border-b border-hair pb-3">
-        <h1 className="text-xl font-semibold m-0 text-accent font-pixel tracking-[0.04em]">风格面板</h1>
-        <Link to="/" className="text-sm text-meta hover:text-accent no-underline">← 返回项目列表</Link>
+    <div data-testid="page-style-panels" className="rounded border border-[var(--hair)] bg-[var(--bg-1)] overflow-hidden">
+      <header className="flex items-center justify-between px-6 h-12 border-b border-[var(--hair)]">
+        <h1 className="text-base font-semibold text-[var(--heading)]">风格</h1>
       </header>
+      <div className="p-6 space-y-5">
 
       {mode.kind === "form" ? (
         <DistillForm
@@ -54,6 +53,7 @@ export function StylePanelsPage() {
           </section>
         </>
       )}
+      </div>
     </div>
   );
 }

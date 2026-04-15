@@ -118,7 +118,7 @@ export function TopBar() {
   const claudeStatus: "ready" | "starting" | "down" =
     m.cliHealth === "ok" ? "ready" : m.cliHealth === "slow" ? "starting" : "down";
   const codexStatus: "ready" | "starting" | "down" =
-    m.cliHealth === "ok" ? "ready" : m.cliHealth === "slow" ? "ready" : "starting";
+    m.cliHealth === "ok" ? "ready" : m.cliHealth === "slow" ? "ready" : "down";
 
   return (
     <header className="flex items-center gap-6 rounded border border-[var(--hair)] bg-[var(--bg-1)] py-3 px-[18px]">

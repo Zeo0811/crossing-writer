@@ -10,8 +10,8 @@ export const MISSION_CANDIDATES: MissionCandidate[] = [
   {
     id: "mc-1",
     title: "AI 写代码的真正分水岭，是「我让它干什么」",
-    hook: "Cursor 不是更聪明的补全器，它是一个能"接管整段任务"的同事。",
-    why: "把"工具升级"叙事换成"权责变化"叙事，避开同质化跑分。",
+    hook: "Cursor 不是更聪明的补全器，它是一个能「接管整段任务」的同事。",
+    why: "把「工具升级」叙事换成「权责变化」叙事，避开同质化跑分。",
     angle: "权责变化",
   },
   {
@@ -24,8 +24,8 @@ export const MISSION_CANDIDATES: MissionCandidate[] = [
   {
     id: "mc-3",
     title: "我把 Cursor 关掉一周，发现自己已经不会写代码了",
-    hook: "比"被 AI 替代"更值得警惕的，是"被 AI 重塑"。",
-    why: "反向叙事制造话题感，配合"克制使用 AI"的人文视角。",
+    hook: "比「被 AI 替代」更值得警惕的，是「被 AI 重塑」。",
+    why: "反向叙事制造话题感，配合「克制使用 AI」的人文视角。",
     angle: "反向警示",
   },
 ];

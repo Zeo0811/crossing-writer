@@ -10,7 +10,24 @@ export type ProjectStatus =
   | "round2_running"
   | "round2_failed"
   | "awaiting_mission_pick"
-  | "mission_approved";
+  | "mission_approved"
+  | "awaiting_overview_input"
+  | "overview_analyzing"
+  | "overview_ready"
+  | "overview_failed"
+  | "awaiting_case_expert_selection"
+  | "case_planning_running"
+  | "case_planning_failed"
+  | "case_synthesizing"
+  | "awaiting_case_selection"
+  | "case_plan_approved"
+  | "evidence_collecting"
+  | "evidence_ready"
+  | "writing_configuring"
+  | "writing_running"
+  | "writing_ready"
+  | "writing_editing"
+  | "writing_failed";
 
 export type ProjectStage = "intake" | "mission" | "completed";
 
