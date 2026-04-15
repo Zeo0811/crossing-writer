@@ -8,6 +8,7 @@ import { ExpertRegistry } from "../src/services/expert-registry.js";
 import { runMission } from "../src/services/mission-orchestrator.js";
 
 vi.mock("@crossing/agents", () => ({
+  stripAgentPreamble: (s: string) => s,
   BriefAnalyst: vi.fn().mockImplementation(() => ({
     analyze: () => ({
       text: "---\ntype: brief_summary\n---\n# ok",

@@ -6,6 +6,7 @@ import Fastify from "fastify";
 import Database from "better-sqlite3";
 
 vi.mock("@crossing/agents", () => ({
+  stripAgentPreamble: (s: string) => s,
   StyleDistillerStructureAgent: vi.fn().mockImplementation(() => ({
     distill: vi.fn().mockResolvedValue({
       text: "一、核心定位\n十字路口定位是AI产品观察。\n二、开头写法\n数据派开头。\n三、结构骨架\n开头-cases-结尾。\n四、实测段落写法\n每case 一个小节。\n五、语气 tone\n冷静克制。\n六、行业观察段 / 收束段\n偏留白。\n七、视觉/排版元素\n加粗判断句。\n八、禁区\n不用感叹号。\n九、给 Writer Agent 的一句话 system prompt 提炼\n写得像十字路口。\n十、待补\n",

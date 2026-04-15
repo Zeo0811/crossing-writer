@@ -9,6 +9,7 @@ const round1Spy = vi.fn();
 const synthSpy = vi.fn();
 
 vi.mock("@crossing/agents", () => ({
+  stripAgentPreamble: (s: string) => s,
   CasePlannerExpert: vi.fn().mockImplementation((opts: any) => ({
     name: opts.name,
     round1: async (input: any) => {

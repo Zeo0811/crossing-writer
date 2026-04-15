@@ -12,6 +12,7 @@ const synthSpy = vi.fn();
 const aggregateSpy = vi.fn();
 
 vi.mock("@crossing/agents", () => ({
+  stripAgentPreamble: (s: string) => s,
   TopicExpert: vi.fn().mockImplementation((opts: any) => ({
     round1: (input: any) => {
       round1Spy({ name: opts.name, ...input });

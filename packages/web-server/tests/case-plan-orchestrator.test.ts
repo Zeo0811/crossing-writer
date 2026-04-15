@@ -6,6 +6,7 @@ import { ProjectStore } from "../src/services/project-store.js";
 import { runCasePlan } from "../src/services/case-plan-orchestrator.js";
 
 vi.mock("@crossing/agents", () => ({
+  stripAgentPreamble: (s: string) => s,
   CasePlannerExpert: vi.fn().mockImplementation((opts: any) => ({
     name: opts.name,
     round1: async () => ({ text: `# Case by ${opts.name}`, meta: { cli: "claude", model: "opus", durationMs: 50 } }),

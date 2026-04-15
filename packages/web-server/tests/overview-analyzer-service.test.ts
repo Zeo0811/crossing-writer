@@ -7,6 +7,7 @@ import { ImageStore } from "../src/services/image-store.js";
 import { analyzeOverview } from "../src/services/overview-analyzer-service.js";
 
 vi.mock("@crossing/agents", () => ({
+  stripAgentPreamble: (s: string) => s,
   ProductOverviewAgent: vi.fn().mockImplementation(() => ({
     analyze: async () => ({
       text: "---\ntype: product_overview\nproduct_name: X\n---\n# 产品概览\n正文",

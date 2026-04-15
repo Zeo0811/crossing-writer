@@ -29,6 +29,7 @@ const coordR2Mock = vi.fn().mockReturnValue({
 });
 
 vi.mock("@crossing/agents", () => ({
+  stripAgentPreamble: (s: string) => s,
   BriefAnalyst: vi.fn().mockImplementation(() => ({ analyze: briefAnalystMock })),
   TopicExpert: vi.fn().mockImplementation(() => ({
     round1: topicExpertRound1Mock,

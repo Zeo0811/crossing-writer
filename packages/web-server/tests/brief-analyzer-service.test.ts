@@ -6,6 +6,7 @@ import { ProjectStore } from "../src/services/project-store.js";
 import { analyzeBrief } from "../src/services/brief-analyzer-service.js";
 
 vi.mock("@crossing/agents", () => ({
+  stripAgentPreamble: (s: string) => s,
   BriefAnalyst: vi.fn().mockImplementation(() => ({
     analyze: vi.fn().mockReturnValue({
       text: "---\ntype: brief_summary\nproject_id: p\n---\n# summary\n\nOK.",

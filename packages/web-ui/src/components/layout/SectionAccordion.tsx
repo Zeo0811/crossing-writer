@@ -25,7 +25,7 @@ export function Section({
       <button onClick={onToggle}
         className={`w-full text-left px-3 py-2 ${color}`}
         disabled={status === "pending"}>
-        {title} <span className="text-xs">[{status}]</span>
+        {title}
       </button>
       {expanded && <div className="p-3 border-t">{children}</div>}
     </div>

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 
 vi.mock("@crossing/agents", () => ({
+  stripAgentPreamble: (s: string) => s,
   BriefAnalyst: class {
     analyze() { return { text: "---\ntype: brief_summary\n---\nok", meta: { cli: "codex", durationMs: 1 } }; }
   },

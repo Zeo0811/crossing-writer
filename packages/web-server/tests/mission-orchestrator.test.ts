@@ -7,6 +7,7 @@ import { ExpertRegistry } from "../src/services/expert-registry.js";
 import { runMission } from "../src/services/mission-orchestrator.js";
 
 vi.mock("@crossing/agents", () => ({
+  stripAgentPreamble: (s: string) => s,
   TopicExpert: vi.fn().mockImplementation((opts: any) => ({
     round1: vi.fn().mockReturnValue({
       text: `---\ntype: expert_round1\nexpert: ${opts.name}\n---\n# round1 ${opts.name}`,

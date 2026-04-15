@@ -17,6 +17,7 @@ vi.mock("../src/services/case-inspiration-pack-builder.js", () => ({
 }));
 
 vi.mock("@crossing/agents", () => ({
+  stripAgentPreamble: (s: string) => s,
   ProductOverviewAgent: vi.fn().mockImplementation(() => ({
     analyze: async () => ({
       text: "---\ntype: product_overview\nproduct_name: Mock\n---\n# 产品概览\nbody",

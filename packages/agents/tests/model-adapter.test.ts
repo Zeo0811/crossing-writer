@@ -18,7 +18,7 @@ function mockChild(result: SpawnResult, sideEffect?: (args: readonly string[]) =
     const child = new EventEmitter() as any;
     const stdout = new EventEmitter() as any;
     const stderr = new EventEmitter() as any;
-    const stdin = { end: (_?: unknown) => {} };
+    const stdin: any = { end: (_?: unknown) => {}, on: (_e: string, _cb: unknown) => stdin };
     child.stdout = stdout;
     child.stderr = stderr;
     child.stdin = stdin;
@@ -134,11 +134,12 @@ describe("invokeAgent with images", () => {
       const child = new EventEmitter() as any;
       const stdout = new EventEmitter() as any;
       const stderr = new EventEmitter() as any;
-      const stdin = {
+      const stdin: any = {
         end: (b?: unknown) => {
           if (b instanceof Buffer) capturedInput = b;
           else if (typeof b === "string") capturedInput = Buffer.from(b);
         },
+        on: (_e: string, _cb: unknown) => stdin,
       };
       child.stdout = stdout;
       child.stderr = stderr;
