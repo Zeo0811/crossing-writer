@@ -236,6 +236,16 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
 
   const showCandidates = status === "awaiting_mission_pick";
   const showSelected = status === "mission_approved";
+  const showExpertSelector =
+    status === "brief_ready" ||
+    status === "round1_running" ||
+    status === "round1_completed" ||
+    status === "round2_running" ||
+    status === "round2_completed";
+  const missionRunning =
+    status === "round1_running" ||
+    status === "round1_completed" ||
+    status === "round2_running";
 
   return (
     <div
@@ -347,6 +357,12 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
                       projectId={projectId}
                       selectedPath={project.mission.selected_path}
                     />
+                  ) : showExpertSelector && !missionRunning ? (
+                    <ExpertSelector projectId={projectId} onStarted={refetch} />
+                  ) : missionRunning ? (
+                    <div className="p-4 text-sm opacity-80">
+                      两轮评审运行中…看右侧 Agent 时间线进度。
+                    </div>
                   ) : null}
                 </Section>
               </div>
