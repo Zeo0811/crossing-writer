@@ -166,6 +166,7 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     vaultPath: configStore.current.vaultPath,
     sqlitePath: configStore.current.sqlitePath,
     configStore: { get: async (key: string) => configStore.current.agents?.[key] } as any,
+    contextBundleService,
   });
 
   registerOverviewRoutes(app, {
