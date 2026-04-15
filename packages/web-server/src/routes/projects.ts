@@ -1,7 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { ProjectConflictError, ConfirmationMismatchError, type ProjectStore } from "../services/project-store.js";
+import type { ProjectChecklistService } from "../services/project-checklist-service.js";
 
-export interface ProjectsDeps { store: ProjectStore; }
+export interface ProjectsDeps {
+  store: ProjectStore;
+  checklistService?: ProjectChecklistService;
+}
 
 export function registerProjectsRoutes(app: FastifyInstance, deps: ProjectsDeps) {
   app.get<{ Querystring: { include_archived?: string; only_archived?: string } }>(
@@ -48,6 +52,18 @@ export function registerProjectsRoutes(app: FastifyInstance, deps: ProjectsDeps)
     if (!p) return reply.code(404).send({ error: "not found" });
     return p;
   });
+
+  app.get<{ Params: { id: string } }>(
+    "/api/projects/:id/checklist",
+    async (req, reply) => {
+      if (!deps.checklistService) {
+        return reply.code(500).send({ error: "checklist_service_unavailable" });
+      }
+      const cl = await deps.checklistService.build(req.params.id);
+      if (!cl) return reply.code(404).send({ error: "project_not_found" });
+      return cl;
+    },
+  );
 
   app.post<{ Params: { id: string } }>("/api/projects/:id/archive", async (req, reply) => {
     try {

@@ -23,6 +23,7 @@ import { registerWriterRewriteSelectionRoutes } from "./routes/writer-rewrite-se
 import { createAgentConfigStore } from "./services/agent-config-store.js";
 import { StylePanelStore } from "./services/style-panel-store.js";
 import { ProjectOverrideStore } from "./services/project-override-store.js";
+import { ProjectChecklistService } from "./services/project-checklist-service.js";
 import { registerConfigAgentsRoutes } from "./routes/config-agents.js";
 import { registerConfigStylePanelsRoutes } from "./routes/config-style-panels.js";
 import { registerConfigStylePanelsDistillRoutes } from "./routes/config-style-panels-distill.js";
@@ -50,7 +51,6 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
   app.decorate("projectStore", store);
   const imageStore = new ImageStore(cfg.projectsDir);
   app.decorate("imageStore", imageStore);
-  registerProjectsRoutes(app, { store });
   registerBriefRoutes(app, {
     store,
     projectsDir: cfg.projectsDir,
@@ -125,6 +125,15 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     );
   }
   const projectOverrideStore = new ProjectOverrideStore(configStore.current.projectsDir);
+
+  const checklistService = new ProjectChecklistService({
+    projectStore: store,
+    stylePanelStore,
+    agentConfigStore,
+    projectOverrideStore,
+    projectsDir: configStore.current.projectsDir,
+  });
+  registerProjectsRoutes(app, { store, checklistService });
 
   registerWriterRoutes(app, {
     store,
