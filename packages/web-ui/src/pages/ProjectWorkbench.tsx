@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getProject } from "../api/client";
+import { ProjectChecklist, type ChecklistItem } from "../components/project/ProjectChecklist";
+import { useProjectChecklist } from "../hooks/useProjectChecklist";
 import { useProjectStream } from "../hooks/useProjectStream";
 import { BriefIntakeForm } from "../components/right/BriefIntakeForm";
 import { ExpertSelector } from "../components/right/ExpertSelector";
@@ -171,6 +173,37 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [selectedEvidenceCase, setSelectedEvidenceCase] = useState<string | null>(null);
   const { events, activeAgents, connectionState, lastEventTs } = useProjectStream(projectId);
+  const { data: checklistData } = useProjectChecklist(projectId);
+
+  const storageKey = `checklist_collapsed_${projectId}`;
+  const [checklistCollapsed, setChecklistCollapsed] = useState<boolean>(() => {
+    if (!projectId) return false;
+    try { return typeof localStorage !== "undefined" && localStorage.getItem(`checklist_collapsed_${projectId}`) === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    try {
+      setChecklistCollapsed(localStorage.getItem(`checklist_collapsed_${projectId}`) === "1");
+    } catch { /* noop */ }
+  }, [projectId]);
+  const toggleChecklistCollapsed = useCallback(() => {
+    setChecklistCollapsed((c) => {
+      const next = !c;
+      try { localStorage.setItem(storageKey, next ? "1" : "0"); } catch { /* noop */ }
+      return next;
+    });
+  }, [storageKey]);
+
+  const handleChipClick = useCallback((item: ChecklistItem) => {
+    if (!item.link) return;
+    if (item.link === "config") {
+      setSettingsOpen(true);
+      return;
+    }
+    if (typeof document !== "undefined") {
+      const el = document.querySelector(`[data-section="${item.link}"]`);
+      (el as HTMLElement | null)?.scrollIntoView?.({ behavior: "smooth" });
+    }
+  }, []);
 
   function refetch() {
     getProject(projectId).then(setProject).catch(() => {});
@@ -211,6 +244,12 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
       <div className="px-4 pt-4">
         <TopNav breadcrumb={["projects", project.name]} />
       </div>
+      <ProjectChecklist
+        items={checklistData?.items ?? []}
+        collapsed={checklistCollapsed}
+        onToggleCollapsed={toggleChecklistCollapsed}
+        onChipClick={handleChipClick}
+      />
       <header
         data-testid="pw-sidebar-header"
         className="p-4 border-b bg-bg-1 flex items-center gap-3 border-hair"
@@ -282,54 +321,66 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
             <div className="text-gray-500">右侧上传 Brief 开始</div>
           ) : (
             <SectionAccordion>
-              <Section title={<>Brief 摘要 <SectionStatusBadge sectionKey="brief" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("brief", status)}>
-                {(status === "brief_uploaded" || status === "brief_analyzing") ? (
-                  <div className="text-gray-500">Brief Analyst 运行中…（稍候 1-2 分钟）</div>
-                ) : (
-                  <>
-                    <BriefSummaryCard projectId={projectId} />
-                    <TopicExpertSummonButton
+              <div data-section="brief">
+                <Section title={<>Brief 摘要 <SectionStatusBadge sectionKey="brief" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("brief", status)}>
+                  {(status === "brief_uploaded" || status === "brief_analyzing") ? (
+                    <div className="text-gray-500">Brief Analyst 运行中…（稍候 1-2 分钟）</div>
+                  ) : (
+                    <>
+                      <BriefSummaryCard projectId={projectId} />
+                      <TopicExpertSummonButton
+                        projectId={projectId}
+                        briefSummary={project?.brief?.summary ?? undefined}
+                      />
+                    </>
+                  )}
+                </Section>
+              </div>
+
+              <div data-section="mission">
+                <Section title={<>Mission 选定 <SectionStatusBadge sectionKey="mission" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("mission", status)}>
+                  {showCandidates && !showSelected ? (
+                    <MissionCandidatesPanel projectId={projectId} onSelected={refetch} />
+                  ) : showSelected && project.mission?.selected_path ? (
+                    <SelectedMissionView
                       projectId={projectId}
-                      briefSummary={project?.brief?.summary ?? undefined}
+                      selectedPath={project.mission.selected_path}
                     />
-                  </>
-                )}
-              </Section>
+                  ) : null}
+                </Section>
+              </div>
 
-              <Section title={<>Mission 选定 <SectionStatusBadge sectionKey="mission" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("mission", status)}>
-                {showCandidates && !showSelected ? (
-                  <MissionCandidatesPanel projectId={projectId} onSelected={refetch} />
-                ) : showSelected && project.mission?.selected_path ? (
-                  <SelectedMissionView
-                    projectId={projectId}
-                    selectedPath={project.mission.selected_path}
-                  />
-                ) : null}
-              </Section>
+              <div data-section="overview">
+                <Section title={<>产品概览 <SectionStatusBadge sectionKey="overview" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("overview", status)}>
+                  <ProductOverviewCard projectId={projectId} status={status} />
+                </Section>
+              </div>
 
-              <Section title={<>产品概览 <SectionStatusBadge sectionKey="overview" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("overview", status)}>
-                <ProductOverviewCard projectId={projectId} status={status} />
-              </Section>
+              <div data-section="case">
+                <Section title={<>Case 列表 <SectionStatusBadge sectionKey="case" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("case", status)}>
+                  <CaseListPanel projectId={projectId} />
+                </Section>
+              </div>
 
-              <Section title={<>Case 列表 <SectionStatusBadge sectionKey="case" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("case", status)}>
-                <CaseListPanel projectId={projectId} />
-              </Section>
+              <div data-section="evidence">
+                <Section title={<>Evidence <SectionStatusBadge sectionKey="evidence" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("evidence", status)}>
+                  {(status === "evidence_collecting" || status === "evidence_ready" || status === "case_plan_approved") ? (
+                    <EvidenceSection
+                      projectId={projectId}
+                      selectedCaseId={selectedEvidenceCase}
+                      onSelectCase={setSelectedEvidenceCase}
+                    />
+                  ) : (
+                    <div className="text-xs text-gray-400">case_plan_approved 后启用</div>
+                  )}
+                </Section>
+              </div>
 
-              <Section title={<>Evidence <SectionStatusBadge sectionKey="evidence" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("evidence", status)}>
-                {(status === "evidence_collecting" || status === "evidence_ready" || status === "case_plan_approved") ? (
-                  <EvidenceSection
-                    projectId={projectId}
-                    selectedCaseId={selectedEvidenceCase}
-                    onSelectCase={setSelectedEvidenceCase}
-                  />
-                ) : (
-                  <div className="text-xs text-gray-400">case_plan_approved 后启用</div>
-                )}
-              </Section>
-
-              <Section title={<>Article <SectionStatusBadge sectionKey="article" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("article", status)}>
-                <ArticleSection projectId={projectId} status={status} />
-              </Section>
+              <div data-section="article">
+                <Section title={<>Article <SectionStatusBadge sectionKey="article" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("article", status)}>
+                  <ArticleSection projectId={projectId} status={status} />
+                </Section>
+              </div>
             </SectionAccordion>
           )}
         </div>

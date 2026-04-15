@@ -47,7 +47,7 @@ export function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () =
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex" data-modal-root="">
+    <div className="fixed inset-0 z-40 flex" data-modal-root="" data-testid="settings-drawer">
       <div className="flex-1 bg-[rgba(0,0,0,0.55)] backdrop-blur-[6px]" onClick={onClose} />
       <aside className="w-96 bg-bg-1 border-l border-hair text-body shadow-xl overflow-y-auto p-4 space-y-4">
         <header className="flex items-center justify-between">
