@@ -1,8 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getProject } from "../api/client";
-import { ProjectChecklist, type ChecklistItem } from "../components/project/ProjectChecklist";
-import { useProjectChecklist } from "../hooks/useProjectChecklist";
 import { useProjectStream } from "../hooks/useProjectStream";
 import { BriefIntakeForm } from "../components/right/BriefIntakeForm";
 import { ExpertSelector } from "../components/right/ExpertSelector";
@@ -13,89 +11,60 @@ import { TopicExpertSummonButton } from "../components/project/TopicExpertSummon
 import { MissionCandidatesPanel } from "../components/left/MissionCandidateCard";
 import { SelectedMissionView } from "../components/left/SelectedMissionView";
 import { ProductOverviewCard } from "../components/left/ProductOverviewCard";
-import { SectionAccordion, Section } from "../components/layout/SectionAccordion";
-import { SectionStatusBadge } from "../components/status/SectionStatusBadge";
 import { OverviewIntakeForm } from "../components/right/OverviewIntakeForm";
 import { CaseExpertSelector } from "../components/right/CaseExpertSelector";
 import { CaseListPanel } from "../components/left/CaseListPanel";
 import { CaseSelectedGuide } from "../components/right/CaseSelectedGuide";
 import { SettingsDrawer } from "../components/settings/SettingsDrawer";
 import { EvidenceSection } from "../components/evidence/EvidenceSection";
-import { EvidenceIntakeForm } from "../components/evidence/EvidenceIntakeForm";
-import { ArticleSection } from "../components/writer/ArticleSection";
 import { WriterConfigForm } from "../components/writer/WriterConfigForm";
 import { WriterProgressPanel } from "../components/writer/WriterProgressPanel";
 import { ArticleEditor } from "../components/writer/ArticleEditor";
 import { ProjectOverridePanel } from "../components/config/ProjectOverridePanel";
 import { ContextChip } from "../components/project/ContextChip";
-import { PhaseSteps } from "../components/layout/PhaseSteps";
-import { Button } from "../components/ui/Button";
-import { Chip } from "../components/ui/Chip";
+import { PhaseSteps, statusBadge } from "../components/layout/PhaseSteps";
 
-type SecStat = "completed" | "active" | "pending";
-
-const SECTION_ORDER: Array<{ key: string; activeStates: string[] }> = [
-  {
-    key: "brief",
-    activeStates: ["brief_uploaded", "brief_analyzing", "brief_ready", "awaiting_expert_selection", "round1_running", "synthesizing", "round2_running"],
-  },
-  {
-    key: "mission",
-    activeStates: ["awaiting_mission_pick"],
-  },
-  {
-    key: "overview",
-    activeStates: ["mission_approved", "awaiting_overview_input", "overview_analyzing", "overview_ready", "overview_failed"],
-  },
-  {
-    key: "case",
-    activeStates: ["awaiting_case_expert_selection", "case_planning_running", "case_planning_failed", "case_synthesizing", "awaiting_case_selection", "case_plan_approved"],
-  },
-  {
-    key: "evidence",
-    activeStates: ["evidence_collecting", "evidence_ready"],
-  },
-  {
-    key: "article",
-    activeStates: ["writing_configuring", "writing_running", "writing_ready", "writing_editing", "writing_failed"],
-  },
-];
-
-function sectionStatusFor(key: string, projectStatus: string): SecStat {
-  const currentIdx = SECTION_ORDER.findIndex((s) => s.activeStates.includes(projectStatus));
-  const myIdx = SECTION_ORDER.findIndex((s) => s.key === key);
-  if (myIdx < 0) return "pending";
-  if (currentIdx < 0) return "pending";
-  if (myIdx < currentIdx) return "completed";
-  if (myIdx === currentIdx) return "active";
-  return "pending";
+interface FailureInfo {
+  agent?: string;
+  cli?: string;
+  model?: string;
+  error?: string;
 }
 
-function findLastFailure(events: any[]): { agent?: string; cli?: string; model?: string | null; error?: string } | null {
+function findLastFailure(events: any[]): FailureInfo | null {
   for (let i = events.length - 1; i >= 0; i--) {
-    const e = events[i];
-    if (typeof e.type === "string" && e.type.endsWith(".failed")) {
-      const d = e.data ?? e;
-      return { agent: d.agent, cli: d.cli, model: d.model, error: d.error };
+    const e: any = events[i];
+    if (typeof e?.type === "string" && e.type.endsWith(".failed")) {
+      return {
+        agent: e.data?.agent ?? e.agent,
+        cli: e.data?.cli ?? e.cli,
+        model: e.data?.model ?? e.model,
+        error: e.data?.error ?? e.error,
+      };
     }
   }
   return null;
 }
 
-function FailureCard({ title, fail, onRetry }: { title: string; fail: any; onRetry?: () => void }) {
+function FailureCard({ title, fail, onRetry }: { title: string; fail: FailureInfo | null; onRetry?: () => void }) {
   return (
-    <div className="p-4 bg-bg-2 border border-red rounded">
-      <h3 className="font-semibold text-red">{title}</h3>
-      {fail?.agent && (
-        <p className="text-xs text-meta mt-1">
-          {fail.agent} · {fail.cli}/{fail.model ?? "?"}
-        </p>
-      )}
-      <pre className="text-xs whitespace-pre-wrap mt-2 max-h-48 overflow-auto bg-bg-1 p-2 border border-hair text-body">
-        {fail?.error ?? "未捕获错误（见右下时间线）"}
+    <div className="rounded border border-[var(--red)] bg-[rgba(255,107,107,0.05)] p-5 space-y-3">
+      <div className="flex items-start gap-3">
+        <span className="text-xl text-[var(--red)]">⚠</span>
+        <div className="flex-1">
+          <h3 className="font-semibold text-[var(--red)]">{title}</h3>
+          {fail?.agent && (
+            <p className="text-xs text-[var(--meta)] mt-1">
+              {fail.agent} · {fail.cli}/{fail.model ?? "?"}
+            </p>
+          )}
+        </div>
+      </div>
+      <pre className="text-xs whitespace-pre-wrap max-h-48 overflow-auto bg-[var(--log-bg)] p-3 border border-[var(--hair)] rounded text-[var(--body)]" style={{ fontFamily: "var(--font-mono)" }}>
+        {fail?.error ?? "未捕获错误"}
       </pre>
       {onRetry && (
-        <button type="button" onClick={onRetry} className="mt-2 bg-red text-accent-on px-3 py-1 text-sm border-0 rounded cursor-pointer">
+        <button type="button" onClick={onRetry} className="px-4 py-2 rounded bg-[var(--accent)] text-[var(--accent-on)] text-sm font-semibold">
           重试
         </button>
       )}
@@ -103,84 +72,245 @@ function FailureCard({ title, fail, onRetry }: { title: string; fail: any; onRet
   );
 }
 
-function rightPanel(status: string, projectId: string, onRefetch: () => void, events: any[]) {
-  // SP-02 Brief/Mission panels
-  if (status === "created") {
-    return <BriefIntakeForm projectId={projectId} onUploaded={onRefetch} />;
-  }
-  if (status === "brief_uploaded" || status === "brief_analyzing") {
-    return (
-      <div className="p-4 bg-white rounded border">Brief Analyst 运行中…</div>
-    );
-  }
-  if (status === "brief_ready" || status === "awaiting_expert_selection") {
-    return <ExpertSelector projectId={projectId} onStarted={onRefetch} />;
-  }
-  if (
-    status === "round1_running" ||
-    status === "synthesizing" ||
-    status === "round2_running"
-  ) {
-    return (
-      <div className="p-4 bg-white rounded border text-gray-500">
-        专家评审中（见下面时间线）
-      </div>
-    );
-  }
+function PhasePanel({ children, label }: { children: React.ReactNode; label?: string }) {
+  return (
+    <div className="rounded bg-[var(--bg-2)] p-5">
+      {label && <div className="text-sm font-semibold text-[var(--heading)] mb-3">{label}</div>}
+      {children}
+    </div>
+  );
+}
 
-  // SP-03 Overview/Case panels
+function RunningView({ label, desc, children }: { label: string; desc?: string; children?: React.ReactNode }) {
+  return (
+    <div className="rounded bg-[var(--bg-2)] p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-sm text-[var(--heading)] font-semibold flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
+            {label}
+          </div>
+          {desc && <div className="text-xs text-[var(--meta)] mt-1">{desc}</div>}
+        </div>
+      </div>
+      <div className="space-y-2">
+        {[80, 60, 90, 50].map((w, i) => (
+          <span key={i} className="block h-3 rounded bg-[var(--bg-1)] overflow-hidden">
+            <span className="block h-full bg-[var(--accent-fill)] animate-pulse" style={{ width: `${w}%`, animationDelay: `${i * 0.12}s` }} />
+          </span>
+        ))}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+interface PhaseViewProps {
+  project: any;
+  projectId: string;
+  events: any[];
+  refetch: () => void;
+  selectedEvidenceCase: string | null;
+  setSelectedEvidenceCase: (s: string | null) => void;
+  missingBindings: Array<{ agentKey: string; reason?: string }>;
+}
+
+function renderPhaseView(props: PhaseViewProps): React.ReactNode {
+  const { project, projectId, events, refetch, selectedEvidenceCase, setSelectedEvidenceCase } = props;
+  const status = project.status;
+
   switch (status) {
+    case "created":
+      return <PhasePanel label="录入需求"><BriefIntakeForm projectId={projectId} onUploaded={refetch} /></PhasePanel>;
+
+    case "brief_uploaded":
+    case "brief_analyzing":
+      return <RunningView label="正在解析简报" desc="Brief Analyst 在抽取产品名 / 调性 / 卖点…" />;
+
+    case "brief_ready":
+      return (
+        <div className="space-y-4">
+          <PhasePanel label="brief.md">
+            <BriefSummaryCard projectId={projectId} />
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                type="button"
+                className="text-xs text-[var(--accent)] hover:underline"
+                onClick={async () => {
+                  const res = await fetch(`/api/projects/${projectId}/brief/reanalyze`, { method: "POST" });
+                  if (res.ok) refetch();
+                }}
+              >
+                重新解析
+              </button>
+              <TopicExpertSummonButton projectId={projectId} briefSummary={project?.brief?.summary ?? undefined} />
+            </div>
+          </PhasePanel>
+          <PhasePanel label="挑一位选题专家 →">
+            <ExpertSelector projectId={projectId} onStarted={refetch} />
+          </PhasePanel>
+        </div>
+      );
+
+    case "awaiting_expert_selection":
+      return <PhasePanel label="挑一位选题专家"><ExpertSelector projectId={projectId} onStarted={refetch} /></PhasePanel>;
+
+    case "round1_running":
+    case "synthesizing":
+    case "round2_running":
+      return (
+        <RunningView
+          label={status === "synthesizing" ? "Coordinator 综合中…" : status === "round2_running" ? "第二轮收敛中…" : "第一轮思考中…"}
+          desc="下方时间线可展开看实时 log"
+        />
+      );
+
+    case "round1_failed":
+    case "round2_failed":
+      return (
+        <FailureCard
+          title="专家团运行失败"
+          fail={findLastFailure(events)}
+          onRetry={async () => { await fetch(`/api/projects/${projectId}/mission/retry`, { method: "POST" }); refetch(); }}
+        />
+      );
+
+    case "awaiting_mission_pick":
+      return <PhasePanel label="挑一条选题"><MissionCandidatesPanel projectId={projectId} onSelected={refetch} /></PhasePanel>;
+
     case "mission_approved":
+      return (
+        <div className="space-y-4">
+          {project.mission?.selected_path && (
+            <PhasePanel label="已选定选题">
+              <SelectedMissionView projectId={projectId} selectedPath={project.mission.selected_path} />
+            </PhasePanel>
+          )}
+          <PhasePanel label="下一步：补充产品资料 →">
+            <OverviewIntakeForm projectId={projectId} />
+          </PhasePanel>
+        </div>
+      );
+
     case "awaiting_overview_input":
-      return <OverviewIntakeForm projectId={projectId} />;
+      return <PhasePanel label="补充产品资料"><OverviewIntakeForm projectId={projectId} /></PhasePanel>;
+
+    case "overview_analyzing":
+      return <RunningView label="正在生成产品概览" desc="Overview Analyst 在抓取并归纳…" />;
+
     case "overview_failed":
       return (
-        <div className="space-y-4 p-4">
+        <div className="space-y-4">
           <FailureCard
             title="产品概览生成失败"
             fail={findLastFailure(events)}
             onRetry={async () => {
               const { generateOverview } = await import("../api/client");
-              try {
-                await generateOverview(projectId, { productUrls: [], userDescription: "" });
-                onRefetch();
-              } catch (e) {
-                window.alert?.(`重试失败：${String(e)}`);
-              }
+              try { await generateOverview(projectId, { productUrls: [], userDescription: "" }); refetch(); } catch {}
             }}
           />
-          <div className="text-xs text-meta px-1">或在下面修改 URL / 补充描述 / 加/删图片后再提交：</div>
-          <OverviewIntakeForm projectId={projectId} />
+          <PhasePanel label="或调整后重新提交"><OverviewIntakeForm projectId={projectId} /></PhasePanel>
         </div>
       );
-    case "overview_analyzing":
-      return <div className="p-4">正在生成产品概览…</div>;
+
     case "overview_ready":
       return (
-        <div className="p-4 space-y-4">
-          <div className="text-sm text-meta">✅ 概览已生成，可在左侧批准进入 Case 规划。如需补充材料再生成：</div>
-          <OverviewIntakeForm projectId={projectId} />
+        <div className="space-y-4">
+          <PhasePanel label="产品概览"><ProductOverviewCard projectId={projectId} status={status} /></PhasePanel>
+          <PhasePanel label="补充材料（可选）"><OverviewIntakeForm projectId={projectId} /></PhasePanel>
         </div>
       );
+
     case "awaiting_case_expert_selection":
-      return <CaseExpertSelector projectId={projectId} />;
-    case "case_planning_failed":
-      return (
-        <div className="space-y-4 p-4">
-          <FailureCard title="Case 规划失败" fail={findLastFailure(events)} />
-          <CaseExpertSelector projectId={projectId} />
-        </div>
-      );
+      return <PhasePanel label="挑一位 Case 专家"><CaseExpertSelector projectId={projectId} /></PhasePanel>;
+
     case "case_planning_running":
     case "case_synthesizing":
-      return <div className="p-4">规划中…（看右下时间线）</div>;
+      return <RunningView label={status === "case_synthesizing" ? "Case 综合中…" : "Case 规划中…"} />;
+
+    case "case_planning_failed":
+      return (
+        <div className="space-y-4">
+          <FailureCard title="Case 规划失败" fail={findLastFailure(events)} />
+          <PhasePanel label="换一位专家重试"><CaseExpertSelector projectId={projectId} /></PhasePanel>
+        </div>
+      );
+
     case "awaiting_case_selection":
-      return <div className="p-4">请在左侧选 2-4 个 Case</div>;
+      return <PhasePanel label="挑选要带入正文的 Case"><CaseListPanel projectId={projectId} /></PhasePanel>;
+
     case "case_plan_approved":
-      return <CaseSelectedGuide projectId={projectId} />;
+      return <PhasePanel label="Case 已批准，去跑真实测"><CaseSelectedGuide projectId={projectId} selectedCaseId={selectedEvidenceCase} onSelectCase={setSelectedEvidenceCase} /></PhasePanel>;
+
+    case "evidence_collecting":
+    case "evidence_ready":
+      return (
+        <PhasePanel label={status === "evidence_ready" ? "实测素材已齐备" : "制作 Case · 上传素材"}>
+          <EvidenceSection
+            projectId={projectId}
+            selectedCaseId={selectedEvidenceCase}
+            onSelectCase={setSelectedEvidenceCase}
+          />
+        </PhasePanel>
+      );
+
+    case "writing_configuring":
+      return (
+        <PhasePanel label="写作配置">
+          <WriterConfigForm
+            projectId={projectId}
+            defaults={{
+              "writer.opening": { cli: "claude", model: "opus" },
+              "writer.practice": { cli: "claude", model: "sonnet" },
+              "writer.closing": { cli: "claude", model: "opus" },
+              "practice.stitcher": { cli: "claude", model: "haiku" },
+              "style_critic": { cli: "claude", model: "opus" },
+            }}
+            onStarted={refetch}
+          />
+        </PhasePanel>
+      );
+
+    case "writing_running":
+      return (
+        <PhasePanel label="Writer 正在生成">
+          <WriterProgressPanel projectId={projectId} sectionsPlanned={["opening", "closing"]} status={status} />
+        </PhasePanel>
+      );
+
+    case "writing_ready":
+    case "writing_editing":
+      return <ArticleEditor projectId={projectId} />;
+
+    case "writing_failed":
+      return <FailureCard title="写作失败" fail={findLastFailure(events)} onRetry={refetch} />;
+
     default:
-      return null;
+      return <div className="text-[var(--meta)]">未知状态: {status}</div>;
   }
+}
+
+function ActivityDrawer({ events, connectionState, lastEventTs }: { events: any[]; connectionState: any; lastEventTs: any }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-t border-[var(--hair)]">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between px-6 py-2.5 text-xs text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"
+      >
+        <span className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
+          Agent 活动（{events.length}）
+        </span>
+        <span>{open ? "收起 ▴" : "展开 ▾"}</span>
+      </button>
+      {open && (
+        <div className="px-6 py-4 bg-[var(--bg-0)] max-h-[320px] overflow-auto">
+          <AgentTimeline events={events} connectionState={connectionState} lastEventTs={lastEventTs} />
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: string } = {}) {
@@ -192,37 +322,6 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [selectedEvidenceCase, setSelectedEvidenceCase] = useState<string | null>(null);
   const { events, activeAgents, connectionState, lastEventTs } = useProjectStream(projectId);
-  const { data: checklistData } = useProjectChecklist(projectId);
-
-  const storageKey = `checklist_collapsed_${projectId}`;
-  const [checklistCollapsed, setChecklistCollapsed] = useState<boolean>(() => {
-    if (!projectId) return false;
-    try { return typeof localStorage !== "undefined" && localStorage.getItem(`checklist_collapsed_${projectId}`) === "1"; } catch { return false; }
-  });
-  useEffect(() => {
-    try {
-      setChecklistCollapsed(localStorage.getItem(`checklist_collapsed_${projectId}`) === "1");
-    } catch { /* noop */ }
-  }, [projectId]);
-  const toggleChecklistCollapsed = useCallback(() => {
-    setChecklistCollapsed((c) => {
-      const next = !c;
-      try { localStorage.setItem(storageKey, next ? "1" : "0"); } catch { /* noop */ }
-      return next;
-    });
-  }, [storageKey]);
-
-  const handleChipClick = useCallback((item: ChecklistItem) => {
-    if (!item.link) return;
-    if (item.link === "config") {
-      setSettingsOpen(true);
-      return;
-    }
-    if (typeof document !== "undefined") {
-      const el = document.querySelector(`[data-section="${item.link}"]`);
-      (el as HTMLElement | null)?.scrollIntoView?.({ behavior: "smooth" });
-    }
-  }, []);
 
   function refetch() {
     getProject(projectId).then(setProject).catch(() => {});
@@ -235,8 +334,6 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
     return () => clearInterval(id);
   }, [projectId]);
 
-  // Refetch immediately on SSE state_changed so UI advances without waiting for 2s poll.
-  // Also surface a toast when entering a "done" state of a phase.
   const [toast, setToast] = useState<string | null>(null);
   const lastStatusRef = useRef<string | null>(null);
   useEffect(() => {
@@ -246,14 +343,14 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
       refetch();
       const toStatus: string | undefined = latest.data?.to;
       const TRANSITION_TOASTS: Record<string, string> = {
-        brief_ready: "✅ Brief 解析完成，可开始选题",
-        awaiting_mission_pick: "✅ 候选 Mission 已就绪，请选一个",
-        mission_approved: "✅ Mission 已选，下一步：产品概览",
-        overview_ready: "✅ 产品概览完成，可批准进入 Case 规划",
-        awaiting_case_expert_selection: "↪️ 选 Case 专家",
-        case_plan_approved: "✅ Case Plan 已批准，去跑真实测",
-        evidence_ready: "✅ Evidence 齐备，下一步：写作",
-        writing_ready: "✅ 初稿完成！",
+        brief_ready: "简报解析完成",
+        awaiting_mission_pick: "候选选题已就绪",
+        mission_approved: "选题已选定",
+        overview_ready: "产品概览已生成",
+        awaiting_case_expert_selection: "请挑 Case 专家",
+        case_plan_approved: "Case 计划已批准",
+        evidence_ready: "实测素材已齐",
+        writing_ready: "初稿就绪",
       };
       if (toStatus && TRANSITION_TOASTS[toStatus] && lastStatusRef.current !== toStatus) {
         lastStatusRef.current = toStatus;
@@ -265,11 +362,11 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
     }
   }, [events.length]);
 
-  if (!project) return <div>加载中...</div>;
+  if (!project) return <div className="p-12 text-center text-[var(--meta)]">加载中...</div>;
   const status = project.status;
+  const tone = statusBadge(status);
 
-  // SP-10: find last run.blocked event (if any) — cleared once a new run.started fires
-  let missingBindings: Array<{ agentKey: string; account?: string; role?: string; reason?: string }> = [];
+  let missingBindings: Array<{ agentKey: string; reason?: string }> = [];
   for (let i = events.length - 1; i >= 0; i--) {
     const e: any = events[i];
     if (e?.type === "run.blocked") {
@@ -277,45 +374,25 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
       if (Array.isArray(mb)) missingBindings = mb;
       break;
     }
-    if (e?.type === "writer.section_started") {
-      break; // new run cleared block
-    }
+    if (e?.type === "writer.section_started") break;
   }
-
-  const showCandidates = status === "awaiting_mission_pick";
-  const showSelected = status === "mission_approved";
-  const showExpertSelector =
-    status === "brief_ready" ||
-    status === "round1_running" ||
-    status === "round1_completed" ||
-    status === "round2_running" ||
-    status === "round2_completed";
-  const missionRunning =
-    status === "round1_running" ||
-    status === "round1_completed" ||
-    status === "round2_running";
 
   return (
     <div
       data-testid="page-project-workbench"
-      className="rounded border border-[var(--hair)] bg-[var(--bg-1)] overflow-hidden flex flex-col"
+      className="rounded border border-[var(--hair)] bg-[var(--bg-1)] overflow-hidden"
     >
       {toast && (
         <div
           role="status"
           data-testid="state-toast"
-          className="fixed top-4 right-4 z-50 px-4 py-2 rounded border bg-bg-1 border-accent text-body shadow-lg text-sm"
-          style={{ boxShadow: "0 4px 20px rgba(64,255,159,0.15)" }}
+          className="fixed top-16 right-4 z-50 px-4 py-2 rounded border bg-[var(--bg-1)] border-[var(--accent)] text-[var(--body)] shadow-lg text-sm"
         >
           {toast}
-          <button
-            className="ml-3 text-meta hover:text-body"
-            onClick={() => setToast(null)}
-          >
-            ✕
-          </button>
+          <button className="ml-3 text-[var(--meta)] hover:text-[var(--body)]" onClick={() => setToast(null)}>✕</button>
         </div>
       )}
+
       <header
         data-testid="pw-sidebar-header"
         className="px-6 h-12 border-b bg-[var(--bg-1)] flex items-center gap-3 border-[var(--hair)]"
@@ -325,12 +402,12 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
             ←
           </Link>
         )}
-        <h1 className="text-base font-semibold text-[var(--heading)] m-0">{project.name}</h1>
+        <h1 className="text-base font-semibold text-[var(--heading)] m-0 truncate">{project.name}</h1>
         <span
           className="text-[11px] px-2 py-0.5 rounded-sm font-medium whitespace-nowrap"
-          style={{ color: "var(--meta)", background: "var(--bg-2)" }}
+          style={{ color: tone.fg, background: tone.bg }}
         >
-          {project.status}
+          {tone.label}
         </span>
         <div className="flex-1" />
         <AgentStatusBar activeAgents={activeAgents} />
@@ -354,173 +431,37 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
       </header>
 
       <div className="px-6 py-4 border-b border-[var(--hair)]">
-        <PhaseSteps status={project.status} />
+        <PhaseSteps status={status} />
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* 左侧：各阶段内容 */}
-        <div
-          data-testid="pw-sidebar"
-          className="w-3/5 border-r overflow-auto p-6 border-[var(--hair)] bg-[var(--bg-1)]"
-        >
-          {missingBindings.length > 0 && (
-            <div
-              className="mb-4 border rounded p-4 border-red bg-[var(--bg-2)]"
-              data-testid="run-blocked-card"
-            >
-              <h3 className="font-semibold mb-2 text-red">
-                ⚠️ 无法开始
-              </h3>
-              <div className="text-sm mb-2 text-body">下列 agent 未绑定风格：</div>
-              <ul className="text-xs font-mono-term ml-4 mb-3 text-body">
-                {missingBindings.map((mb, i) => (
-                  <li key={`${mb.agentKey}-${i}`}>• {mb.agentKey}{mb.reason ? ` (${mb.reason})` : ""}</li>
-                ))}
-              </ul>
-              <div className="flex gap-2">
-                <Button
-                  variant="secondary"
-                  onClick={() => setOverrideOpen(true)}
-                >
-                  本项目专属配置
-                </Button>
-                <Link
-                  to="/config"
-                  className="text-xs px-2 py-1 border border-hair rounded no-underline text-body hover:text-accent"
-                >
-                  去配置工作台
-                </Link>
-              </div>
+      <main className="px-6 py-5">
+        {missingBindings.length > 0 && (
+          <div className="mb-4 border rounded p-4 border-[var(--red)] bg-[var(--bg-2)]">
+            <h3 className="font-semibold mb-2 text-[var(--red)]">⚠ 无法开始</h3>
+            <div className="text-sm mb-2 text-[var(--body)]">下列 agent 未绑定风格：</div>
+            <ul className="text-xs ml-4 mb-3 text-[var(--body)]" style={{ fontFamily: "var(--font-mono)" }}>
+              {missingBindings.map((mb, i) => (
+                <li key={`${mb.agentKey}-${i}`}>• {mb.agentKey}{mb.reason ? ` (${mb.reason})` : ""}</li>
+              ))}
+            </ul>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setOverrideOpen(true)} className="px-3 py-1.5 text-xs rounded border border-[var(--hair-strong)] text-[var(--meta)] hover:text-[var(--heading)]">
+                本项目专属配置
+              </button>
+              <Link to="/config" className="text-xs px-3 py-1.5 border border-[var(--hair-strong)] rounded no-underline text-[var(--meta)] hover:text-[var(--accent)]">
+                去配置工作台
+              </Link>
             </div>
-          )}
-          {status === "created" ? (
-            <div className="text-gray-500">右侧上传 Brief 开始</div>
-          ) : (
-            <SectionAccordion>
-              <div data-section="brief">
-                <Section title={<>Brief 摘要 <SectionStatusBadge sectionKey="brief" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("brief", status)}>
-                  {(status === "brief_uploaded" || status === "brief_analyzing") ? (
-                    <div className="text-gray-500">Brief Analyst 运行中…（稍候 1-2 分钟）</div>
-                  ) : (
-                    <>
-                      <BriefSummaryCard projectId={projectId} />
-                      <div className="mt-2 flex items-center gap-2">
-                        <button
-                          type="button"
-                          className="text-xs px-2 py-1 border rounded hover:bg-bg-2"
-                          onClick={async () => {
-                            const res = await fetch(`/api/projects/${projectId}/brief/reanalyze`, { method: "POST" });
-                            if (res.ok) refetch();
-                            else window.alert?.(`重新解析失败: HTTP ${res.status}`);
-                          }}
-                        >
-                          🔄 重新解析 Brief
-                        </button>
-                        <span className="text-xs text-meta">（会覆盖 brief-summary.md）</span>
-                      </div>
-                      <TopicExpertSummonButton
-                        projectId={projectId}
-                        briefSummary={project?.brief?.summary ?? undefined}
-                      />
-                    </>
-                  )}
-                </Section>
-              </div>
-
-              <div data-section="mission">
-                <Section title={<>Mission 选定 <SectionStatusBadge sectionKey="mission" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("mission", status)}>
-                  {showCandidates && !showSelected ? (
-                    <MissionCandidatesPanel projectId={projectId} onSelected={refetch} />
-                  ) : showSelected && project.mission?.selected_path ? (
-                    <SelectedMissionView
-                      projectId={projectId}
-                      selectedPath={project.mission.selected_path}
-                    />
-                  ) : showExpertSelector && !missionRunning ? (
-                    <ExpertSelector projectId={projectId} onStarted={refetch} />
-                  ) : missionRunning ? (
-                    <div className="p-4 text-sm opacity-80">
-                      两轮评审运行中…看右侧 Agent 时间线进度。
-                    </div>
-                  ) : null}
-                </Section>
-              </div>
-
-              <div data-section="overview">
-                <Section title={<>产品概览 <SectionStatusBadge sectionKey="overview" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("overview", status)}>
-                  <ProductOverviewCard projectId={projectId} status={status} />
-                </Section>
-              </div>
-
-              <div data-section="case">
-                <Section title={<>Case 列表 <SectionStatusBadge sectionKey="case" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("case", status)}>
-                  <CaseListPanel projectId={projectId} />
-                </Section>
-              </div>
-
-              <div data-section="evidence">
-                <Section title={<>Evidence <SectionStatusBadge sectionKey="evidence" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("evidence", status)}>
-                  {(status === "evidence_collecting" || status === "evidence_ready" || status === "case_plan_approved") ? (
-                    <EvidenceSection
-                      projectId={projectId}
-                      selectedCaseId={selectedEvidenceCase}
-                      onSelectCase={setSelectedEvidenceCase}
-                    />
-                  ) : (
-                    <div className="text-xs text-gray-400">case_plan_approved 后启用</div>
-                  )}
-                </Section>
-              </div>
-
-              <div data-section="article">
-                <Section title={<>Article <SectionStatusBadge sectionKey="article" projectStatus={status} activeAgents={activeAgents} events={events} /></>} status={sectionStatusFor("article", status)}>
-                  <ArticleSection projectId={projectId} status={status} />
-                </Section>
-              </div>
-            </SectionAccordion>
-          )}
-        </div>
-
-        {/* 右侧：时间线（顶部）+ 表单/专家选择 */}
-        <div className="w-2/5 flex flex-col overflow-hidden bg-bg-2">
-          <div className="p-3 border-b bg-bg-1 border-hair">
-            <AgentTimeline events={events} connectionState={connectionState} lastEventTs={lastEventTs} />
           </div>
-          <div className="flex-1 overflow-auto p-6 space-y-4">
-            {(status === "evidence_ready" || status === "writing_configuring") ? (
-              <WriterConfigForm
-                projectId={projectId}
-                defaults={{
-                  "writer.opening":    { cli: "claude", model: "opus" },
-                  "writer.practice":   { cli: "claude", model: "sonnet" },
-                  "writer.closing":    { cli: "claude", model: "opus" },
-                  "practice.stitcher": { cli: "claude", model: "haiku" },
-                  "style_critic":      { cli: "claude", model: "opus" },
-                }}
-                onStarted={refetch}
-              />
-            ) : (status === "writing_running" || status === "writing_failed") ? (
-              <WriterProgressPanel
-                projectId={projectId}
-                sectionsPlanned={["opening", "closing"]}
-                status={status}
-              />
-            ) : (status === "writing_ready" || status === "writing_editing") ? (
-              <ArticleEditor projectId={projectId} />
-            ) : status === "evidence_collecting" ? (
-              selectedEvidenceCase
-                ? <EvidenceIntakeForm projectId={projectId} caseId={selectedEvidenceCase} />
-                : <div className="p-4 text-sm text-gray-500">← 左侧选一个 Case 开始上传 evidence</div>
-            ) : rightPanel(status, projectId, refetch, events)}
-          </div>
-        </div>
-      </div>
+        )}
+        {renderPhaseView({ project, projectId, events, refetch, selectedEvidenceCase, setSelectedEvidenceCase, missingBindings })}
+      </main>
+
+      <ActivityDrawer events={events} connectionState={connectionState} lastEventTs={lastEventTs} />
+
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       {overrideOpen && (
-        <ProjectOverridePanel
-          projectId={projectId}
-          onClose={() => setOverrideOpen(false)}
-        />
+        <ProjectOverridePanel projectId={projectId} onClose={() => setOverrideOpen(false)} />
       )}
       {projectId && <ContextChip projectId={projectId} />}
     </div>
