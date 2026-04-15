@@ -29,8 +29,20 @@ export function registerMissionRoutes(app: FastifyInstance, deps: MissionDeps) {
         return reply.code(400).send({ error: "experts required" });
       }
       setImmediate(() => {
-        runMission({ projectId: id, experts, ...deps }).catch((err) => {
+        runMission({ projectId: id, experts, ...deps }).catch(async (err) => {
           app.log.error({ err, projectId: id }, "mission run failed");
+          try {
+            const { appendEvent } = await import("../services/event-log.js");
+            const { join } = await import("node:path");
+            const projectDir = join(deps.projectsDir, id);
+            await appendEvent(projectDir, {
+              type: "mission.failed",
+              error: err instanceof Error ? err.message : String(err),
+            });
+            await deps.store.update(id, { status: "brief_ready" });
+          } catch (e) {
+            app.log.error({ e }, "failed to write mission.failed event");
+          }
         });
       });
       return reply.code(202).send({ ok: true, status: "started" });

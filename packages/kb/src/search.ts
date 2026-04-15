@@ -20,7 +20,14 @@ export function searchRefs(ctx: SearchCtx, opts: SearchOptions): SearchResult[] 
     if (opts.query && opts.query.trim()) {
       fromClause = "ref_articles_fts f JOIN ref_articles a ON a.rowid = f.rowid";
       where.push("ref_articles_fts MATCH @q");
-      params.q = opts.query;
+      // FTS5 MATCH has its own mini-syntax. Slashes, quotes, colons, parens, stars all break the
+      // parser. Sanitize by splitting on non-alnum (keep CJK + digits + letters) and quoting each
+      // token. Empty token list → fall back to matching anything (which we surface as no-op).
+      const tokens = opts.query
+        .split(/[^\p{L}\p{N}]+/u)
+        .filter((t) => t.length > 0)
+        .map((t) => `"${t.replace(/"/g, '""')}"`);
+      params.q = tokens.length > 0 ? tokens.join(" OR ") : '""';
       scoreExpr = "bm25(ref_articles_fts) AS score";
       snippetExpr = "snippet(ref_articles_fts, 2, '<mark>', '</mark>', '…', 20) AS snippet";
       orderBy = "score";
