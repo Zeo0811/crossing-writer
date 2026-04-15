@@ -101,6 +101,44 @@ export async function uploadImage(projectId: string, file: File): Promise<Upload
   return res.json() as Promise<UploadImageResult>;
 }
 
+export interface BriefAttachmentItem {
+  kind: "image" | "file";
+  url: string;
+  filename: string;
+  size: number;
+  mime: string;
+}
+
+export async function uploadBriefAttachment(
+  projectId: string,
+  files: File[],
+): Promise<{ items: BriefAttachmentItem[] }> {
+  if (files.length === 0) return { items: [] };
+  const fd = new FormData();
+  for (const f of files) fd.append("file", f, f.name);
+  const res = await fetch(
+    `/api/projects/${encodeURIComponent(projectId)}/brief/attachments`,
+    { method: "POST", body: fd },
+  );
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`uploadBriefAttachment ${res.status}: ${text}`);
+  }
+  return res.json() as Promise<{ items: BriefAttachmentItem[] }>;
+}
+
+export function briefAttachmentMarkdown(
+  item: BriefAttachmentItem,
+  projectId: string,
+): string {
+  const base =
+    item.kind === "image"
+      ? `/api/projects/${encodeURIComponent(projectId)}/brief/${item.url}`
+      : `/api/projects/${encodeURIComponent(projectId)}/brief/${item.url.replace("attachments/", "files/")}`;
+  if (item.kind === "image") return `![${item.filename}](${base})`;
+  return `[📎 ${item.filename}](${base})`;
+}
+
 export async function startWriter(projectId: string, body: StartWriterBody): Promise<void> {
   await throwingFetch(`/api/projects/${projectId}/writer/start`, {
     method: "POST",
