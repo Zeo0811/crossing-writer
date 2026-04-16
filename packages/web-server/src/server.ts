@@ -2,7 +2,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import { loadServerConfig, type ServerConfig } from "./config.js";
-import { resolve } from "node:path";
+import { resolve, join } from "node:path";
 import { ProjectStore } from "./services/project-store.js";
 import { ImageStore } from "./services/image-store.js";
 import { registerProjectsRoutes } from "./routes/projects.js";
@@ -39,6 +39,8 @@ import { invokeTopicExpert } from "@crossing/agents";
 import { ContextBundleService } from "./services/context-bundle-service.js";
 import { registerContextRoutes } from "./routes/context.js";
 import { registerProjectTreeRoutes } from "./routes/project-tree.js";
+import { HardRulesStore } from "./services/hard-rules-store.js";
+import { registerWritingHardRulesRoutes } from "./routes/config-writing-hard-rules.js";
 
 const configPath = process.env.CROSSING_CONFIG
   ?? resolve(process.cwd(), "../../config.json");
@@ -200,6 +202,11 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     projectOverrideStore,
     projectStore: store,
   });
+
+  const hardRulesStore = new HardRulesStore(
+    join(configStore.current.vaultPath, '08_experts'),
+  );
+  registerWritingHardRulesRoutes(app, { hardRulesStore });
 
   registerProjectImageRoutes(app, { projectsRoot: configStore.current.projectsDir });
   registerBriefAttachmentsRoutes(app, { projectsRoot: configStore.current.projectsDir });
