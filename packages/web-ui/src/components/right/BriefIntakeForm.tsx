@@ -134,9 +134,35 @@ export function BriefIntakeForm({
                 ref={taRef}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
+                onPaste={async (e) => {
+                  const cd = e.clipboardData;
+                  if (!cd) return;
+                  const files: File[] = [];
+                  const items = cd.items ? Array.from(cd.items) : [];
+                  for (const item of items) {
+                    if (item.kind === "file") {
+                      const f = item.getAsFile();
+                      if (f) files.push(f);
+                    }
+                  }
+                  if (files.length === 0 && cd.files && cd.files.length > 0) {
+                    for (const f of Array.from(cd.files)) files.push(f);
+                  }
+                  if (files.length === 0) return;
+                  e.preventDefault();
+                  try {
+                    const res = await uploadBriefAttachment(projectId, files);
+                    for (const it of res.items) {
+                      insertAtCaret(briefAttachmentMarkdown(it, projectId) + "\n");
+                    }
+                    onAttachmentItems(res.items);
+                  } catch (err: any) {
+                    setErr(String(err?.message ?? err));
+                  }
+                }}
                 rows={10}
                 className="w-full h-full min-h-[200px] bg-transparent p-3 text-sm text-[var(--body)] outline-none resize-none"
-                placeholder="把甲方简报粘贴进来…"
+                placeholder="把甲方简报粘贴进来…（支持 Cmd+V 粘贴图片）"
                 data-testid="brief-textarea"
               />
               {drop.isDragging && (
