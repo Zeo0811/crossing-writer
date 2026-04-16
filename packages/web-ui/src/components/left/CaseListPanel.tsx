@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { useCaseCandidates, type ParsedCase } from "../../hooks/useCaseCandidates";
 import { selectCases } from "../../api/client";
 import { ActionButton } from "../ui/ActionButton";
@@ -133,9 +134,12 @@ function CaseCard({
           </div>
 
           {c.whyItMatters && (
-            <p className="text-sm text-[var(--body)] leading-relaxed mb-2 pl-3 border-l-2 border-[var(--accent-soft)] italic">
-              {c.whyItMatters}
-            </p>
+            <div className="mb-2 pl-3 border-l-2 border-[var(--accent-soft)]">
+              <div className="text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold mb-1">为什么值得做</div>
+              <p className="text-sm text-[var(--body)] leading-relaxed">
+                {c.whyItMatters}
+              </p>
+            </div>
           )}
 
           <div className="flex items-center gap-4 text-[11px] text-[var(--faint)]">
@@ -165,7 +169,7 @@ function CaseCard({
 
 function CaseDetails({ c }: { c: ParsedCase }) {
   return (
-    <div className="border-t border-[var(--hair)] bg-[var(--bg-0)] p-5 space-y-5 text-sm">
+    <div className="border-t border-[var(--hair)] bg-[var(--bg-0)] p-5 space-y-5 text-sm text-[var(--body)]">
       {c.steps.length > 0 && (
         <Section title="步骤" count={c.steps.length}>
           <ol className="space-y-2">
@@ -222,8 +226,8 @@ function CaseDetails({ c }: { c: ParsedCase }) {
 
       {c.observationPoints.length > 0 && (
         <Section title="观察点" count={c.observationPoints.length}>
-          <ul className="space-y-1 list-disc list-inside text-[var(--body)]">
-            {c.observationPoints.map((p, i) => <li key={i} className="leading-relaxed">{p}</li>)}
+          <ul className="space-y-1.5 list-disc list-inside leading-relaxed">
+            {c.observationPoints.map((p, i) => <li key={i}>{p}</li>)}
           </ul>
         </Section>
       )}
@@ -232,14 +236,14 @@ function CaseDetails({ c }: { c: ParsedCase }) {
         <div className="grid grid-cols-2 gap-4">
           {c.screenshotPoints.length > 0 && (
             <Section title="截图点" count={c.screenshotPoints.length}>
-              <ul className="space-y-1 list-disc list-inside text-[var(--body)] text-xs">
+              <ul className="space-y-1 list-disc list-inside leading-relaxed">
                 {c.screenshotPoints.map((p, i) => <li key={i}>{p}</li>)}
               </ul>
             </Section>
           )}
           {c.recordingPoints.length > 0 && (
             <Section title="录制点" count={c.recordingPoints.length}>
-              <ul className="space-y-1 list-disc list-inside text-[var(--body)] text-xs">
+              <ul className="space-y-1 list-disc list-inside leading-relaxed">
                 {c.recordingPoints.map((p, i) => <li key={i}>{p}</li>)}
               </ul>
             </Section>
@@ -253,7 +257,7 @@ function CaseDetails({ c }: { c: ParsedCase }) {
             {c.risks.map((r, i) => (
               <li key={i} className="flex items-start gap-2">
                 <span className="shrink-0 text-[var(--red)]">⚠</span>
-                <span className="text-[var(--body)] leading-relaxed">{r}</span>
+                <span className="leading-relaxed">{r}</span>
               </li>
             ))}
           </ul>
@@ -262,9 +266,9 @@ function CaseDetails({ c }: { c: ParsedCase }) {
 
       {c.predictedOutcome && (
         <Section title="预测结果">
-          <pre className="whitespace-pre-wrap break-words text-[var(--body)] leading-relaxed font-sans text-sm">
-            {c.predictedOutcome}
-          </pre>
+          <div className="leading-relaxed">
+            <ReactMarkdown>{c.predictedOutcome}</ReactMarkdown>
+          </div>
         </Section>
       )}
 
@@ -272,9 +276,9 @@ function CaseDetails({ c }: { c: ParsedCase }) {
         <Section title="灵感来源" count={c.inspiredBy.length}>
           <ul className="space-y-2">
             {c.inspiredBy.map((ib, i) => (
-              <li key={i} className="text-xs">
-                <div className="text-[var(--accent)] font-mono-term">{ib.ref_path}</div>
-                <div className="text-[var(--meta)] pl-3">借鉴：{ib.what_borrowed}</div>
+              <li key={i}>
+                <div className="text-[var(--accent)] text-[11px] font-mono-term leading-snug">{ib.ref_path}</div>
+                <div className="text-[var(--meta)] text-xs pl-3 leading-relaxed">借鉴：{ib.what_borrowed}</div>
               </li>
             ))}
           </ul>
@@ -283,8 +287,8 @@ function CaseDetails({ c }: { c: ParsedCase }) {
 
       {c.narrative && (
         <Section title="详细说明">
-          <div className="prose prose-sm max-w-none text-[var(--body)] whitespace-pre-wrap break-words leading-relaxed">
-            {c.narrative}
+          <div className="prose prose-sm max-w-none leading-relaxed prose-headings:text-[var(--heading)] prose-strong:text-[var(--heading)] prose-p:text-[var(--body)] prose-li:text-[var(--body)]">
+            <ReactMarkdown>{c.narrative}</ReactMarkdown>
           </div>
         </Section>
       )}
