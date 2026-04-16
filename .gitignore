@@ -41,3 +41,6 @@ packages/web-ui/src/**/*.js
 packages/web-ui/src/**/*.js.map
 packages/*/tsconfig.tsbuildinfo
 /node_modules/
+
+# brainstorming skill 的工作目录
+.superpowers/
