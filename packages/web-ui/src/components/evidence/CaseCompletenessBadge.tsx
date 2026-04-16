@@ -14,10 +14,10 @@ export function CaseCompletenessBadge({ completeness }: { completeness: Complete
 
   if (completeness.complete) {
     text = "✅ 完整";
-    cls = "bg-green-50 text-green-700 border-green-300";
+    cls = "bg-[var(--accent-fill)] text-[var(--accent)] border-[var(--accent-soft)]";
   } else if (allEmpty) {
     text = "待上传";
-    cls = "bg-gray-50 text-gray-400 border-gray-200";
+    cls = "bg-[var(--bg-2)] text-[var(--faint)] border-[var(--hair)]";
   } else {
     text = `⚠️ 缺 ${completeness.missing.map((m) => LABEL[m]).join("、")}`;
     cls = "bg-yellow-50 text-yellow-700 border-yellow-300";

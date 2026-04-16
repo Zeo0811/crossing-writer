@@ -14,7 +14,7 @@ export function ExpertStreamCard({ name, status, markdown, error, onRetry }: Pro
       </div>
       {status === "failed" ? (
         <div role="alert">
-          <span className="text-red-500">{error}</span>
+          <span className="text-[var(--red)]">{error}</span>
           {onRetry && (
             <button onClick={onRetry} data-testid={`expert-retry-${name}`}>重试</button>
           )}

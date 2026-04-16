@@ -38,15 +38,15 @@ export function DistillForm({ account, totalInRange, onCancel, onSubmit }: Disti
   }
 
   return (
-    <div className="border rounded p-4 space-y-4 bg-white">
+    <div className="border rounded p-4 space-y-4 bg-[var(--bg-1)]">
       <div>
         <h2 className="text-lg font-semibold">蒸馏 {account}</h2>
-        <div className="text-xs text-gray-500 mt-1">文章来源: refs.sqlite · {totalInRange} 篇</div>
+        <div className="text-xs text-[var(--meta)] mt-1">文章来源: refs.sqlite · {totalInRange} 篇</div>
       </div>
 
       <div className="grid grid-cols-3 gap-3 text-sm">
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-gray-600">sample_size</span>
+          <span className="text-xs text-[var(--meta)]">sample_size</span>
           <input
             aria-label="sample_size" type="number" min={20} max={totalInRange}
             value={sampleSize} onChange={(e) => setSampleSize(Number(e.target.value))}
@@ -54,17 +54,17 @@ export function DistillForm({ account, totalInRange, onCancel, onSubmit }: Disti
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-gray-600">since</span>
+          <span className="text-xs text-[var(--meta)]">since</span>
           <input aria-label="since" type="date" value={since} onChange={(e) => setSince(e.target.value)} className="border rounded px-2 py-1" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-gray-600">until</span>
+          <span className="text-xs text-[var(--meta)]">until</span>
           <input aria-label="until" type="date" value={until} onChange={(e) => setUntil(e.target.value)} className="border rounded px-2 py-1" />
         </label>
       </div>
 
       <fieldset className="border rounded p-3 space-y-2">
-        <legend className="text-xs text-gray-600 px-1">agent 配置</legend>
+        <legend className="text-xs text-[var(--meta)] px-1">agent 配置</legend>
         {(["structure", "snippets", "composer"] as StepKey[]).map((k) => (
           <div key={k} className="flex items-center gap-2 text-sm">
             <span className="w-20 font-mono text-xs">{k}:</span>
@@ -86,10 +86,10 @@ export function DistillForm({ account, totalInRange, onCancel, onSubmit }: Disti
         ))}
       </fieldset>
 
-      {error && <div className="text-sm text-red-600">{error}</div>}
+      {error && <div className="text-sm text-[var(--red)]">{error}</div>}
 
       <div className="flex gap-2">
-        <button type="button" onClick={submit} className="px-4 py-2 bg-blue-600 text-white rounded text-sm">开始蒸馏</button>
+        <button type="button" onClick={submit} className="px-4 py-2 bg-[var(--accent)] text-white rounded text-sm">开始蒸馏</button>
         <button type="button" onClick={onCancel} className="px-4 py-2 border rounded text-sm">取消</button>
       </div>
     </div>

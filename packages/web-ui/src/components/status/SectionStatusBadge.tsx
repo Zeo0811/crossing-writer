@@ -65,25 +65,25 @@ export function SectionStatusBadge({
     for (const a of activeAgents) if (match(a.agent)) everSeen.add(a.agent);
     const total = everSeen.size || running.length;
     text = `${running.length}/${total} 运行中 🟢`;
-    cls = "bg-green-50 text-green-700 border-green-300";
+    cls = "bg-[var(--accent-fill)] text-[var(--accent)] border-[var(--accent-soft)]";
   } else if (failureLive) {
     text = "失败 🔴";
-    cls = "bg-red-50 text-red-700 border-red-300";
+    cls = "bg-[rgba(255,107,107,0.08)] text-[var(--red)] border-[var(--red)]";
   } else {
     const myIdx = sectionIndex(sectionKey);
     const currIdx = currentSectionIdx(projectStatus);
     if (currIdx < 0 || myIdx < 0) {
       text = "pending";
-      cls = "bg-gray-50 text-gray-400 border-gray-200";
+      cls = "bg-[var(--bg-2)] text-[var(--faint)] border-[var(--hair)]";
     } else if (myIdx < currIdx) {
       text = "completed";
-      cls = "bg-gray-50 text-gray-500 border-gray-300";
+      cls = "bg-[var(--bg-2)] text-[var(--meta)] border-[var(--hair)]";
     } else if (myIdx === currIdx) {
       text = "进行中";
-      cls = "bg-blue-50 text-blue-700 border-blue-300";
+      cls = "bg-[var(--accent-fill)] text-[var(--accent)] border-[var(--accent-soft)]";
     } else {
       text = "待开始";
-      cls = "bg-gray-50 text-gray-400 border-gray-200";
+      cls = "bg-[var(--bg-2)] text-[var(--faint)] border-[var(--hair)]";
     }
   }
 

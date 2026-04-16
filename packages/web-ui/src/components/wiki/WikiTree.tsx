@@ -27,7 +27,7 @@ export function WikiTree({ pages, selected, onSelect }: WikiTreeProps) {
         <div key={kind} className="mb-2">
           <div
             onClick={() => setCollapsed((c) => ({ ...c, [kind]: !c[kind] }))}
-            className="cursor-pointer font-semibold px-2 py-1 bg-gray-100 rounded"
+            className="cursor-pointer font-semibold px-2 py-1 bg-[var(--bg-2)] rounded"
           >
             {collapsed[kind] ? "▸" : "▾"} {kind} ({grouped[kind].length})
           </div>
@@ -37,10 +37,10 @@ export function WikiTree({ pages, selected, onSelect }: WikiTreeProps) {
                 <li
                   key={p.path}
                   onClick={() => onSelect(p.path)}
-                  className={`cursor-pointer px-1.5 py-0.5 rounded ${selected === p.path ? "bg-blue-100" : ""}`}
+                  className={`cursor-pointer px-1.5 py-0.5 rounded ${selected === p.path ? "bg-[var(--accent-fill)]" : ""}`}
                 >
                   {p.title}
-                  {p.aliases.length > 0 && <span className="text-xs text-gray-500"> · {p.aliases.join(", ")}</span>}
+                  {p.aliases.length > 0 && <span className="text-xs text-[var(--meta)]"> · {p.aliases.join(", ")}</span>}
                 </li>
               ))}
             </ul>

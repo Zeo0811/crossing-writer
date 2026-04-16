@@ -84,7 +84,7 @@ function renderToolEvent(ev: StreamEvent, i: number) {
       );
     case "writer.tool_failed":
       return (
-        <li key={`tool-${i}`} className="text-xs text-red-600">
+        <li key={`tool-${i}`} className="text-xs text-[var(--red)]">
           ❌ [{p.sectionKey}·r{p.round}] ✗ {p.toolName}: {p.error}
         </li>
       );

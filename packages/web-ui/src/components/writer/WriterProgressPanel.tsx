@@ -50,20 +50,20 @@ export function WriterProgressPanel({ projectId, sectionsPlanned, status }: Writ
   return (
     <div className="flex flex-col gap-2 p-4">
       {cards.map((c) => (
-        <div key={c.sectionKey} className={`border rounded p-3 ${c.state === "failed" ? "bg-red-50" : c.state === "completed" ? "bg-green-50" : c.state === "running" ? "bg-blue-50" : "bg-gray-50"}`}>
+        <div key={c.sectionKey} className={`border rounded p-3 ${c.state === "failed" ? "bg-[rgba(255,107,107,0.08)]" : c.state === "completed" ? "bg-[var(--accent-fill)]" : c.state === "running" ? "bg-[var(--accent-fill)]" : "bg-[var(--bg-2)]"}`}>
           <div className="flex justify-between">
             <span>{c.sectionKey}</span>
             <span data-testid={`section-status-${c.sectionKey}`}>{labelOf(c.state)}</span>
           </div>
-          <div className="text-xs text-gray-600" title={c.agent ?? undefined}>
+          <div className="text-xs text-[var(--meta)]" title={c.agent ?? undefined}>
             {c.cli && `${c.cli}/${c.model ?? ""}`}
             {c.durationMs !== undefined && ` · ${(c.durationMs / 1000).toFixed(1)}s`}
           </div>
-          {c.error && <div className="text-red-600 text-sm">{c.error}</div>}
+          {c.error && <div className="text-[var(--red)] text-sm">{c.error}</div>}
         </div>
       ))}
       {status === "writing_failed" && (
-        <button onClick={() => retryFailed(projectId)} className="mt-2 px-4 py-2 bg-red-600 text-white rounded" aria-label="重跑失败段">
+        <button onClick={() => retryFailed(projectId)} className="mt-2 px-4 py-2 bg-[var(--red)] text-white rounded" aria-label="重跑失败段">
           重试
         </button>
       )}

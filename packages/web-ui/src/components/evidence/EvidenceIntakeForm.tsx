@@ -9,7 +9,7 @@ import { CaseCompletenessBadge } from "./CaseCompletenessBadge";
 export function EvidenceIntakeForm({ projectId, caseId }: { projectId: string; caseId: string }) {
   const { detail, loading, reload } = useEvidence(projectId, caseId);
 
-  if (loading || !detail) return <div className="p-4 text-xs text-gray-500">加载 Case 详情…</div>;
+  if (loading || !detail) return <div className="p-4 text-xs text-[var(--meta)]">加载 Case 详情…</div>;
 
   return (
     <div className="space-y-4 p-4">

@@ -1,5 +1,6 @@
 import { useTheme } from "../hooks/useTheme";
 import { useCliHealth } from "../hooks/useCliHealth";
+import { Button } from "../components/ui";
 
 export function SettingsPage() {
   const { theme, setTheme } = useTheme();
@@ -49,12 +50,12 @@ export function SettingsPage() {
         </Group>
         <Group title="发布">
           <Row label="微信公众号">
-            <button className="px-3 py-1 text-xs rounded border border-[var(--hair-strong)] text-[var(--meta)] hover:text-[var(--heading)]">绑定</button>
+            <Button variant="secondary" size="sm">绑定</Button>
           </Row>
         </Group>
         <Group title="关于">
-          <Row label="版本"><span className="text-xs text-[var(--meta)]">v1.5.0</span></Row>
-          <Row label="更新日志"><button className="text-xs text-[var(--accent)] hover:underline">查看</button></Row>
+          <Row label="版本"><span className="text-xs text-[var(--meta)]">v1.6.0</span></Row>
+          <Row label="更新日志"><Button variant="link" size="sm">查看</Button></Row>
         </Group>
       </main>
     </div>

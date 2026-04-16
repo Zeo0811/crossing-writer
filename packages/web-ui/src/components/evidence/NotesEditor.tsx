@@ -184,14 +184,14 @@ export function NotesEditor({ caseId, notes, screenshotFiles, generatedFiles, on
                     <option key={f.filename} value={`generated/${f.filename}`}>{f.filename}</option>
                   ))}
                 </select>
-                <button onClick={() => removeObs(i)} className="text-red-500" aria-label={`remove obs ${i}`}>
+                <button onClick={() => removeObs(i)} className="text-[var(--red)]" aria-label={`remove obs ${i}`}>
                   删
                 </button>
               </div>
             </li>
           ))}
         </ul>
-        <button onClick={addObs} className="text-xs text-blue-600 mt-1">+ 添加 observation</button>
+        <button onClick={addObs} className="text-xs text-[var(--accent)] mt-1">+ 添加 observation</button>
       </div>
 
       <div>

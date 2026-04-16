@@ -18,8 +18,8 @@ export function WikiPagePreview({ path }: WikiPagePreviewProps) {
     return () => { cancelled = true; };
   }, [path]);
 
-  if (!path) return <div className="p-6 text-gray-500">Select a page from the left.</div>;
-  if (error) return <div className="p-6 text-red-600">Error: {error}</div>;
+  if (!path) return <div className="p-6 text-[var(--meta)]">Select a page from the left.</div>;
+  if (error) return <div className="p-6 text-[var(--red)]">Error: {error}</div>;
 
   const body = text.replace(/^---\n[\s\S]*?\n---\n/, "");
 

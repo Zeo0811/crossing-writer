@@ -75,7 +75,7 @@ export function ArticleSectionEditor({
           type="button"
           onClick={handleSave}
           disabled={disabled || saving}
-          className="px-2 py-1 bg-blue-600 text-white rounded text-xs disabled:opacity-50"
+          className="px-2 py-1 bg-[var(--accent)] text-white rounded text-xs disabled:opacity-50"
         >
           {saving ? "保存中..." : "保存"}
         </button>
@@ -83,7 +83,7 @@ export function ArticleSectionEditor({
           type="button"
           onClick={onCancel}
           disabled={saving}
-          className="px-2 py-1 bg-gray-200 rounded text-xs"
+          className="px-2 py-1 bg-[var(--bg-2)] rounded text-xs"
         >
           取消
         </button>
@@ -93,7 +93,7 @@ export function ArticleSectionEditor({
           onInsert={(md) => insertAtCaret(md)}
           onError={(err) => setError(err.message)}
         />
-        {error && <span className="text-xs text-red-600">{error}</span>}
+        {error && <span className="text-xs text-[var(--red)]">{error}</span>}
       </div>
       <textarea
         ref={textareaRef}

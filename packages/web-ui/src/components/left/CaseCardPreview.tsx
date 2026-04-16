@@ -8,7 +8,7 @@ export function CaseCardPreview({ c }: { c: ParsedCase }) {
     .trim();
   return (
     <details className="border-t mt-2">
-      <summary className="cursor-pointer text-xs text-gray-600">展开详情</summary>
+      <summary className="cursor-pointer text-xs text-[var(--meta)]">展开详情</summary>
       <pre className="whitespace-pre-wrap text-xs mt-2">{body}</pre>
     </details>
   );

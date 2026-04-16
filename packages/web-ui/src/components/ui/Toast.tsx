@@ -7,9 +7,9 @@ export interface ToastData {
 }
 
 const colors: Record<ToastType, string> = {
-  success: "bg-green-50 border-green-300 text-green-800",
-  error: "bg-red-50 border-red-300 text-red-800",
-  info: "bg-gray-50 border-gray-300 text-gray-800",
+  success: "bg-[var(--accent-fill)] border-[var(--accent-soft)] text-[var(--accent)]",
+  error: "bg-[rgba(255,107,107,0.08)] border-[var(--red)] text-[var(--red)]",
+  info: "bg-[var(--bg-2)] border-[var(--hair)] text-[var(--heading)]",
 };
 
 export function Toast({ toast, onDismiss }: { toast: ToastData; onDismiss: () => void }) {

@@ -36,7 +36,7 @@ export function MentionDropdown({ items, activeIndex, onSelect, onHover }: Menti
     <ul
       data-testid="mention-dropdown"
       role="listbox"
-      className="absolute z-50 min-w-[280px] max-w-[480px] overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg py-1 text-sm"
+      className="absolute z-50 min-w-[280px] max-w-[480px] overflow-y-auto rounded-md border border-[var(--hair)] bg-[var(--bg-1)] shadow-lg py-1 text-sm"
     >
       {items.map((item, i) => {
         const isActive = i === activeIndex;
@@ -50,7 +50,7 @@ export function MentionDropdown({ items, activeIndex, onSelect, onHover }: Menti
             onMouseMove={() => onHover(i)}
             className={
               "px-3 py-1.5 cursor-pointer truncate " +
-              (isActive ? "bg-slate-900 text-white" : "bg-white text-slate-800 hover:bg-slate-100")
+              (isActive ? "bg-[var(--bg-0)] text-white" : "bg-[var(--bg-1)] text-[var(--body)] hover:bg-[var(--bg-2)]")
             }
           >
             <span className="mr-1">{item.icon}</span>

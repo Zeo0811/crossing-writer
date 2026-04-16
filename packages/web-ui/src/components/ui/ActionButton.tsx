@@ -13,9 +13,9 @@ export interface ActionButtonProps {
 }
 
 const variantClasses = {
-  primary: "bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300",
-  danger: "bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300",
-  ghost: "bg-transparent border border-gray-400 text-gray-700 hover:bg-gray-100 disabled:opacity-50",
+  primary: "bg-[var(--accent)] text-white hover:bg-[var(--accent-soft)] disabled:bg-[var(--accent-dim)]",
+  danger: "bg-[var(--red)] text-white hover:shadow-[0_0_12px_rgba(255,107,107,0.4)] disabled:opacity-40",
+  ghost: "bg-transparent border border-[var(--hair-strong)] text-[var(--body)] hover:bg-[var(--bg-2)] disabled:opacity-50",
 };
 
 const ERROR_ECHO_CLEAR_MS = 3000;
@@ -62,7 +62,7 @@ export function ActionButton({
         {children}
       </button>
       {errorEcho && (
-        <span data-testid="action-error-echo" className="text-xs text-red-600 max-w-xs">
+        <span data-testid="action-error-echo" className="text-xs text-[var(--red)] max-w-xs">
           {errorEcho}
         </span>
       )}

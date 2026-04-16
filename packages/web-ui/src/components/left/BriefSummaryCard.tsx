@@ -4,12 +4,12 @@ import { stripFrontmatter } from "../../utils/markdown";
 
 export function BriefSummaryCard({ projectId }: { projectId: string }) {
   const { data, isLoading, error } = useBriefSummary(projectId, true);
-  if (isLoading) return <div className="text-gray-500">加载摘要…</div>;
-  if (error || !data) return <div className="text-gray-500">摘要未生成</div>;
+  if (isLoading) return <div className="text-[var(--meta)]">加载摘要…</div>;
+  if (error || !data) return <div className="text-[var(--meta)]">摘要未生成</div>;
   const { frontmatter, body } = stripFrontmatter(data);
   return (
     <article
-      className="bg-white p-6 rounded border"
+      className="bg-[var(--bg-1)] p-6 rounded border"
       style={{ borderColor: "var(--border)" }}
     >
       {Object.keys(frontmatter).length > 0 && (
@@ -41,7 +41,7 @@ function FrontmatterChips({ fm }: { fm: Record<string, string> }) {
             className="px-2 py-0.5 rounded border bg-[var(--gray-light)]"
             style={{ borderColor: "var(--border)" }}
           >
-            <span className="text-gray-500 mr-1">{k}:</span>
+            <span className="text-[var(--meta)] mr-1">{k}:</span>
             <span className="font-medium">{fm[k]}</span>
           </span>
         ))}

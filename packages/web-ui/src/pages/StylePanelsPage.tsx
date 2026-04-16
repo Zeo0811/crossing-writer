@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getAccounts, listStylePanels, type AccountRow, type StylePanelEntry, type DistillBody } from "../api/style-panels-client.js";
 import { DistillForm } from "../components/style-panels/DistillForm.js";
 import { ProgressView } from "../components/style-panels/ProgressView.js";
+import { Button } from "../components/ui";
 
 type Tab = "distilled" | "pending";
 type Mode = { kind: "list" } | { kind: "form"; account: string } | { kind: "progress"; account: string; body: DistillBody };
@@ -97,12 +98,9 @@ export function StylePanelsPage() {
                       <div className="text-xs font-semibold text-[var(--heading)] truncate">{a.account}</div>
                       <div className="text-[10px] text-[var(--meta)]">{a.count} 篇</div>
                     </div>
-                    <button
-                      onClick={() => setMode({ kind: "form", account: a.account })}
-                      className="px-2 py-1 text-[10px] rounded border border-[var(--accent-soft)] text-[var(--accent)] hover:bg-[var(--accent-fill)]"
-                    >
+                    <Button variant="secondary" size="sm" onClick={() => setMode({ kind: "form", account: a.account })}>
                       蒸馏
-                    </button>
+                    </Button>
                   </div>
                 ))}
               {tab === "distilled" && panels.length === 0 && <div className="p-4 text-xs text-[var(--faint)]">尚无已蒸馏面板</div>}
@@ -126,12 +124,9 @@ export function StylePanelsPage() {
                   <p className="text-sm text-[var(--body)]">风格面板内容存于本地 vault 文件，打开该 markdown 可查看全文（高频用词 / 示例段落 / 结构提示 / 声线）。</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setMode({ kind: "form", account: activePanel.id })}
-                    className="px-4 py-2 rounded border border-[var(--accent-soft)] bg-[var(--accent)] text-[var(--accent-on)] text-sm font-semibold"
-                  >
+                  <Button variant="primary" onClick={() => setMode({ kind: "form", account: activePanel.id })}>
                     重新蒸馏
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (

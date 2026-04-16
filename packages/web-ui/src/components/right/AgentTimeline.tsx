@@ -27,19 +27,19 @@ export function AgentTimeline({ projectId }: { projectId: string }) {
   const { events } = useProjectStream(projectId);
   return (
     <div
-      className="p-4 bg-white rounded border"
+      className="p-4 bg-[var(--bg-1)] rounded border"
       style={{ borderColor: "var(--border)" }}
     >
       <h3 className="font-semibold mb-2">实时进度</h3>
       <ol className="space-y-1 text-sm max-h-96 overflow-y-auto">
-        {events.length === 0 && <li className="text-gray-400">暂无事件</li>}
+        {events.length === 0 && <li className="text-[var(--faint)]">暂无事件</li>}
         {events.map((e, i) => (
           <li key={i} className="flex gap-2">
-            <span className="text-gray-400">
+            <span className="text-[var(--faint)]">
               {formatBeijingTime(new Date(e.ts ?? Date.now()))}
             </span>
             <span
-              className={`font-medium ${e.type === "agent.failed" ? "text-red-600" : ""}`}
+              className={`font-medium ${e.type === "agent.failed" ? "text-[var(--red)]" : ""}`}
               style={{
                 color:
                   e.type === "agent.failed" ? undefined : "var(--green-dark)",
@@ -47,7 +47,7 @@ export function AgentTimeline({ projectId }: { projectId: string }) {
             >
               {LABELS[e.type] ?? e.type}
             </span>
-            <span className="text-gray-600">{summarize(e.data)}</span>
+            <span className="text-[var(--meta)]">{summarize(e.data)}</span>
           </li>
         ))}
       </ol>

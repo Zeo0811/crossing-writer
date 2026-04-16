@@ -48,7 +48,7 @@ export function FileUploader({ label, accept, hint, files, onUpload, onDelete }:
     <section className="space-y-2">
       <h4 className="text-xs font-semibold">{label} ({files.length})</h4>
       <div
-        className={`border-2 border-dashed p-4 rounded text-xs text-gray-500 cursor-pointer ${dragOver ? "border-blue-400 bg-blue-50" : "border-gray-300"}`}
+        className={`border-2 border-dashed p-4 rounded text-xs text-[var(--meta)] cursor-pointer ${dragOver ? "border-[var(--accent)] bg-[var(--accent-fill)]" : "border-[var(--hair)]"}`}
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
@@ -73,11 +73,11 @@ export function FileUploader({ label, accept, hint, files, onUpload, onDelete }:
           {files.map((f) => (
             <li key={f.filename} className="flex items-center justify-between border px-2 py-1 rounded">
               <span className="truncate">{f.filename}</span>
-              <span className="text-gray-500 ml-2">{fmtSize(f.size)}</span>
+              <span className="text-[var(--meta)] ml-2">{fmtSize(f.size)}</span>
               <button
                 onClick={() => handleDelete(f.filename)}
                 aria-label={`delete ${f.filename}`}
-                className="ml-2 text-red-500 text-xs"
+                className="ml-2 text-[var(--red)] text-xs"
               >
                 ×
               </button>

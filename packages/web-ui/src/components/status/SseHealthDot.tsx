@@ -1,10 +1,10 @@
 import type { ConnectionState } from "../../hooks/useProjectStream";
 
 const colorMap: Record<ConnectionState, string> = {
-  connected: "bg-green-500",
+  connected: "bg-[var(--accent)]",
   reconnecting: "bg-yellow-500",
-  disconnected: "bg-red-500",
-  connecting: "bg-gray-400",
+  disconnected: "bg-[rgba(255,107,107,0.08)]0",
+  connecting: "bg-[var(--faint)]",
 };
 
 const labelMap: Record<ConnectionState, string> = {

@@ -70,7 +70,7 @@ export function WriterConfigForm({ projectId, defaults, onStarted }: WriterConfi
           </div>
           {AGENTS_WITH_REFS.has(agent) && (
             <div className="flex flex-wrap gap-2">
-              <span className="text-sm text-gray-600">参考账号：</span>
+              <span className="text-sm text-[var(--meta)]">参考账号：</span>
               {panels.map((p) => (
                 <label key={p.id} aria-label={`${agent}-${p.id}`}>
                   <input type="checkbox" checked={refs[agent].has(p.id)} onChange={() => toggleRef(agent, p.id)} />
@@ -81,8 +81,8 @@ export function WriterConfigForm({ projectId, defaults, onStarted }: WriterConfi
           )}
         </section>
       ))}
-      {error && <div className="text-red-600 text-sm">{error}</div>}
-      <button onClick={handleSubmit} disabled={submitting} className="px-4 py-2 bg-blue-600 text-white rounded">
+      {error && <div className="text-[var(--red)] text-sm">{error}</div>}
+      <button onClick={handleSubmit} disabled={submitting} className="px-4 py-2 bg-[var(--accent)] text-white rounded">
         {submitting ? "启动中…" : "开始写作"}
       </button>
     </div>

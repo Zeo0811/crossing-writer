@@ -13,7 +13,7 @@ export function CaseSelectedGuide({ projectId }: { projectId: string }) {
 
   return (
     <div className="p-4 space-y-4">
-      <div className="bg-green-50 border border-green-300 p-3 rounded">
+      <div className="bg-[var(--accent-fill)] border border-[var(--accent-soft)] p-3 rounded">
         <h3 className="font-semibold">Case Plan 已批准 ✅</h3>
         <p className="text-sm">下一步：<strong>去跑真实测</strong>，把截图/录屏/笔记传到每个 Case 下。</p>
       </div>

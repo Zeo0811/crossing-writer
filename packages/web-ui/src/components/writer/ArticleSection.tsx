@@ -25,7 +25,7 @@ function EditHistoryExpander({ history }: { history?: EditHistoryEntry[] }) {
   if (!history || history.length === 0) return null;
   const last = history[history.length - 1]!;
   return (
-    <details data-testid="edit-history-expander" className="mt-2 text-xs text-gray-500">
+    <details data-testid="edit-history-expander" className="mt-2 text-xs text-[var(--meta)]">
       <summary>📝 人工编辑 {history.length} 次 (最近: {last.at})</summary>
       <ul className="mt-1 list-disc ml-5">
         {history.map((h, i) => (
@@ -51,7 +51,7 @@ function ReferencePanel({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="text-slate-500 hover:text-slate-800"
+        className="text-slate-500 hover:text-[var(--body)]"
       >
         {open ? "▼" : "▶"} 📚 本段引用 ({total})
       </button>
@@ -217,7 +217,7 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
   }, [events, reload]);
 
   if (status === "evidence_ready" || status === "writing_configuring") {
-    return <div className="p-3 text-sm text-gray-600">SP-04 已完成。在右栏配置写作参数并开始。</div>;
+    return <div className="p-3 text-sm text-[var(--meta)]">SP-04 已完成。在右栏配置写作参数并开始。</div>;
   }
   if (status === "writing_running") {
     return <div className="p-3 text-sm">{sections.length} 段完成（进行中）</div>;
@@ -286,14 +286,14 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
   return (
     <div className="p-3 flex flex-col gap-3 text-sm">
       <div className="flex flex-col gap-0.5 border-b pb-2">
-        {opening && <div>📝 开头 <span className="text-xs text-gray-500">{opening.frontmatter.last_agent}</span></div>}
+        {opening && <div>📝 开头 <span className="text-xs text-[var(--meta)]">{opening.frontmatter.last_agent}</span></div>}
         <div>📝 实测</div>
         {practice.map((p) => (
-          <div key={p.key} className="ml-4">├ {p.key.slice("practice.".length)} <span className="text-xs text-gray-500">{p.frontmatter.last_agent}</span></div>
+          <div key={p.key} className="ml-4">├ {p.key.slice("practice.".length)} <span className="text-xs text-[var(--meta)]">{p.frontmatter.last_agent}</span></div>
         ))}
-        {closing && <div>📝 结尾 <span className="text-xs text-gray-500">{closing.frontmatter.last_agent}</span></div>}
-        {refAccounts.length > 0 && <div className="text-xs text-gray-500 mt-1">参考账号: {refAccounts.join(" / ")}</div>}
-        <a href={`/api/projects/${projectId}/writer/final`} download="final.md" className="mt-2 px-2 py-1 bg-gray-200 rounded text-center">导出 final.md</a>
+        {closing && <div>📝 结尾 <span className="text-xs text-[var(--meta)]">{closing.frontmatter.last_agent}</span></div>}
+        {refAccounts.length > 0 && <div className="text-xs text-[var(--meta)] mt-1">参考账号: {refAccounts.join(" / ")}</div>}
+        <a href={`/api/projects/${projectId}/writer/final`} download="final.md" className="mt-2 px-2 py-1 bg-[var(--bg-2)] rounded text-center">导出 final.md</a>
       </div>
 
       <div ref={bodyRef} className="flex flex-col gap-3">
@@ -338,7 +338,7 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
                     onClick={() => setEditMode((m) => ({ ...m, [key]: !m[key] }))}
                     disabled={!isEditing && agentRunningOnSection}
                     title={agentRunningOnSection && !isEditing ? "写作中，请稍后编辑" : undefined}
-                    className="px-2 py-0.5 border rounded text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    className="px-2 py-0.5 border rounded text-[var(--body)] hover:bg-[var(--bg-2)] disabled:opacity-50"
                   >
                     {isEditing ? "👁 预览" : "✏️ 编辑"}
                   </button>
@@ -354,13 +354,13 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
                   {!isEditing && supported && !isBusy && !hasSelection && (
                     <button
                       onClick={() => setActiveKey(isActive ? null : key)}
-                      className="opacity-0 group-hover:opacity-100 transition px-2 py-0.5 border rounded text-blue-600 hover:bg-blue-50"
+                      className="opacity-0 group-hover:opacity-100 transition px-2 py-0.5 border rounded text-[var(--accent)] hover:bg-[var(--accent-fill)]"
                     >
                       🤖 重写整段
                     </button>
                   )}
                 </div>
-                {isBusy && <span className="text-blue-600">重写中…</span>}
+                {isBusy && <span className="text-[var(--accent)]">重写中…</span>}
               </header>
               {isEditing && agentRunningOnSection && (
                 <div data-testid={`agent-running-notice-${key}`} className="mb-2 text-xs bg-yellow-50 border border-yellow-200 rounded p-2 text-yellow-800">
@@ -382,10 +382,10 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
                       placeholder="给 agent 的提示（可空）"
                       className="flex-1 px-2 py-1 border rounded text-xs"
                     />
-                    <button onClick={() => triggerRewrite(key, hasSelection)} className="px-2 py-1 bg-blue-600 text-white rounded text-xs">
+                    <button onClick={() => triggerRewrite(key, hasSelection)} className="px-2 py-1 bg-[var(--accent)] text-white rounded text-xs">
                       {hasSelection ? "确认改片段" : "确认改整段"}
                     </button>
-                    <button onClick={() => { setActiveKey(null); setHint(""); }} className="px-2 py-1 bg-gray-200 rounded text-xs">取消</button>
+                    <button onClick={() => { setActiveKey(null); setHint(""); }} className="px-2 py-1 bg-[var(--bg-2)] rounded text-xs">取消</button>
                   </div>
                 </div>
               )}

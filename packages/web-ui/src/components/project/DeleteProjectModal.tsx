@@ -44,7 +44,7 @@ export function DeleteProjectModal({ project, onCancel, onConfirm }: DeleteProje
             data-testid="confirm-delete-btn"
             disabled={!matches}
             onClick={() => onConfirm(value)}
-            className={`px-4 py-2 text-[13px] rounded-[2px] ${matches ? "bg-red-600 text-white hover:bg-red-700" : "bg-bg-2 text-meta cursor-not-allowed"}`}
+            className={`px-4 py-2 text-[13px] rounded-[2px] ${matches ? "bg-[var(--red)] text-white hover:shadow-[0_0_12px_rgba(255,107,107,0.4)]" : "bg-bg-2 text-meta cursor-not-allowed"}`}
           >
             删除
           </button>

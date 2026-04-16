@@ -16,9 +16,9 @@ export function Section({
     setExpanded((v) => !v);
   }
 
-  const color = status === "completed" ? "text-gray-500"
-    : status === "active" ? "text-blue-600 font-semibold"
-    : "text-gray-300";
+  const color = status === "completed" ? "text-[var(--meta)]"
+    : status === "active" ? "text-[var(--accent)] font-semibold"
+    : "text-[var(--faint)]";
 
   return (
     <div className="border rounded">

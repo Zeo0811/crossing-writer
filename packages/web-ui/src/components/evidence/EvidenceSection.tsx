@@ -14,7 +14,7 @@ export function EvidenceSection({
 }) {
   const { evidence, reload } = useProjectEvidence(projectId);
 
-  if (!evidence) return <div className="text-xs text-gray-500">加载…</div>;
+  if (!evidence) return <div className="text-xs text-[var(--meta)]">加载…</div>;
 
   const entries = Object.entries(evidence.cases);
   const completeCount = entries.filter(([, v]) => v.complete).length;
@@ -30,7 +30,7 @@ export function EvidenceSection({
               key={caseId}
               data-testid={`case-row-${caseId}`}
               onClick={() => onSelectCase(caseId)}
-              className={`cursor-pointer border p-2 rounded ${sel ? "border-blue-500 bg-blue-50" : ""}`}
+              className={`cursor-pointer border p-2 rounded ${sel ? "border-[var(--accent)] bg-[var(--accent-fill)]" : ""}`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-sm font-mono">{caseId}</span>
@@ -46,7 +46,7 @@ export function EvidenceSection({
                   has_generated: c.has_generated,
                 }} />
               </div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-[var(--meta)]">
                 {c.counts.screenshots} 截图 · {c.counts.recordings} 录屏 · {c.counts.generated} 产出
               </div>
             </li>
