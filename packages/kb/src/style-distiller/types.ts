@@ -85,3 +85,29 @@ export interface AggregatedV2 {
   buckets: BucketV2[];
   banned_vocabulary_candidates: string[];
 }
+
+export interface DistillV2Options {
+  account: string;
+  sampleSize: number;
+  since?: string;
+  until?: string;
+  runId: string;
+  onEvent?: (ev: { type: string; data: Record<string, unknown> }) => void;
+  /** Injected labeler invoke — implementer supplies bridge to model-adapter. */
+  invokeLabeler: (opts: {
+    systemPrompt: string;
+    userMessage: string;
+    model?: string;
+  }) => Promise<{ text: string; meta: { cli: string; durationMs: number } }>;
+  /** Injected composer invoke — same shape. */
+  invokeComposer: (opts: {
+    systemPrompt: string;
+    userMessage: string;
+    model?: string;
+  }) => Promise<{ text: string; meta: { cli: string; durationMs: number } }>;
+}
+
+export interface DistillV2Result {
+  account: string;
+  files: string[];
+}

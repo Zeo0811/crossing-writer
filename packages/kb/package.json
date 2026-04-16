@@ -4,7 +4,9 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "bin": { "crossing-kb": "bin/crossing-kb" },
+  "bin": {
+    "crossing-kb": "bin/crossing-kb"
+  },
   "scripts": {
     "build": "tsc -p .",
     "test": "vitest run",
@@ -14,7 +16,8 @@
     "@crossing/agents": "workspace:*",
     "better-sqlite3": "^11.5.0",
     "commander": "^12.1.0",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "p-limit": "^7.3.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.11",
