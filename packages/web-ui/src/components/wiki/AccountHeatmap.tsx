@@ -112,12 +112,43 @@ export function AccountHeatmap({ account, onIngestSelected }: Props) {
     });
   }
 
+  function applyDrag(rawIds: string[], mode: "select" | "deselect") {
+    if (rawIds.length === 0) return;
+    setSelected((s) => {
+      const n = new Set(s);
+      for (const id of rawIds) {
+        if (mode === "select") n.add(id); else n.delete(id);
+      }
+      return n;
+    });
+  }
+
+  function onCellMouseDown(rawIds: string[]) {
+    if (rawIds.length === 0) return;
+    const allIn = rawIds.every((id) => selected.has(id));
+    const mode = allIn ? "deselect" : "select";
+    setDragging(true);
+    setDragMode(mode);
+    applyDrag(rawIds, mode);
+  }
+
+  function onCellMouseEnter(rawIds: string[]) {
+    if (!dragging || rawIds.length === 0) return;
+    applyDrag(rawIds, dragMode);
+  }
+
+  function onDragEnd() {
+    setDragging(false);
+  }
+
   function selectAllRaw() {
     if (!articles) return;
     setSelected(new Set(articles.filter((a) => a.ingest_status === "raw" || a.ingest_status === "tag_failed").map((a) => a.id)));
   }
 
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [dragMode, setDragMode] = useState<"select" | "deselect">("select");
   const hoveredArticles = useMemo(() => {
     if (!hoveredDate || !articles) return [];
     return articles.filter((a) => a.published_at.startsWith(hoveredDate));
@@ -134,7 +165,7 @@ export function AccountHeatmap({ account, onIngestSelected }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="overflow-x-auto pb-2">
+      <div className="overflow-x-auto pb-2 select-none" onMouseUp={onDragEnd} onMouseLeave={onDragEnd}>
         <svg width={svgW} height={svgH} className="block">
           {/* month labels */}
           {months.map((m, i) => m ? (
@@ -180,8 +211,8 @@ export function AccountHeatmap({ account, onIngestSelected }: Props) {
                 fill={fill}
                 opacity={opacity}
                 className="cursor-pointer"
-                onClick={() => toggleDate(c.date, rawIds)}
-                onMouseEnter={() => setHoveredDate(c.date)}
+                onMouseDown={(e) => { e.preventDefault(); onCellMouseDown(rawIds); setHoveredDate(c.date); }}
+                onMouseEnter={() => { onCellMouseEnter(rawIds); setHoveredDate(c.date); }}
                 onMouseLeave={() => setHoveredDate(null)}
               />
             );
