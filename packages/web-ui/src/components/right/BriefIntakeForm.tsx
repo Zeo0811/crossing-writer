@@ -15,9 +15,11 @@ export function BriefIntakeForm({
   projectId: string;
   onUploaded: () => void;
 }) {
-  const [mode, setMode] = useState<"text" | "file">("text");
+  const [mode, setMode] = useState<"text" | "file" | "image">("text");
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<BriefAttachmentItem[]>([]);
+  const imageTabInputRef = useRef<HTMLInputElement | null>(null);
   const [productName, setProductName] = useState("");
   const [productUrl, setProductUrl] = useState("");
   const [notes, setNotes] = useState("");
@@ -108,7 +110,7 @@ export function BriefIntakeForm({
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-1 border-b border-[var(--hair)]">
-        {(["text", "file"] as const).map((k) => (
+        {(["text", "file", "image"] as const).map((k) => (
           <button
             key={k}
             onClick={() => setMode(k)}
@@ -116,7 +118,7 @@ export function BriefIntakeForm({
               mode === k ? "border-[var(--accent)] text-[var(--heading)]" : "border-transparent text-[var(--meta)] hover:text-[var(--heading)]"
             }`}
           >
-            {k === "text" ? "文字" : "文件"}
+            {k === "text" ? "文字" : k === "file" ? "文件" : "图片"}
           </button>
         ))}
       </div>
@@ -124,39 +126,9 @@ export function BriefIntakeForm({
       <div className="rounded border border-[var(--hair)] bg-[var(--bg-1)] min-h-[260px] flex flex-col">
         {mode === "text" ? (
           <>
-            <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--hair)]">
-              <button
-                type="button"
-                onClick={() => imgInputRef.current?.click()}
-                className="px-2 py-1 text-xs rounded border border-[var(--hair)] text-[var(--meta)] hover:text-[var(--accent)] hover:border-[var(--accent-soft)]"
-                aria-label="插入图片"
-                data-testid="brief-image-button"
-              >
-                🖼 图片
-              </button>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="px-2 py-1 text-xs rounded border border-[var(--hair)] text-[var(--meta)] hover:text-[var(--accent)] hover:border-[var(--accent-soft)]"
-                aria-label="插入附件"
-                data-testid="brief-file-button"
-              >
-                📎 附件
-              </button>
-              <span className="text-xs text-[var(--faint)] ml-auto">支持 Cmd+V 粘贴 / 拖拽上传</span>
+            <div className="flex items-center justify-end px-3 py-2 border-b border-[var(--hair)]">
+              <span className="text-xs text-[var(--faint)]">支持 Cmd+V 粘贴图片 / 拖拽上传</span>
             </div>
-            <input
-              ref={imgInputRef}
-              type="file" accept="image/*" multiple hidden
-              data-testid="brief-image-input"
-              onChange={(e) => { void uploadPickedFiles(e.target.files); if (imgInputRef.current) imgInputRef.current.value = ""; }}
-            />
-            <input
-              ref={fileInputRef}
-              type="file" accept=".pdf,.docx,.xlsx,.txt,.md,.csv,.zip,application/pdf,application/zip,text/*" multiple hidden
-              data-testid="brief-file-input"
-              onChange={(e) => { void uploadPickedFiles(e.target.files); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-            />
             <div className="relative flex-1">
               <textarea
                 ref={taRef}
@@ -204,7 +176,7 @@ export function BriefIntakeForm({
               {text.length} 字
             </div>
           </>
-        ) : (
+        ) : mode === "file" ? (
           <div
             onClick={() => fileInputRef.current?.click()}
             className="flex-1 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-[var(--bg-2)] min-h-[200px]"
@@ -217,6 +189,45 @@ export function BriefIntakeForm({
               type="file" accept=".docx,.pdf,.md,.txt" hidden
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col">
+            <div
+              onClick={() => imageTabInputRef.current?.click()}
+              className="flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-[var(--bg-2)] py-12 min-h-[200px]"
+            >
+              <span className="text-3xl text-[var(--accent)]">⇣</span>
+              <span className="text-sm text-[var(--body)]">拖入截图，可批量</span>
+              <span className="text-xs text-[var(--faint)]">支持拖拽 · 点击选择 · Cmd+V 粘贴</span>
+              <input
+                ref={imageTabInputRef}
+                type="file" accept="image/*" multiple hidden
+                onChange={async (e) => {
+                  if (!e.target.files?.length) return;
+                  try {
+                    const res = await uploadBriefAttachment(projectId, Array.from(e.target.files));
+                    setImageFiles((prev) => [...prev, ...res.items.filter((i) => i.kind === "image")]);
+                  } catch (err: any) { setErr(String(err.message ?? err)); }
+                  if (imageTabInputRef.current) imageTabInputRef.current.value = "";
+                }}
+              />
+            </div>
+            {imageFiles.length > 0 && (
+              <div className="border-t border-[var(--hair)] p-3 grid grid-cols-4 gap-2">
+                {imageFiles.map((f, i) => (
+                  <div key={`${f.url}-${i}`} className="relative group rounded bg-[var(--bg-2)] aspect-square flex items-center justify-center text-[var(--faint)]">
+                    <span className="text-3xl">🖼</span>
+                    <span className="absolute bottom-1 left-1 right-1 text-[10px] text-[var(--meta)] truncate text-center">{f.filename}</span>
+                    <button
+                      onClick={() => setImageFiles((prev) => prev.filter((_, j) => j !== i))}
+                      className="absolute top-1 right-1 w-5 h-5 rounded bg-[var(--bg-1)] text-[var(--meta)] hover:text-[var(--red)] opacity-0 group-hover:opacity-100 text-xs"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
