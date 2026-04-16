@@ -153,6 +153,11 @@ export function streamDistillRun(
   return () => es.close();
 }
 
+export async function cleanupLegacyPanels(): Promise<{ removed: string[] }> {
+  const res = await fetchOk('/api/config/style-panels/cleanup-legacy', { method: 'POST' });
+  return res.json();
+}
+
 async function consumeSse(res: Response, onEvent: (ev: { type: string; data: any }) => void) {
   if (!res.ok || !res.body) {
     const text = await res.text().catch(() => "");

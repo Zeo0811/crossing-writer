@@ -27,6 +27,7 @@ import { ProjectChecklistService } from "./services/project-checklist-service.js
 import { registerConfigAgentsRoutes } from "./routes/config-agents.js";
 import { registerConfigStylePanelsRoutes } from "./routes/config-style-panels.js";
 import { registerConfigStylePanelsDistillRoutes } from "./routes/config-style-panels-distill.js";
+import { registerStylePanelsCleanupRoutes } from "./routes/config-style-panels-cleanup.js";
 import { registerConfigProjectOverridesRoutes } from "./routes/config-project-overrides.js";
 import { DistillRunStore } from "./services/distill-run-store.js";
 import { registerDistillRunsRoutes } from "./routes/config-distill-runs.js";
@@ -211,6 +212,7 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     distillRunStore,
   });
   registerDistillRunsRoutes(app, { runStore: distillRunStore });
+  registerStylePanelsCleanupRoutes(app, { vaultPath: configStore.current.vaultPath });
   registerConfigProjectOverridesRoutes(app, {
     projectOverrideStore,
     projectStore: store,

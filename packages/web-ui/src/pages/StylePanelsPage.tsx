@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAccounts, listActiveDistillRuns, type AccountRow, type DistillRole, type RunSummary } from "../api/style-panels-client.js";
+import { getAccounts, listActiveDistillRuns, cleanupLegacyPanels, type AccountRow, type DistillRole, type RunSummary } from "../api/style-panels-client.js";
 import { listConfigStylePanels, deleteStylePanel, type StylePanel } from "../api/writer-client";
 import { DistillForm } from "../components/style-panels/DistillForm.js";
 import { ProgressView } from "../components/style-panels/ProgressView.js";
@@ -46,6 +46,8 @@ export function StylePanelsPage() {
   // "已蒸馏" means there's an active non-legacy panel. Accounts that only have
   // legacy flat kb files still count as pending — user can distill a proper
   // role-specific panel for them.
+  const legacyPanels = panels.filter((p) => (p.version ?? 1) < 2 || p.is_legacy);
+  const hasLegacy = legacyPanels.length > 0;
   const properlyDistilled = new Set(panels.filter((p) => !p.is_legacy).map((p) => p.account));
   const pendingAccounts = accounts.filter((a) => !properlyDistilled.has(a.account));
   const activePanel = panels.find((p) => `${p.account}/${p.role}/v${p.version}` === activeKey);
@@ -55,7 +57,26 @@ export function StylePanelsPage() {
       <header className="flex items-center justify-between px-6 h-12 border-b border-[var(--hair)]">
         <h1 className="text-lg font-semibold text-[var(--heading)]">风格库</h1>
         {mode.kind === "list" && !loading && (
-          <div className="text-xs text-[var(--meta)]">已蒸馏 {panels.length} · 待蒸馏 {pendingAccounts.length}</div>
+          <div className="flex items-center gap-3">
+            <div className="text-xs text-[var(--meta)]">已蒸馏 {panels.length} · 待蒸馏 {pendingAccounts.length}</div>
+            {hasLegacy && (
+              <button
+                className="text-xs text-[var(--meta)] hover:text-[var(--red)] px-2 py-1 rounded border border-[var(--hair)] hover:border-[var(--red)]"
+                onClick={async () => {
+                  if (!confirm(`即将硬删 ${legacyPanels.length} 个旧面板（v1 + legacy 扁平文件）。此操作不可撤销。继续？`)) return;
+                  try {
+                    const { removed } = await cleanupLegacyPanels();
+                    toast.success(`已删除 ${removed.length} 个文件`);
+                    await reload();
+                  } catch (err) {
+                    toast.error(`清理失败：${err instanceof Error ? err.message : String(err)}`);
+                  }
+                }}
+              >
+                🧹 清理旧面板（{legacyPanels.length}）
+              </button>
+            )}
+          </div>
         )}
       </header>
       {loading && (
