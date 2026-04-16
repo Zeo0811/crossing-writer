@@ -11,8 +11,7 @@ import { SelectedMissionView } from "../components/left/SelectedMissionView";
 import { ProductOverviewCard } from "../components/left/ProductOverviewCard";
 import { OverviewIntakeForm } from "../components/right/OverviewIntakeForm";
 import { CaseExpertSelector } from "../components/right/CaseExpertSelector";
-import { MissionApprovePreview } from "../components/right/MissionApprovePreview";
-import { MissionReviewPanel } from "../components/right/MissionReviewPanel";
+import { MissionRefineModal } from "../components/right/MissionRefineModal";
 import { CaseListPanel } from "../components/left/CaseListPanel";
 import { CaseSelectedGuide } from "../components/right/CaseSelectedGuide";
 import { EvidenceSection } from "../components/evidence/EvidenceSection";
@@ -243,14 +242,26 @@ function renderPhaseView(props: PhaseViewProps): React.ReactNode {
       );
 
     case "awaiting_mission_pick":
-      return <PhasePanel label="挑一条选题"><MissionCandidatesPanel projectId={projectId} onSelected={refetch} /></PhasePanel>;
-
     case "mission_approved_preview":
-      return <MissionApprovePreview projectId={projectId} project={project} refetch={refetch} />;
     case "mission_refining":
-      return <RunningView label="Coordinator 正在精修…" desc="基于你的反馈调整立意，约 30-60 秒" />;
     case "mission_review":
-      return <MissionReviewPanel projectId={projectId} project={project} refetch={refetch} />;
+      // 候选列表作为底层视图常驻；选完/打磨中/回看通过模态框叠加在上层，不离开选择上下文
+      return (
+        <>
+          <PhasePanel label="挑一条选题">
+            <MissionCandidatesPanel projectId={projectId} onSelected={refetch} />
+          </PhasePanel>
+          {status === "mission_approved_preview" && (
+            <MissionRefineModal projectId={projectId} project={project} refetch={refetch} mode="preview" />
+          )}
+          {status === "mission_refining" && (
+            <MissionRefineModal projectId={projectId} project={project} refetch={refetch} mode="refining" />
+          )}
+          {status === "mission_review" && (
+            <MissionRefineModal projectId={projectId} project={project} refetch={refetch} mode="review" />
+          )}
+        </>
+      );
 
     case "mission_approved":
       return (

@@ -65,6 +65,22 @@ export function registerMissionRoutes(app: FastifyInstance, deps: MissionDeps) {
     },
   );
 
+  app.get<{ Params: { id: string } }>(
+    "/api/projects/:id/mission/selected",
+    async (req, reply) => {
+      const project = await deps.store.get(req.params.id);
+      if (!project?.mission?.selected_path) {
+        return reply.code(404).send({ error: "no selection yet" });
+      }
+      const md = await readFile(
+        join(deps.projectsDir, req.params.id, project.mission.selected_path),
+        "utf-8",
+      );
+      reply.header("content-type", "text/markdown; charset=utf-8");
+      return md;
+    },
+  );
+
   app.post<{
     Params: { id: string };
     Body: { candidateIndex: number; edits?: string };
