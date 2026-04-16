@@ -27,6 +27,15 @@ export interface Round2Input {
   addDirs?: string[];
 }
 
+export interface Round2PeerReviewInput {
+  projectId: string;
+  runId: string;
+  candidatesMd: string;
+  peersRound1Bundle: string;  // 其他专家 round1 拼接结果
+  images?: string[];
+  addDirs?: string[];
+}
+
 export interface Round3Input {
   projectId: string;
   runId: string;
@@ -79,6 +88,24 @@ export class TopicExpert {
         project_id: input.projectId,
         run_id: input.runId,
         candidates_md: input.candidatesMd,
+      },
+      cli: this.opts.cli,
+      model: this.opts.model,
+    });
+    return base.run("", undefined, { images: input.images, addDirs: input.addDirs });
+  }
+
+  async round2PeerReview(input: Round2PeerReviewInput): Promise<AgentResult> {
+    const template = loadPrompt("topic-expert-peer-review");
+    const base = new AgentBase({
+      key: `topic_expert.${this.opts.name}`,
+      systemPromptTemplate: template,
+      vars: {
+        ...this.baseVars(),
+        project_id: input.projectId,
+        run_id: input.runId,
+        candidates_md: input.candidatesMd,
+        peers_round1_bundle: input.peersRound1Bundle,
       },
       cli: this.opts.cli,
       model: this.opts.model,
