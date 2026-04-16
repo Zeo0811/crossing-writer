@@ -2,6 +2,14 @@ import type { ArticleSample, AggregatedV2, BucketV2 } from './types.js';
 import type { LabeledArticle } from './article-labeler.js';
 import { ARTICLE_TYPES, WRITER_ROLES, type ArticleType, type Role } from './panel-v2-schema.js';
 
+/**
+ * Max snippets per (role × type) bucket handed to composer-v2. More than this
+ * wastes context window without improving the panel — composer needs variety,
+ * not volume. Hit this cap and we trim via round-robin across articles to
+ * preserve breadth.
+ */
+const MAX_SNIPPETS_PER_BUCKET = 30;
+
 export function aggregateBuckets(
   account: string,
   samples: ArticleSample[],
@@ -46,6 +54,7 @@ export function aggregateBuckets(
 
   for (const [k, bucket] of bucketMap.entries()) {
     bucket.sample_count = contributorsPerBucket.get(k)?.size ?? 0;
+    bucket.snippets = selectDiverseSnippets(bucket.snippets, MAX_SNIPPETS_PER_BUCKET);
     bucket.quant = computeQuant(bucket.snippets.map((s) => s.word_count));
   }
 
@@ -54,6 +63,37 @@ export function aggregateBuckets(
     buckets: Array.from(bucketMap.values()),
     banned_vocabulary_candidates: [],
   };
+}
+
+/**
+ * Keep up to `max` snippets, prioritizing breadth (snippets from distinct
+ * articles) over depth (many from the same article). Round-robin by article:
+ * pass 1 takes snippet #0 from each article, pass 2 takes snippet #1, etc.
+ * Returns at most `max` snippets in article-stable order.
+ */
+function selectDiverseSnippets<T extends { article_id: string }>(snippets: T[], max: number): T[] {
+  if (snippets.length <= max) return snippets;
+  // Group by article_id preserving original order
+  const perArticle = new Map<string, T[]>();
+  for (const s of snippets) {
+    const arr = perArticle.get(s.article_id) ?? [];
+    arr.push(s);
+    perArticle.set(s.article_id, arr);
+  }
+  const groups = Array.from(perArticle.values());
+  const out: T[] = [];
+  for (let passIdx = 0; out.length < max; passIdx++) {
+    let anyPicked = false;
+    for (const g of groups) {
+      if (out.length >= max) break;
+      if (g[passIdx] !== undefined) {
+        out.push(g[passIdx]!);
+        anyPicked = true;
+      }
+    }
+    if (!anyPicked) break;
+  }
+  return out;
 }
 
 function bucketKey(role: string, type: string): string { return `${role}::${type}`; }
