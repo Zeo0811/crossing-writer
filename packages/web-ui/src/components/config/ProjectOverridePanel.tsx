@@ -211,6 +211,12 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
             const styleValue = ov.styleBinding ? styleKey(ov.styleBinding) : "";
             const hasOverride = Boolean(ov.model || ov.styleBinding || ov.tools || ov.promptVersion);
             const roleChoices = role ? (stylePanelsByRole.get(role) ?? []) : [];
+            // Does the inherited default styleBinding actually resolve to an existing panel?
+            const defaultStyleMissing = Boolean(
+              defaultCfg.styleBinding && !roleChoices.some(
+                (p) => p.account === defaultCfg.styleBinding!.account && p.role === defaultCfg.styleBinding!.role,
+              ),
+            );
             const label =
               agentKey === "writer.opening" ? "开头" :
               agentKey === "writer.practice" ? "Case" :
@@ -263,20 +269,25 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
                     </select>
 
                     <span className="text-xs text-[var(--meta)]">风格</span>
-                    <select
-                      data-testid={`override-style-${agentKey}`}
-                      value={styleValue}
-                      onChange={(e) => handleStyleChange(agentKey, e.target.value)}
-                      className="appearance-none w-full bg-[var(--bg-1)] border border-[var(--hair)] rounded h-9 pl-3 pr-8 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)] bg-no-repeat"
-                      style={{
-                        fontFamily: "var(--font-sans)",
-                        backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%237e8e7f' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>\")",
-                        backgroundPosition: "right 10px center",
-                      }}
-                    >
-                      <option value="">
-                        默认 · {defaultCfg.styleBinding ? styleLabel(defaultCfg.styleBinding) : "(未绑定)"}
-                      </option>
+                    <div>
+                      <select
+                        data-testid={`override-style-${agentKey}`}
+                        value={styleValue}
+                        onChange={(e) => handleStyleChange(agentKey, e.target.value)}
+                        className={`appearance-none w-full bg-[var(--bg-1)] border rounded h-9 pl-3 pr-8 text-sm outline-none focus:border-[var(--accent-soft)] bg-no-repeat ${
+                          defaultStyleMissing && !ov.styleBinding ? "border-[var(--red)] text-[var(--red)]" : "border-[var(--hair)] text-[var(--body)]"
+                        }`}
+                        style={{
+                          fontFamily: "var(--font-sans)",
+                          backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%237e8e7f' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>\")",
+                          backgroundPosition: "right 10px center",
+                        }}
+                      >
+                        <option value="">
+                          {defaultStyleMissing
+                            ? `⚠ 缺失 · ${styleLabel(defaultCfg.styleBinding!)}（请去风格库蒸馏）`
+                            : `默认 · ${defaultCfg.styleBinding ? styleLabel(defaultCfg.styleBinding) : "(未绑定)"}`}
+                        </option>
                       {roleChoices
                         .filter((p) => {
                           if (!defaultCfg.styleBinding) return true;
@@ -290,7 +301,13 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
                             {styleLabel({ account: p.account, role: p.role as StyleBindingRole }, p.version)}
                           </option>
                         ))}
-                    </select>
+                      </select>
+                      {defaultStyleMissing && !ov.styleBinding && (
+                        <div className="mt-1 text-[10px] text-[var(--red)] leading-snug">
+                          工作台默认绑定的风格面板不存在，需要你挑一条现有的、或去风格库蒸馏一份。
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
