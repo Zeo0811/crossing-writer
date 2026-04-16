@@ -212,9 +212,9 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
             const hasOverride = Boolean(ov.model || ov.styleBinding || ov.tools || ov.promptVersion);
             const roleChoices = role ? (stylePanelsByRole.get(role) ?? []) : [];
             const label =
-              agentKey === "writer.opening" ? "开篇" :
-              agentKey === "writer.practice" ? "Case 正文" :
-              agentKey === "writer.closing" ? "收束" : agentKey;
+              agentKey === "writer.opening" ? "开头" :
+              agentKey === "writer.practice" ? "Case" :
+              agentKey === "writer.closing" ? "结尾" : agentKey;
             const accentColor =
               agentKey === "writer.opening" ? "var(--accent)" :
               agentKey === "writer.practice" ? "var(--amber)" :
@@ -249,7 +249,8 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
                       data-testid={`override-model-${agentKey}`}
                       value={modelValue}
                       onChange={(e) => handleModelChange(agentKey, e.target.value)}
-                      className="w-full max-w-[340px] bg-[var(--bg-1)] border border-[var(--hair)] rounded h-9 px-3 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
+                      className="appearance-none w-full max-w-[340px] bg-[var(--bg-1)] border border-[var(--hair)] rounded h-9 pl-3 pr-8 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)] bg-no-repeat"
+                      style={{ backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%237e8e7f' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>\")", backgroundPosition: "right 10px center" }}
                     >
                       <option value="">默认 · {modelLabel(defaultCfg.model)}</option>
                       {MODEL_CHOICES.filter((m) => modelKey(m) !== modelKey(defaultCfg.model)).map((m) => (
@@ -264,7 +265,8 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
                       data-testid={`override-style-${agentKey}`}
                       value={styleValue}
                       onChange={(e) => handleStyleChange(agentKey, e.target.value)}
-                      className="w-full max-w-[340px] bg-[var(--bg-1)] border border-[var(--hair)] rounded h-9 px-3 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
+                      className="appearance-none w-full max-w-[340px] bg-[var(--bg-1)] border border-[var(--hair)] rounded h-9 pl-3 pr-8 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)] bg-no-repeat"
+                      style={{ backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%237e8e7f' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>\")", backgroundPosition: "right 10px center" }}
                     >
                       <option value="">
                         默认 · {defaultCfg.styleBinding ? styleLabel(defaultCfg.styleBinding) : "(未绑定)"}
