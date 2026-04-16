@@ -51,19 +51,19 @@ function ReferencePanel({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="text-slate-500 hover:text-[var(--body)]"
+        className="text-[var(--meta)] hover:text-[var(--body)]"
       >
         {open ? "▼" : "▶"} 📚 本段引用 ({total})
       </button>
       {open && (
         <div className="mt-2 space-y-1">
-          {total === 0 && <div className="text-slate-400">暂无引用</div>}
+          {total === 0 && <div className="text-[var(--faint)]">暂无引用</div>}
           {toolsUsed?.map((u, i) => {
             const name = u.toolName ?? u.tool;
             const okLabel = u.ok === false ? "fail" : "ok";
             const summary = u.summary ?? (typeof u.hits_count === "number" ? `hits: ${u.hits_count}` : okLabel);
             return (
-              <div key={`tu-${i}`} className="text-slate-700">
+              <div key={`tu-${i}`} className="text-[var(--body)]">
                 <span className="font-mono text-xs">[{name}·r{u.round}]</span> {summary}
               </div>
             );

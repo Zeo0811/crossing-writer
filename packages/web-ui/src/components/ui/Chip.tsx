@@ -1,49 +1,47 @@
-import type { ReactNode } from "react";
+import { forwardRef, type HTMLAttributes } from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "./cn";
 
-export type ChipVariant = "active" | "waiting" | "warn" | "legacy" | "deleted";
+const chipVariants = cva("inline-flex items-center gap-1 rounded-sm font-medium whitespace-nowrap", {
+  variants: {
+    variant: {
+      neutral: "",
+      accent: "",
+      amber: "",
+      red: "",
+      pink: "",
+    },
+    tone: {
+      solid: "",
+      soft: "",
+    },
+    size: {
+      sm: "h-5 px-1.5 text-[10px]",
+      md: "h-6 px-2 text-[11px]",
+    },
+  },
+  compoundVariants: [
+    { variant: "neutral", tone: "soft", className: "bg-[var(--bg-2)] text-[var(--meta)]" },
+    { variant: "neutral", tone: "solid", className: "bg-[var(--hair-strong)] text-[var(--heading)]" },
+    { variant: "accent", tone: "soft", className: "bg-[var(--accent-fill)] text-[var(--accent)]" },
+    { variant: "accent", tone: "solid", className: "bg-[var(--accent)] text-[var(--accent-on)]" },
+    { variant: "amber", tone: "soft", className: "bg-[var(--amber-bg)] text-[var(--amber)]" },
+    { variant: "amber", tone: "solid", className: "bg-[var(--amber)] text-[var(--accent-on)]" },
+    { variant: "red", tone: "soft", className: "bg-[rgba(255,107,107,0.12)] text-[var(--red)]" },
+    { variant: "red", tone: "solid", className: "bg-[var(--red)] text-white" },
+    { variant: "pink", tone: "soft", className: "bg-[rgba(255,106,176,0.12)] text-[var(--pink)]" },
+    { variant: "pink", tone: "solid", className: "bg-[var(--pink)] text-white" },
+  ],
+  defaultVariants: { variant: "neutral", tone: "soft", size: "md" },
+});
 
-interface ChipProps {
-  variant?: ChipVariant;
-  children: ReactNode;
-  className?: string;
-}
+export interface ChipProps
+  extends HTMLAttributes<HTMLSpanElement>,
+    VariantProps<typeof chipVariants> {}
 
-const CONFIG: Record<ChipVariant, { dot: string; dotClass: string; wrap: string }> = {
-  active: {
-    dot: "●",
-    dotClass: "text-accent",
-    wrap: "bg-bg-2 text-body border-hair",
-  },
-  waiting: {
-    dot: "○",
-    dotClass: "text-faint",
-    wrap: "bg-bg-2 text-meta border-hair",
-  },
-  warn: {
-    dot: "◉",
-    dotClass: "text-amber",
-    wrap: "bg-[var(--amber-bg)] text-amber border-[var(--amber-hair)]",
-  },
-  legacy: {
-    dot: "▣",
-    dotClass: "text-meta",
-    wrap: "bg-bg-2 text-meta border-hair",
-  },
-  deleted: {
-    dot: "●",
-    dotClass: "text-red",
-    wrap: "bg-bg-2 text-meta border-hair line-through",
-  },
-};
-
-export function Chip({ variant = "active", children, className = "" }: ChipProps) {
-  const c = CONFIG[variant];
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-[3px] border rounded-[2px] font-sans tracking-[0.02em] ${c.wrap} ${className}`.trim()}
-    >
-      <span className={`w-2 text-center ${c.dotClass}`}>{c.dot}</span>
-      {children}
-    </span>
-  );
-}
+export const Chip = forwardRef<HTMLSpanElement, ChipProps>(
+  ({ className, variant, tone, size, ...rest }, ref) => (
+    <span ref={ref} className={cn(chipVariants({ variant, tone, size }), className)} {...rest} />
+  ),
+);
+Chip.displayName = "Chip";

@@ -90,7 +90,7 @@ function renderToolEvent(ev: StreamEvent, i: number) {
       );
     case "writer.tool_round_completed":
       return (
-        <li key={`tool-${i}`} className="text-xs text-slate-500">
+        <li key={`tool-${i}`} className="text-xs text-[var(--meta)]">
           ⟳ [{p.sectionKey}] round {p.round} 完成
         </li>
       );

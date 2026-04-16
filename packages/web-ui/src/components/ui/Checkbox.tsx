@@ -1,22 +1,21 @@
-import type { InputHTMLAttributes } from "react";
-import { useId } from "react";
+import * as RadixCheckbox from "@radix-ui/react-checkbox";
+import { forwardRef, type ComponentPropsWithoutRef } from "react";
+import { cn } from "./cn";
 
-interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type"> {
-  label?: string;
-}
+export interface CheckboxProps extends ComponentPropsWithoutRef<typeof RadixCheckbox.Root> {}
 
-export function Checkbox({ label, id, className = "", ...rest }: CheckboxProps) {
-  const fallback = useId();
-  const ctrlId = id ?? fallback;
-  return (
-    <span className={`inline-flex items-center gap-2 text-[13px] text-body ${className}`.trim()}>
-      <input
-        id={ctrlId}
-        type="checkbox"
-        className="appearance-none w-[14px] h-[14px] bg-bg-2 border border-hair rounded-[2px] checked:bg-accent checked:border-accent cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:inset-0 checked:after:text-accent-on checked:after:text-[10px] checked:after:leading-[12px] checked:after:text-center checked:after:font-pixel"
-        {...rest}
-      />
-      {label && <label htmlFor={ctrlId}>{label}</label>}
-    </span>
-  );
-}
+export const Checkbox = forwardRef<HTMLButtonElement, CheckboxProps>(
+  ({ className, ...rest }, ref) => (
+    <RadixCheckbox.Root
+      ref={ref}
+      className={cn(
+        "w-4 h-4 rounded-sm border border-[var(--hair-strong)] bg-[var(--bg-1)] flex items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-soft)] data-[state=checked]:bg-[var(--accent)] data-[state=checked]:border-[var(--accent)] disabled:opacity-50",
+        className,
+      )}
+      {...rest}
+    >
+      <RadixCheckbox.Indicator className="text-[var(--accent-on)] text-[10px] leading-none">✓</RadixCheckbox.Indicator>
+    </RadixCheckbox.Root>
+  ),
+);
+Checkbox.displayName = "Checkbox";

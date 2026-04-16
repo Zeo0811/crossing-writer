@@ -48,7 +48,7 @@ function ModelsView() {
     getAgentConfigs().then((r) => setAgents(r.agents)).catch(() => {});
   }, []);
   const models = new Set<string>();
-  Object.values(agents).forEach((a) => { if (a.model) models.add(`${a.cli ?? "claude"} · ${a.model}`); });
+  Object.values(agents).forEach((a) => { if (a.model) models.add(`${(a.model as any).cli ?? "claude"} · ${typeof a.model === "string" ? a.model : (a.model as any).model ?? ""}`); });
   const list = Array.from(models);
   return (
     <div className="grid grid-cols-2 gap-3">

@@ -134,7 +134,7 @@ function ImageSection({
   images: ProjectImage[];
   onPick: () => void;
   onDelete: (filename: string) => void;
-  inputRef: React.RefObject<HTMLInputElement>;
+  inputRef: React.RefObject<HTMLInputElement | null>;
   onChange: (fl: FileList | null) => void;
 }) {
   return (

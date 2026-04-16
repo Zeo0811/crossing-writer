@@ -55,9 +55,9 @@ export function useBriefPaste(
       }
     };
 
-    el.addEventListener("paste", onPaste as EventListener);
+    el.addEventListener("paste", onPaste as unknown as EventListener);
     return () => {
-      el.removeEventListener("paste", onPaste as EventListener);
+      el.removeEventListener("paste", onPaste as unknown as EventListener);
     };
   }, [ref]);
 }

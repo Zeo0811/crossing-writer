@@ -45,11 +45,11 @@ export function ContextModal({ projectId, onClose }: ContextModalProps) {
         </div>
         {error && <div style={{ color: "crimson", fontSize: 12 }}>Error: {error}</div>}
         {!error && !bundle && <div style={{ fontSize: 12 }}>Loading…</div>}
-        {bundle && (
+        {bundle != null ? (
           <pre data-testid="context-modal-pre" style={{ fontSize: 11, whiteSpace: "pre-wrap", marginTop: 12 }}>
-            {JSON.stringify(bundle, null, 2)}
+            {String(JSON.stringify(bundle, null, 2))}
           </pre>
-        )}
+        ) : null}
       </div>
     </div>
   );

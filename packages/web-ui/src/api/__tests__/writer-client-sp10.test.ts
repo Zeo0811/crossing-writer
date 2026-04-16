@@ -124,7 +124,7 @@ describe("SP-10 writer-client style panels APIs", () => {
     const fetchMock = vi.fn(async () => okJson({ panels: [] }));
     (globalThis as any).fetch = fetchMock;
     await listConfigStylePanels({ account: "acc", role: "opening", include_deleted: true });
-    const called = fetchMock.mock.calls[0][0] as string;
+    const called = (fetchMock.mock.calls as any)[0][0] as string;
     expect(called).toMatch(/^\/api\/config\/style-panels\?/);
     expect(called).toContain("account=acc");
     expect(called).toContain("role=opening");
@@ -145,7 +145,7 @@ describe("SP-10 writer-client style panels APIs", () => {
     const fetchMock = vi.fn(async () => okJson({ ok: true }));
     (globalThis as any).fetch = fetchMock;
     await deleteStylePanel("acc", "opening", 3, true);
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/config/style-panels/acc/opening/3?hard=1");
+    expect((fetchMock.mock.calls as any)[0][0]).toBe("/api/config/style-panels/acc/opening/3?hard=1");
   });
 
   it("deleteStylePanel throws on 404", async () => {

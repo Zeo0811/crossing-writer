@@ -1,8 +1,12 @@
 export { Button, type ButtonProps } from "./Button";
+export { Card, type CardProps } from "./Card";
+export { Chip, type ChipProps } from "./Chip";
 export { Input, type InputProps } from "./Input";
 export { Textarea, type TextareaProps } from "./Textarea";
 export { FormField, type FormFieldProps } from "./FormField";
 export { StatusBadge, type StatusBadgeProps } from "./StatusBadge";
+export { Select, SelectItem, type SelectOption, type SelectProps } from "./Select";
+export { Checkbox, type CheckboxProps } from "./Checkbox";
 export { RadioGroup, RadioItem } from "./Radio";
 export { Tabs, TabsList, TabsTrigger, TabsContent } from "./Tabs";
 export {

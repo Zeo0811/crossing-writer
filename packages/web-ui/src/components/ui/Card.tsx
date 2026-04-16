@@ -1,40 +1,31 @@
-import type { HTMLAttributes } from "react";
+import { forwardRef, type HTMLAttributes } from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "./cn";
 
-type Variant = "section" | "agent" | "panel";
+const cardVariants = cva("rounded", {
+  variants: {
+    variant: {
+      outer: "border border-[var(--hair)] bg-[var(--bg-1)] overflow-hidden",
+      nested: "bg-[var(--bg-2)]",
+      ghost: "bg-transparent",
+    },
+    padding: {
+      none: "",
+      sm: "p-3",
+      md: "p-4",
+      lg: "p-[18px]",
+    },
+  },
+  defaultVariants: { variant: "outer", padding: "none" },
+});
 
-interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  variant?: Variant;
-  halftone?: boolean;
-}
+export interface CardProps
+  extends HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof cardVariants> {}
 
-const VARIANTS: Record<Variant, string> = {
-  section: "bg-bg-1 border border-hair rounded-[6px] px-6 py-[22px] relative",
-  agent:
-    "bg-bg-2 border border-hair border-l-2 border-l-accent rounded-[6px] p-[18px] flex flex-col gap-3 relative",
-  panel: "bg-bg-2 border-0 rounded-[6px] p-[18px] relative",
-};
-
-export function Card({
-  variant = "section",
-  halftone = false,
-  className = "",
-  children,
-  ...rest
-}: CardProps) {
-  return (
-    <div className={`${VARIANTS[variant]} ${className}`.trim()} {...rest}>
-      {halftone && (
-        <div
-          data-halftone=""
-          aria-hidden
-          className="absolute top-[10px] right-3 w-[34px] h-[14px] opacity-45 pointer-events-none"
-          style={{
-            backgroundImage: "radial-gradient(var(--hair-strong) 1px, transparent 1px)",
-            backgroundSize: "4px 4px",
-          }}
-        />
-      )}
-      {children}
-    </div>
-  );
-}
+export const Card = forwardRef<HTMLDivElement, CardProps>(
+  ({ className, variant, padding, ...rest }, ref) => (
+    <div ref={ref} className={cn(cardVariants({ variant, padding }), className)} {...rest} />
+  ),
+);
+Card.displayName = "Card";

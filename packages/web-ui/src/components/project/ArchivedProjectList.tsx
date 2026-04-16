@@ -24,18 +24,19 @@ export function ArchivedProjectList({ items, onRestore, onDelete }: ArchivedProj
       {items.map((p) => (
         <Card
           key={p.id}
-          variant="agent"
+          variant="nested"
+          padding="lg"
           data-testid="archived-card"
-          className="opacity-70"
+          className="opacity-70 flex flex-col gap-3"
         >
           <div className="flex justify-between items-start gap-2">
             <Link
               to={`/projects/${p.id}`}
-              className="font-semibold text-[14px] text-heading no-underline hover:text-accent"
+              className="font-semibold text-sm text-[var(--heading)] no-underline hover:text-[var(--accent)]"
             >
               {p.name}
             </Link>
-            <Chip variant="legacy">已归档</Chip>
+            <Chip variant="neutral" tone="soft">已归档</Chip>
           </div>
           <div className="font-mono-term text-[11px] text-meta tracking-[0.04em]">
             {p.stage} · 更新于 {formatBeijingShort(p.updated_at)}

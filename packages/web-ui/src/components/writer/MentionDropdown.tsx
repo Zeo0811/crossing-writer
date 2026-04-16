@@ -55,7 +55,7 @@ export function MentionDropdown({ items, activeIndex, onSelect, onHover }: Menti
           >
             <span className="mr-1">{item.icon}</span>
             <span className="font-medium">{item.label}</span>
-            <span className={"ml-2 " + (isActive ? "text-slate-200" : "text-slate-500")}>
+            <span className={"ml-2 " + (isActive ? "text-[var(--heading)]" : "text-[var(--meta)]")}>
               {item.description}
             </span>
           </li>
