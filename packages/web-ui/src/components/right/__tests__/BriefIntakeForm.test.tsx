@@ -7,6 +7,7 @@ function mockFetchOk(items: any[]) {
   (globalThis as any).fetch = vi.fn(async () => ({
     ok: true,
     status: 200,
+    headers: { get: (_: string) => "application/json" },
     json: async () => ({ items }),
     text: async () => "",
   }));
@@ -111,8 +112,8 @@ describe("BriefIntakeForm rich-media", () => {
     const imgTabBtn = screen.getByRole("button", { name: /图片/ });
     await userEvent.click(imgTabBtn);
 
-    // Upload 2 images via hidden input (the image-tab input accepts image/*)
-    const fileInput = document.querySelector('input[type="file"][accept="image/*"]') as HTMLInputElement;
+    // Upload 2 images via the hidden image-tab input
+    const fileInput = screen.getByTestId("brief-image-tab-input") as HTMLInputElement;
     const f1 = new File([new Uint8Array([1])], "a.png", { type: "image/png" });
     const f2 = new File([new Uint8Array([2])], "b.png", { type: "image/png" });
     await act(async () => {

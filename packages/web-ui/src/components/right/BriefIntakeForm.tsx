@@ -326,6 +326,7 @@ export function BriefIntakeForm({
               <span className="text-xs text-[var(--faint)]">支持拖拽 · 点击选择 · Cmd+V 粘贴</span>
               <input
                 ref={imageTabInputRef}
+                data-testid="brief-image-tab-input"
                 type="file" accept="image/*" multiple hidden
                 onChange={async (e) => {
                   if (!e.target.files?.length) return;
