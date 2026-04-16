@@ -296,16 +296,24 @@ export function registerEvidenceRoutes(app: FastifyInstance, deps: EvidenceDeps)
         });
       }
       const submitted_at = new Date().toISOString();
+      const prev = await deps.store.get(req.params.id);
+      // First transition: evidence_collecting → evidence_ready (persists submitted_at)
       await deps.store.update(req.params.id, {
         status: "evidence_ready",
         evidence: {
-          cases: (await deps.store.get(req.params.id))?.evidence?.cases ?? {},
+          cases: prev?.evidence?.cases ?? {},
           index_path: "evidence/index.md",
           all_complete: true,
           submitted_at,
         },
       });
-      return reply.send({ ok: true });
+      // Second transition: evidence_ready → writing_configuring (move user into
+      // writer setup right away — the CTA is "保存并开始创作", so advancing one
+      // more step matches user intent).
+      await deps.store.update(req.params.id, {
+        status: "writing_configuring",
+      });
+      return reply.send({ ok: true, status: "writing_configuring" });
     },
   );
 }
