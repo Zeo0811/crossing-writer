@@ -162,7 +162,7 @@ export function BriefIntakeForm({
         ))}
       </div>
 
-      <div className="rounded border border-[var(--hair)] bg-[var(--bg-1)] min-h-[260px] flex flex-col">
+      <div className="rounded border border-[var(--hair)] bg-[var(--bg-1)] h-[420px] flex flex-col">
         {mode === "text" ? (
           <>
             <div className="relative flex-1">
@@ -171,7 +171,7 @@ export function BriefIntakeForm({
                 contentEditable
                 suppressContentEditableWarning
                 data-placeholder="把甲方简报粘贴进来…（支持 Cmd+V 粘贴图片 / 拖拽上传）"
-                className="brief-editor w-full h-full min-h-[200px] bg-transparent p-3 text-sm text-[var(--body)] outline-none overflow-auto whitespace-pre-wrap"
+                className="brief-editor w-full h-full bg-transparent p-3 text-sm text-[var(--body)] outline-none overflow-y-auto whitespace-pre-wrap"
                 data-testid="brief-textarea"
                 onInput={(e) => setText(htmlToMd(e.currentTarget))}
                 onClick={(e) => {
