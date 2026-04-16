@@ -29,8 +29,11 @@ export function StylePanelsPage() {
   }
   useEffect(() => { void reload(); }, []);
 
-  const distilledAccounts = new Set(panels.map((p) => p.account));
-  const pendingAccounts = accounts.filter((a) => !distilledAccounts.has(a.account));
+  // "已蒸馏" means there's an active non-legacy panel. Accounts that only have
+  // legacy flat kb files still count as pending — user can distill a proper
+  // role-specific panel for them.
+  const properlyDistilled = new Set(panels.filter((p) => !p.is_legacy).map((p) => p.account));
+  const pendingAccounts = accounts.filter((a) => !properlyDistilled.has(a.account));
   const activePanel = panels.find((p) => `${p.account}/${p.role}/v${p.version}` === activeKey);
 
   return (

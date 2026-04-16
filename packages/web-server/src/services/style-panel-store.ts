@@ -104,9 +104,28 @@ export class StylePanelStore {
     return join(this.baseDir, account, `${role}-v${version}.md`);
   }
 
+  /**
+   * Resolve the real on-disk path for a panel. New-layout panels live at
+   * <base>/<account>/<role>-v<version>.md; legacy panels are flat files like
+   * <base>/<account>_kb.md with no subdir. Fall back to scanning list() when
+   * the canonical path doesn't exist, matching by frontmatter fields.
+   */
+  private resolveAbsPath(account: string, role: StylePanelRole, version: number): string | null {
+    const canonical = this.pathFor(account, role, version);
+    if (existsSync(canonical)) return canonical;
+    // fall back: scan list() for a panel with matching {account, role, version}
+    const match = this.list().find(
+      (p) =>
+        p.frontmatter.account === account &&
+        p.frontmatter.role === role &&
+        p.frontmatter.version === version,
+    );
+    return match?.absPath ?? null;
+  }
+
   softDelete(account: string, role: StylePanelRole, version: number): boolean {
-    const absPath = this.pathFor(account, role, version);
-    if (!existsSync(absPath)) return false;
+    const absPath = this.resolveAbsPath(account, role, version);
+    if (!absPath) return false;
     const raw = readFileSync(absPath, "utf-8");
     const parsed = parsePanel(absPath, raw);
     const fm: StylePanelFrontmatter = { ...parsed.frontmatter, status: "deleted" };
@@ -115,8 +134,8 @@ export class StylePanelStore {
   }
 
   hardDelete(account: string, role: StylePanelRole, version: number): boolean {
-    const absPath = this.pathFor(account, role, version);
-    if (!existsSync(absPath)) return false;
+    const absPath = this.resolveAbsPath(account, role, version);
+    if (!absPath) return false;
     unlinkSync(absPath);
     return true;
   }
