@@ -131,17 +131,11 @@ export function EvidenceSection({
       </ul>
 
       <div className="flex items-center justify-between gap-4 pt-3 border-t border-[var(--hair)]">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 text-xs text-[var(--meta)] mb-1">
-            <span>进度：{completeCount} / {total} 完整（每条只要有任一素材或笔记即可）</span>
-            <span className="font-mono-term text-[var(--accent)]">{progress}%</span>
-          </div>
-          <div className="h-1.5 rounded-full bg-[var(--bg-2)] overflow-hidden">
+        <div className="flex items-center gap-3">
+          <div className="w-32 h-1.5 rounded-full bg-[var(--bg-2)] overflow-hidden">
             <div className="h-full bg-[var(--accent)] transition-all" style={{ width: `${progress}%` }} />
           </div>
-          <div className="text-[10px] text-[var(--faint)] mt-1">
-            上传 / 删除 / 保存笔记都是即时持久化，随时可回来继续
-          </div>
+          <span className="text-xs text-[var(--meta)] font-mono-term tabular-nums">{completeCount} / {total} · {progress}%</span>
         </div>
         <ActionButton
           onClick={async () => { await submitEvidence(projectId); reload(); }}
