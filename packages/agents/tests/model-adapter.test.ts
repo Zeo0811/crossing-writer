@@ -181,4 +181,39 @@ describe("invokeAgent with images", () => {
     expect(args.some((a: string) => a === "--image" || a.startsWith("--image="))).toBe(false);
     expect(args).not.toContain("-i");
   });
+
+  it("passes --tools Read when claude cli has images", async () => {
+    vi.mocked(spawn).mockImplementation(mockChild({ status: 0, stdout: "ok" }));
+
+    await invokeAgent({
+      agentKey: "brief_analyst",
+      cli: "claude",
+      systemPrompt: "s",
+      userMessage: "u",
+      images: ["/abs/a.png"],
+    });
+
+    const call = vi.mocked(spawn).mock.calls[0]!;
+    const args = call[1] as string[];
+    const toolsIdx = args.indexOf("--tools");
+    expect(toolsIdx).toBeGreaterThanOrEqual(0);
+    expect(args[toolsIdx + 1]).toBe("Read");
+  });
+
+  it("keeps --tools empty when claude cli has no images", async () => {
+    vi.mocked(spawn).mockImplementation(mockChild({ status: 0, stdout: "ok" }));
+
+    await invokeAgent({
+      agentKey: "x",
+      cli: "claude",
+      systemPrompt: "s",
+      userMessage: "u",
+    });
+
+    const call = vi.mocked(spawn).mock.calls[0]!;
+    const args = call[1] as string[];
+    const toolsIdx = args.indexOf("--tools");
+    expect(toolsIdx).toBeGreaterThanOrEqual(0);
+    expect(args[toolsIdx + 1]).toBe("");
+  });
 });

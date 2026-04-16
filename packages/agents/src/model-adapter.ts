@@ -119,7 +119,7 @@ export async function invokeAgent(opts: InvokeOptions): Promise<AgentResult> {
   const addDirArgs = Array.from(allDirs).flatMap((d) => ["--add-dir", d]);
   const args = [
     "-p", "-",
-    "--tools", "",
+    "--tools", images.length > 0 ? "Read" : "",
     ...addDirArgs,
     ...(opts.model ? ["--model", opts.model] : []),
   ];
