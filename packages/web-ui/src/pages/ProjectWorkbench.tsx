@@ -120,11 +120,17 @@ function BriefReadyView({ projectId, project, refetch }: { projectId: string; pr
 
   // Editing mode: hide expert-selection panel since the brief is being rewritten
   if (editing && initialText !== null) {
+    const src = project?.brief?.source_type as string | undefined;
+    const rawPath = project?.brief?.raw_path as string | undefined;
+    const initialRawFile = (src && src !== "text" && rawPath)
+      ? { filename: rawPath.split("/").pop() ?? rawPath, sourceType: src, rawPath }
+      : undefined;
     return (
       <PhasePanel label="重新上传简报">
         <BriefIntakeForm
           projectId={projectId}
           initialText={initialText}
+          initialRawFile={initialRawFile}
           submitLabel="保存并重新解析 →"
           onCancel={() => setEditing(false)}
           onUploaded={() => { setEditing(false); refetch(); }}

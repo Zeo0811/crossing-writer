@@ -9,13 +9,26 @@ import {
 import { useBriefPaste } from "../../hooks/useBriefPaste";
 import { useBriefDrop } from "../../hooks/useBriefDrop";
 
+export interface InitialRawFile {
+  filename: string;
+  sourceType: string;  // docx | pdf | md | txt | ...
+  rawPath: string;     // brief/raw/<filename>
+}
+
 // Parse brief.md to guess which tab the user originally used:
 // pure image markdown (no prose, no attachments) → image tab; anything else → text tab.
-function parseInitialBrief(md: string | undefined): {
-  mode: "text" | "image";
+// If the project's brief was originally uploaded as a FILE (docx/pdf/etc), caller passes
+// initialRawFile separately and we override to 文件 tab regardless of md shape.
+function parseInitialBrief(md: string | undefined, initialRawFile?: InitialRawFile): {
+  mode: "text" | "file" | "image";
   text: string;
   imageFiles: BriefAttachmentItem[];
 } {
+  if (initialRawFile) {
+    // Original upload was a file — show it in 文件 tab, keep text blank.
+    // text/image tabs remain empty so the user sees "this is a file brief" not extracted fragments.
+    return { mode: "file", text: "", imageFiles: [] };
+  }
   if (!md) return { mode: "text", text: "", imageFiles: [] };
   const imgRe = /!\[([^\]]*)\]\(([^)]+)\)/g;
   const imageFiles: BriefAttachmentItem[] = [];
@@ -36,16 +49,18 @@ export function BriefIntakeForm({
   projectId,
   onUploaded,
   initialText,
+  initialRawFile,
   submitLabel,
   onCancel,
 }: {
   projectId: string;
   onUploaded: () => void;
   initialText?: string;
+  initialRawFile?: InitialRawFile;
   submitLabel?: string;
   onCancel?: () => void;
 }) {
-  const initial = useMemo(() => parseInitialBrief(initialText), [initialText]);
+  const initial = useMemo(() => parseInitialBrief(initialText, initialRawFile), [initialText, initialRawFile]);
   const [mode, setMode] = useState<"text" | "file" | "image">(initial.mode);
   const [text, setText] = useState(initial.text);
   const [files, setFiles] = useState<File[]>([]);
@@ -182,9 +197,17 @@ export function BriefIntakeForm({
           .join("\n\n");
         await api.uploadBriefText(projectId, { text: md });
       } else {
-        if (files.length === 0) throw new Error("请选择文件");
-        for (const f of files) {
-          await api.uploadBriefFile(projectId, f, {});
+        if (files.length > 0) {
+          // User picked (possibly new) files — upload them, which replaces the brief
+          for (const f of files) {
+            await api.uploadBriefFile(projectId, f, {});
+          }
+        } else if (initialRawFile) {
+          // No new files, but there's an existing raw file — just re-analyze it
+          const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/brief/reanalyze`, { method: "POST" });
+          if (!res.ok) throw new Error(`重新解析失败: ${res.status}`);
+        } else {
+          throw new Error("请选择文件");
         }
       }
       onUploaded();
@@ -350,8 +373,19 @@ export function BriefIntakeForm({
                 }}
               />
             </div>
-            {files.length > 0 && (
+            {(files.length > 0 || (initialRawFile && files.length === 0)) && (
               <div className="border-t border-[var(--hair)] p-3 space-y-1.5 overflow-y-auto max-h-[200px]">
+                {initialRawFile && files.length === 0 && (
+                  <div
+                    className="flex items-center gap-3 px-3 py-2 rounded bg-[var(--bg-2)] text-sm"
+                    data-testid="brief-existing-raw-file"
+                  >
+                    <span className="text-[var(--accent)]">📄</span>
+                    <span className="flex-1 truncate text-[var(--body)]">{initialRawFile.filename}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-[var(--accent-fill)] text-[var(--accent)] font-semibold">已上传</span>
+                    <span className="text-xs text-[var(--faint)]">.{initialRawFile.sourceType}</span>
+                  </div>
+                )}
                 {files.map((f, i) => (
                   <div key={`${f.name}-${i}`} className="flex items-center gap-3 px-3 py-2 rounded bg-[var(--bg-2)] text-sm">
                     <span className="text-[var(--accent)]">📄</span>
