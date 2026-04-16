@@ -165,7 +165,7 @@ export function BriefIntakeForm({
         ))}
       </div>
 
-      <div className="rounded border border-[var(--hair)] bg-[var(--bg-1)] h-[420px] flex flex-col">
+      <div className="rounded border border-[var(--hair)] bg-[var(--bg-1)] h-[420px] flex flex-col overflow-hidden">
         {mode === "text" ? (
           <>
             <div className="relative flex-1 min-h-0">
