@@ -15,8 +15,8 @@ export function EmptyState({ icon, title, body, action, variant = "default", cla
   return (
     <div
       className={cn(
-        "flex flex-col items-center text-center rounded border border-dashed py-16 px-8",
-        primary ? "border-[var(--accent-soft)] bg-[var(--accent-fill)]/15" : "border-[var(--hair)]",
+        "flex flex-col items-center text-center rounded py-16 px-8",
+        primary ? "bg-[var(--bg-2)]" : "bg-[var(--bg-2)]",
         className,
       )}
     >
