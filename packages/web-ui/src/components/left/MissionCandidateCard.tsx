@@ -8,9 +8,12 @@ import { stripFrontmatter } from "../../utils/markdown";
 export function MissionCandidatesPanel({
   projectId,
   onSelected,
+  lockedIndex,
 }: {
   projectId: string;
   onSelected: () => void;
+  /** When set, render only this candidate as locked-in (no select UI) */
+  lockedIndex?: number | null;
 }) {
   const { data, isLoading } = useCandidates(projectId, true);
   const [busyIdx, setBusyIdx] = useState<number | null>(null);
@@ -33,6 +36,35 @@ export function MissionCandidatesPanel({
 
   const { body: stripped } = stripFrontmatter(data);
   const parts = stripped.split(/^# 候选 /m).slice(1);
+
+  // Locked mode: only render the selected candidate, no select button
+  if (lockedIndex != null) {
+    const idx = lockedIndex;
+    const body = parts[idx - 1];
+    if (!body) return <div className="text-sm text-[var(--meta)]">选中的候选读取失败 (index {idx})</div>;
+    const lines = body.split("\n");
+    const headLine = lines[0]?.trim() ?? `选题 ${idx}`;
+    return (
+      <div className="space-y-3">
+        <div className="rounded p-4 border border-[var(--accent)] bg-[var(--accent-fill)]">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-[var(--accent)] text-[var(--accent-on)] font-semibold uppercase tracking-wider shrink-0">
+              已选定 · #{idx}
+            </span>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-[var(--heading)] font-semibold mb-2">候选 {headLine}</h3>
+              <div className="prose prose-sm max-w-none text-[var(--body)]">
+                <ReactMarkdown>{lines.slice(1).join("\n")}</ReactMarkdown>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="text-[11px] text-[var(--faint)]">
+          其余 {parts.length - 1} 条候选已隐藏（已选定，不可再改）
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

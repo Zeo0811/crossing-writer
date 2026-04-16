@@ -244,12 +244,18 @@ function renderPhaseView(props: PhaseViewProps): React.ReactNode {
     case "awaiting_mission_pick":
     case "mission_approved_preview":
     case "mission_refining":
-    case "mission_review":
-      // 候选列表作为底层视图常驻；选完/打磨中/回看通过模态框叠加在上层，不离开选择上下文
+    case "mission_review": {
+      // 候选列表作为底层视图常驻；选完后锁定到已选定那一条，模态框叠加在上层
+      const lockedIndex = project?.mission?.selected_index as number | null | undefined;
+      const isLocked = status !== "awaiting_mission_pick" && typeof lockedIndex === "number";
       return (
         <>
-          <PhasePanel label="挑一条选题">
-            <MissionCandidatesPanel projectId={projectId} onSelected={refetch} />
+          <PhasePanel label={isLocked ? "已选定选题" : "挑一条选题"}>
+            <MissionCandidatesPanel
+              projectId={projectId}
+              onSelected={refetch}
+              lockedIndex={isLocked ? lockedIndex : null}
+            />
           </PhasePanel>
           {status === "mission_approved_preview" && (
             <MissionRefineModal projectId={projectId} project={project} refetch={refetch} mode="preview" />
@@ -262,6 +268,7 @@ function renderPhaseView(props: PhaseViewProps): React.ReactNode {
           )}
         </>
       );
+    }
 
     case "mission_approved":
       return (

@@ -11,8 +11,8 @@ export function SelectedMissionView({
   selectedPath: string;
 }) {
   const { data } = useQuery({
-    queryKey: ["selected-mission", projectId],
-    queryFn: () => apiMission.getCandidates(projectId),
+    queryKey: ["selected-mission", projectId, selectedPath],
+    queryFn: () => apiMission.getSelected(projectId),
     retry: false,
   });
   return (

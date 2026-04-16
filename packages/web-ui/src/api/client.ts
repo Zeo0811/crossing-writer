@@ -207,6 +207,8 @@ export const apiMission = {
     }),
   getCandidates: (projectId: string) =>
     request<string>(`/api/projects/${projectId}/mission/candidates`),
+  getSelected: (projectId: string) =>
+    request<string>(`/api/projects/${projectId}/mission/selected`),
   select: (projectId: string, candidateIndex: number, edits?: string) =>
     request<{ ok: true }>(`/api/projects/${projectId}/mission/select`, {
       method: "POST",
