@@ -73,7 +73,11 @@ async function mergeWriterConfig(
   for (const key of AGENT_KEYS) {
     const override = body.cli_model_per_agent?.[key];
     const globalCfg = await (deps.configStore as any).get(key);
-    cliModel[key] = override ?? (globalCfg ? { cli: (globalCfg.cli ?? "claude") as "claude" | "codex", model: globalCfg.model } : undefined);
+    const nestedModel = globalCfg?.model;
+    const isNewFormat = nestedModel && typeof nestedModel === "object" && "cli" in nestedModel;
+    const cli: "claude" | "codex" = (isNewFormat ? nestedModel.cli : globalCfg?.cli) ?? "claude";
+    const model: string | undefined = isNewFormat ? nestedModel.model : (typeof nestedModel === "string" ? nestedModel : undefined);
+    cliModel[key] = override ?? (globalCfg ? { cli, model } : undefined);
     const refOverride = body.reference_accounts_per_agent?.[key];
     refs[key] = refOverride ?? (globalCfg?.reference_accounts ?? []);
   }
