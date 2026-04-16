@@ -339,26 +339,60 @@ function renderPhaseView(props: PhaseViewProps): React.ReactNode {
   }
 }
 
-function ActivityDrawer({ projectId, events, connectionState, lastEventTs }: { projectId: string; events: any[]; connectionState: any; lastEventTs: any }) {
+// Pixel-style monitor icon used on the floating 控制台 entry
+function ConsolePixelIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 16 16"
+      fill="currentColor"
+      shapeRendering="crispEdges"
+      aria-hidden="true"
+    >
+      {/* outer monitor frame (top/bottom/sides) */}
+      <rect x="1" y="2" width="14" height="1" />
+      <rect x="1" y="9" width="14" height="1" />
+      <rect x="1" y="3" width="1" height="6" />
+      <rect x="14" y="3" width="1" height="6" />
+      {/* screen glow (2 scan lines) */}
+      <rect x="3" y="4" width="10" height="1" opacity="0.7" />
+      <rect x="3" y="6" width="7" height="1" opacity="0.7" />
+      {/* stand */}
+      <rect x="7" y="10" width="2" height="2" />
+      {/* base */}
+      <rect x="4" y="12" width="8" height="1" />
+    </svg>
+  );
+}
+
+function ConsoleFab({ projectId, events, connectionState, lastEventTs }: { projectId: string; events: any[]; connectionState: any; lastEventTs: any }) {
   const [open, setOpen] = useState(false);
+  const active = connectionState === "connected" || connectionState === "connecting";
   return (
     <>
-      <div className="border-t border-[var(--hair)]">
-        <button
-          onClick={() => setOpen(true)}
-          className="w-full flex items-center justify-between px-6 py-2.5 text-xs text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"
-        >
-          <span className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
-            Agent 活动（{events.length}）
-          </span>
-          <span>展开 ▾</span>
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        data-testid="console-fab"
+        className="fixed bottom-5 right-5 z-40 group inline-flex items-center gap-2 h-10 pl-2.5 pr-4 rounded-full border border-[var(--hair)] bg-[var(--bg-1)] text-[var(--body)] shadow-[0_4px_12px_rgba(0,0,0,0.12)] hover:border-[var(--accent-soft)] hover:bg-[var(--bg-2)] hover:text-[var(--accent)] transition-colors"
+        title={`控制台 · ${events.length} 事件`}
+      >
+        <span className="relative inline-flex items-center justify-center w-6 h-6 text-[var(--meta)] group-hover:text-[var(--accent)] transition-colors">
+          <ConsolePixelIcon />
+          {active && events.length > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
+          )}
+        </span>
+        <span className="text-sm font-semibold tracking-wide" style={{ fontFamily: "var(--font-pixel, var(--font-mono))" }}>控制台</span>
+        {events.length > 0 && (
+          <span className="text-[10px] text-[var(--meta)] font-mono-term">{events.length}</span>
+        )}
+      </button>
       {open && (
         <div
           role="dialog"
-          aria-label="Agent 活动"
+          aria-label="控制台"
           className="fixed inset-0 z-50 flex flex-col bg-[var(--bg-0)]"
         >
           <ProjectActivityView
@@ -508,7 +542,7 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
         {renderPhaseView({ project, projectId, events, refetch, selectedEvidenceCase, setSelectedEvidenceCase, missingBindings })}
       </main>
 
-      <ActivityDrawer projectId={projectId} events={events} connectionState={connectionState} lastEventTs={lastEventTs} />
+      <ConsoleFab projectId={projectId} events={events} connectionState={connectionState} lastEventTs={lastEventTs} />
 
       {overrideOpen && (
         <ProjectOverridePanel projectId={projectId} onClose={() => setOverrideOpen(false)} />
