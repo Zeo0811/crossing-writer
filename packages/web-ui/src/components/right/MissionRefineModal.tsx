@@ -1,6 +1,47 @@
 import { useEffect, useMemo, useState } from "react";
 import { diffLines } from "diff";
 
+function RefiningAnimation({ projectId }: { projectId: string }) {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setElapsed((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const mm = String(Math.floor(elapsed / 60)).padStart(2, "0");
+  const ss = String(elapsed % 60).padStart(2, "0");
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3">
+        <span className="relative flex h-2.5 w-2.5">
+          <span className="absolute inline-flex h-full w-full rounded-full bg-[var(--accent)] opacity-60 animate-ping" />
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--accent)]" />
+        </span>
+        <div className="flex-1">
+          <div className="text-sm font-semibold text-[var(--heading)]">Coordinator 正在根据你的反馈调整立意</div>
+          <div className="text-xs text-[var(--meta)] mt-0.5">保留主方向，精修 hook / 角度 / 目标读者感知</div>
+        </div>
+        <div className="text-xs font-mono-term text-[var(--accent)] tabular-nums">{mm}:{ss}</div>
+      </div>
+
+      <div className="space-y-2">
+        {[78, 52, 88, 42, 64].map((w, i) => (
+          <div key={i} className="h-2.5 rounded-full bg-[var(--bg-1)] overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-[var(--accent-fill)] via-[var(--accent)] to-[var(--accent-fill)] animate-pulse"
+              style={{ width: `${w}%`, animationDelay: `${i * 0.15}s`, animationDuration: "1.6s" }}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2 text-[11px] text-[var(--faint)] font-mono-term pt-2 border-t border-[var(--hair)]">
+        <span className="text-[var(--accent)]">$</span>
+        <span>coordinator.refine({`{ project: "${projectId.slice(0, 12)}..." }`})</span>
+      </div>
+    </div>
+  );
+}
+
 interface RefineEntry {
   index: number;
   path: string;
@@ -102,7 +143,7 @@ export function MissionRefineModal({
 
   const title =
     mode === "preview" ? "已选定立意 · 确认或继续打磨" :
-    mode === "refining" ? "Coordinator 正在精修…" :
+    mode === "refining" ? "正在精修立意…" :
     `立意改稿 · 第 ${viewingIndex ?? "?"} 版`;
 
   return (
@@ -132,12 +173,7 @@ export function MissionRefineModal({
 
         <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
           {mode === "refining" ? (
-            <div className="py-8 text-center">
-              <div className="inline-flex items-center gap-2 text-sm text-[var(--meta)]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
-                基于你的反馈调整立意，约 30-60 秒
-              </div>
-            </div>
+            <RefiningAnimation projectId={projectId} />
           ) : mode === "review" ? (
             <div className="rounded border border-[var(--hair)] bg-[var(--bg-2)] p-4 max-h-[40vh] overflow-auto">
               <div className="text-[10px] uppercase tracking-wider text-[var(--faint)] font-semibold mb-2">改稿对比（上一版 → 当前版）</div>
