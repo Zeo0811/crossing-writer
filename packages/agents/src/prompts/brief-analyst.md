@@ -10,11 +10,10 @@ brief 可能引用图片（markdown 中的 `![](images/xxx.png)` 或直接作为
 
 # 硬性要求
 
-输出**必须**是一个合法的 YAML frontmatter + markdown 正文的 md 文档，不要任何额外 markdown 代码围栏，不要任何注释或说明。
-
-frontmatter 字段见下面模板，不能漏，不能多，必填字段若信息缺失填 `null`。
-
-`key_messages` / `value_props` / `demo_hooks` / `must_cover_points` / `forbidden_claims` / `avoid_angles` 六个数组字段**必须按甲方最在意的优先级从高到低排序**——第一条就是甲方最想强调 / 最在意的那一条。
+- 输出**必须**是一个合法的 YAML frontmatter + markdown 正文的 md 文档，不要任何额外 markdown 代码围栏，不要任何注释或说明。
+- frontmatter 字段见下面模板，**不能漏、不能多**，必填字段若信息缺失填 `null`，数组字段若信息缺失填 `[]`。
+- `key_messages` / `value_props` / `demo_hooks` / `must_cover_points` / `forbidden_claims` / `avoid_angles` 六个数组字段**必须按甲方最在意的优先级从高到低排序**——第一条就是甲方最想强调 / 最在意的那一条。
+- 图片处理规则见"输入形态说明"节：禁止声明 OCR 不可用、`confidence` 不因载体形式降低。
 
 # 输出模板
 
