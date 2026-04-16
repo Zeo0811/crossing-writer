@@ -11,6 +11,11 @@ import {
 import { PixelEmptyArt } from "../components/layout/PixelIcons";
 import { PHASES, phaseIndexOf, statusBadge } from "../components/layout/PhaseSteps";
 import type { Project, ProjectStatus } from "../api/types";
+import {
+  Button, Input, FormField,
+  Dialog, DialogContent, DialogHeader, DialogBody, DialogFooter,
+  EmptyState as UiEmptyState,
+} from "../components/ui";
 
 type Tab = "active" | "archived";
 
@@ -59,12 +64,9 @@ export function ProjectList() {
   return (
     <div onClick={() => setMenuId(null)}>
       <header className="flex items-center justify-end mb-[18px] pt-4">
-        <button
-          onClick={() => setShowNew(true)}
-          className="flex items-center gap-2 px-3.5 py-1.5 rounded border border-[var(--accent-soft)] bg-[var(--accent)] text-[var(--accent-on)] text-sm font-semibold hover:shadow-[0_0_12px_var(--accent-dim)] transition-shadow"
-        >
-          <span>＋</span><span>新建项目</span>
-        </button>
+        <Button variant="primary" size="sm" onClick={() => setShowNew(true)} leftSlot="＋">
+          新建项目
+        </Button>
       </header>
 
       <div className="flex items-center gap-3 mb-[18px]">
@@ -76,15 +78,17 @@ export function ProjectList() {
             归档 <span className="ml-1 text-[var(--faint)] text-xs">{archivedCount}</span>
           </TabBtn>
         </div>
-        <div className="flex-1 relative">
-          <input
+        <div className="flex-1">
+          <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="搜索项目名…"
-            className="w-full bg-[var(--bg-1)] border border-[var(--hair)] rounded px-3 py-2 pl-9 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
+            leftSlot="⌕"
+            rightSlot={q && (
+              <button onClick={() => setQ("")} className="text-[var(--faint)] hover:text-[var(--heading)] text-xs">✕</button>
+            )}
+            className="bg-[var(--bg-1)]"
           />
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--faint)] leading-none pointer-events-none">⌕</span>
-          {q && <button onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--faint)] hover:text-[var(--heading)] text-xs">✕</button>}
         </div>
       </div>
 
@@ -228,73 +232,67 @@ function PhaseDots({ current, total }: { current: number; total: number }) {
 function EmptyState({ tab, q, onNew, onClear }: { tab: Tab; q: string; onNew: () => void; onClear: () => void }) {
   if (q) {
     return (
-      <div className="border border-dashed border-[var(--hair)] rounded p-16 text-center">
-        <div className="text-4xl text-[var(--faint)] mb-3">⌕</div>
-        <p className="text-[var(--meta)] mb-3">没有匹配「{q}」的项目</p>
-        <button onClick={onClear} className="text-xs text-[var(--accent)] hover:underline">清除搜索</button>
-      </div>
+      <UiEmptyState
+        icon={<span className="text-4xl text-[var(--faint)]">⌕</span>}
+        body={`没有匹配「${q}」的项目`}
+        action={<Button variant="link" size="sm" onClick={onClear}>清除搜索</Button>}
+      />
     );
   }
   if (tab === "archived") {
     return (
-      <div className="border border-dashed border-[var(--hair)] rounded p-16 text-center flex flex-col items-center">
-        <PixelEmptyArt size={72} />
-        <p className="text-[var(--meta)] mt-4">归档区是空的</p>
-      </div>
+      <UiEmptyState
+        icon={<PixelEmptyArt size={72} />}
+        body="归档区是空的"
+      />
     );
   }
   return (
-    <div className="border border-dashed border-[var(--accent-soft)] rounded py-16 px-8 text-center bg-[var(--accent-fill)]/15">
-      <div className="flex justify-center mb-5"><PixelEmptyArt size={108} /></div>
-      <h2 className="text-xl text-[var(--heading)] font-semibold mb-2">开始你的第一个项目</h2>
-      <p className="text-[var(--meta)] text-sm mb-7 max-w-[420px] mx-auto leading-relaxed">
-        把甲方 brief 丢进来，AI 会帮你拆选题、规划 case、跑实测、写终稿。
-      </p>
-      <button
-        onClick={onNew}
-        className="inline-flex items-center gap-2 px-7 py-3 rounded border border-[var(--accent-soft)] bg-[var(--accent)] text-[var(--accent-on)] font-semibold text-base hover:shadow-[0_0_18px_var(--accent-dim)] transition-shadow"
-      >
-        <span className="text-xl leading-none">＋</span>
-        <span>新建项目</span>
-      </button>
-    </div>
+    <UiEmptyState
+      variant="primary"
+      icon={<PixelEmptyArt size={108} />}
+      title="开始你的第一个项目"
+      body="把甲方 brief 丢进来，AI 会帮你拆选题、规划 case、跑实测、写终稿。"
+      action={
+        <Button variant="primary" size="lg" onClick={onNew} leftSlot="＋">
+          新建项目
+        </Button>
+      }
+    />
   );
 }
 
 function NewProjectModal({ busy, onClose, onCreate }: { busy?: boolean; onClose: () => void; onCreate: (name: string) => void | Promise<void> }) {
   const [name, setName] = useState("");
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-[rgba(0,0,0,0.5)] backdrop-blur-sm" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="w-[440px] rounded border border-[var(--hair-strong)] bg-[var(--bg-1)] shadow-2xl">
-        <div className="px-4 py-3 border-b border-[var(--hair)] flex items-center justify-between">
-          <h3 className="text-[var(--heading)] font-semibold">新建项目</h3>
-          <button onClick={onClose} className="text-[var(--meta)] hover:text-[var(--heading)]">✕</button>
-        </div>
-        <div className="p-4">
-          <label className="block">
-            <span className="text-xs text-[var(--meta)] block mb-1">项目名称</span>
-            <input
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader title="新建项目" onClose={onClose} />
+        <DialogBody>
+          <FormField label="项目名称">
+            <Input
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) void onCreate(name.trim()); }}
               placeholder="例：测评 Cursor IDE"
-              className="w-full bg-[var(--bg-2)] border border-[var(--hair)] rounded px-3 py-2 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
             />
-          </label>
-        </div>
-        <div className="px-4 py-3 border-t border-[var(--hair)] flex items-center justify-end gap-2">
-          <button onClick={onClose} className="px-3 py-1.5 text-xs text-[var(--meta)] hover:text-[var(--heading)]">取消</button>
-          <button
+          </FormField>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" size="sm" onClick={onClose}>取消</Button>
+          <Button
+            variant="primary"
+            size="sm"
             disabled={!name.trim() || busy}
+            loading={busy}
             onClick={() => name.trim() && onCreate(name.trim())}
-            className="px-4 py-1.5 text-xs rounded bg-[var(--accent)] text-[var(--accent-on)] disabled:opacity-40 disabled:cursor-not-allowed font-semibold"
           >
             {busy ? "创建中…" : "创建并继续"}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -302,37 +300,30 @@ function DeleteModal({ project, onCancel, onConfirm }: { project: Project; onCan
   const [typed, setTyped] = useState("");
   const ok = typed.trim() === project.name;
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-[rgba(0,0,0,0.5)] backdrop-blur-sm" onClick={onCancel}>
-      <div onClick={(e) => e.stopPropagation()} className="w-[440px] rounded border border-[var(--red)] bg-[var(--bg-1)] shadow-2xl">
-        <div className="px-4 py-3 border-b border-[var(--hair)]">
-          <h3 className="text-[var(--heading)] font-semibold">永久删除项目？</h3>
-        </div>
-        <div className="p-4 space-y-3">
+    <Dialog open onOpenChange={(o) => !o && onCancel()}>
+      <DialogContent className="border-[var(--red)]">
+        <DialogHeader title="永久删除项目？" onClose={onCancel} />
+        <DialogBody className="space-y-3">
           <p className="text-sm text-[var(--body)]">
             这会<strong>永久删除</strong> <span className="text-[var(--red)] font-semibold">{project.name}</span> 及其所有数据。此操作不可恢复。
           </p>
-          <label className="block">
-            <span className="text-xs text-[var(--meta)] block mb-1">输入项目名以确认</span>
-            <input
+          <FormField label="输入项目名以确认">
+            <Input
               autoFocus
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
               placeholder={project.name}
-              className="w-full bg-[var(--bg-2)] border border-[var(--hair)] rounded px-3 py-2 text-sm text-[var(--body)] outline-none focus:border-[var(--red)]"
+              error
             />
-          </label>
-        </div>
-        <div className="px-4 py-3 border-t border-[var(--hair)] flex items-center justify-end gap-2">
-          <button onClick={onCancel} className="px-3 py-1.5 text-xs text-[var(--meta)] hover:text-[var(--heading)]">取消</button>
-          <button
-            disabled={!ok}
-            onClick={onConfirm}
-            className="px-4 py-1.5 text-xs rounded bg-[var(--red)] text-white disabled:opacity-40 disabled:cursor-not-allowed font-semibold"
-          >
+          </FormField>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" size="sm" onClick={onCancel}>取消</Button>
+          <Button variant="danger" size="sm" disabled={!ok} onClick={onConfirm}>
             永久删除
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
