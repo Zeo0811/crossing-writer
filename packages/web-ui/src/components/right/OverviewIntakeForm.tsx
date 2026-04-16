@@ -51,6 +51,7 @@ export function OverviewIntakeForm({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-4">
       <ImageSection
+        projectId={projectId}
         label="Brief 配图"
         images={briefImgs}
         onPick={() => briefInputRef.current?.click()}
@@ -59,6 +60,7 @@ export function OverviewIntakeForm({ projectId }: { projectId: string }) {
         onChange={(fl) => onUpload("brief", fl)}
       />
       <ImageSection
+        projectId={projectId}
         label="产品截图"
         images={screenshotImgs}
         onPick={() => screenshotInputRef.current?.click()}
@@ -128,8 +130,9 @@ export function OverviewIntakeForm({ projectId }: { projectId: string }) {
 }
 
 function ImageSection({
-  label, images, onPick, onDelete, inputRef, onChange,
+  projectId, label, images, onPick, onDelete, inputRef, onChange,
 }: {
+  projectId: string;
   label: string;
   images: ProjectImage[];
   onPick: () => void;
@@ -154,12 +157,21 @@ function ImageSection({
       {images.length > 0 ? (
         <div className="grid grid-cols-4 gap-2">
           {images.map((i) => (
-            <div key={i.filename} className="relative group rounded bg-[var(--bg-2)] border border-[var(--hair)] p-2 text-xs">
-              <div className="aspect-video bg-[var(--bg-1)] rounded mb-1 flex items-center justify-center text-2xl text-[var(--faint)]">🖼</div>
-              <div className="truncate text-[var(--body)]" title={i.filename}>{i.filename}</div>
+            <div key={i.filename} className="relative group rounded bg-[var(--bg-2)] border border-[var(--hair)] overflow-hidden">
+              <div className="aspect-video bg-[var(--bg-1)] overflow-hidden">
+                <img
+                  src={`/api/projects/${encodeURIComponent(projectId)}/overview/images/${encodeURIComponent(i.filename)}`}
+                  alt={i.filename}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+              <div className="px-2 py-1.5 text-[11px] text-[var(--body)] truncate" title={i.filename}>{i.filename}</div>
               <button
                 onClick={() => onDelete(i.filename)}
-                className="absolute top-1 right-1 w-5 h-5 rounded bg-[var(--bg-0)] text-[var(--meta)] hover:text-[var(--red)] opacity-0 group-hover:opacity-100 text-xs"
+                className="absolute top-1 right-1 w-6 h-6 flex items-center justify-center rounded-full bg-[rgba(0,0,0,0.6)] text-white hover:bg-[var(--red)] opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                aria-label={`删除 ${i.filename}`}
+                title={`删除 ${i.filename}`}
               >
                 ✕
               </button>

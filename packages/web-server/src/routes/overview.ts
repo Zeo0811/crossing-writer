@@ -1,11 +1,21 @@
 import type { FastifyInstance } from "fastify";
 import "@fastify/multipart";
 import { readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { createReadStream, existsSync, statSync } from "node:fs";
+import { basename, extname, join } from "node:path";
 import type { ProjectStore } from "../services/project-store.js";
 import type { ImageStore } from "../services/image-store.js";
 import { analyzeOverview } from "../services/overview-analyzer-service.js";
 import type { ConfigStore } from "../services/config-store.js";
+
+const OVERVIEW_IMG_EXT_TO_MIME: Record<string, string> = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+};
+const OVERVIEW_IMG_FILENAME_RE = /^[\w.-]+\.(png|jpe?g|gif|webp)$/i;
 
 export interface OverviewDeps {
   store: ProjectStore;
@@ -104,6 +114,30 @@ export function registerOverviewRoutes(app: FastifyInstance, deps: OverviewDeps)
     async (req, reply) => {
       await deps.imageStore.delete(req.params.id, req.params.filename);
       return reply.code(204).send();
+    },
+  );
+
+  app.get<{ Params: { id: string; filename: string } }>(
+    "/api/projects/:id/overview/images/:filename",
+    async (req, reply) => {
+      const { id, filename } = req.params;
+      if (!OVERVIEW_IMG_FILENAME_RE.test(filename)) {
+        return reply.code(400).send({ error: "invalid filename" });
+      }
+      const safe = basename(filename);
+      if (safe !== filename) {
+        return reply.code(400).send({ error: "invalid filename" });
+      }
+      const abs = join(deps.projectsDir, id, "context", "images", safe);
+      if (!existsSync(abs)) {
+        return reply.code(404).send({ error: "not found" });
+      }
+      const ext = extname(safe).toLowerCase();
+      const mime = OVERVIEW_IMG_EXT_TO_MIME[ext] ?? "application/octet-stream";
+      const { size } = statSync(abs);
+      reply.header("content-type", mime);
+      reply.header("content-length", size);
+      return reply.send(createReadStream(abs));
     },
   );
 
