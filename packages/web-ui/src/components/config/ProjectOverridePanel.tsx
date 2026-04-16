@@ -184,7 +184,7 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
       onClick={onClose}
     >
       <div
-        className="h-full w-[560px] max-w-[95vw] overflow-auto shadow-2xl bg-[var(--bg-1)] border-l border-[var(--hair)] text-[var(--body)] flex flex-col"
+        className="h-full w-[480px] max-w-[95vw] overflow-auto shadow-2xl bg-[var(--bg-1)] border-l border-[var(--hair)] text-[var(--body)] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-center justify-between px-6 h-14 border-b border-[var(--hair)]">
@@ -249,7 +249,7 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
                       data-testid={`override-model-${agentKey}`}
                       value={modelValue}
                       onChange={(e) => handleModelChange(agentKey, e.target.value)}
-                      className="w-full bg-[var(--bg-1)] border border-[var(--hair)] rounded px-2.5 py-1.5 text-xs text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
+                      className="w-full max-w-[340px] bg-[var(--bg-1)] border border-[var(--hair)] rounded h-9 px-3 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
                     >
                       <option value="">默认 · {modelLabel(defaultCfg.model)}</option>
                       {MODEL_CHOICES.filter((m) => modelKey(m) !== modelKey(defaultCfg.model)).map((m) => (
@@ -264,7 +264,7 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
                       data-testid={`override-style-${agentKey}`}
                       value={styleValue}
                       onChange={(e) => handleStyleChange(agentKey, e.target.value)}
-                      className="w-full bg-[var(--bg-1)] border border-[var(--hair)] rounded px-2.5 py-1.5 text-xs text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
+                      className="w-full max-w-[340px] bg-[var(--bg-1)] border border-[var(--hair)] rounded h-9 px-3 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
                     >
                       <option value="">
                         默认 · {defaultCfg.styleBinding ? styleLabel(defaultCfg.styleBinding) : "(未绑定)"}
