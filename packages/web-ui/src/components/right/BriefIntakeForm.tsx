@@ -26,7 +26,9 @@ function parseInitialBrief(md: string | undefined): {
   }
   const prose = md.replace(imgRe, "").trim();
   const isPureImage = imageFiles.length > 0 && prose === "";
-  return { mode: isPureImage ? "image" : "text", text: md, imageFiles };
+  // Pure-image brief: keep text blank so the 文字 tab stays empty (images are already
+  // in the 图片 tab); otherwise preserve full markdown for the editor.
+  return { mode: isPureImage ? "image" : "text", text: isPureImage ? "" : md, imageFiles };
 }
 
 export function BriefIntakeForm({
@@ -217,6 +219,18 @@ export function BriefIntakeForm({
                 className="brief-editor absolute inset-0 bg-transparent p-3 text-sm text-[var(--body)] outline-none overflow-y-auto whitespace-pre-wrap break-words"
                 data-testid="brief-textarea"
                 onInput={(e) => setText(htmlToMd(e.currentTarget))}
+                onMouseDown={(e) => {
+                  // Click on inline image's ✕ → remove the img-wrap span, re-serialize text
+                  const target = e.target as HTMLElement;
+                  const delBtn = target.closest?.(".img-del") as HTMLElement | null;
+                  if (!delBtn) return;
+                  e.preventDefault();
+                  const wrap = delBtn.closest(".img-wrap");
+                  if (wrap) {
+                    wrap.remove();
+                    if (editorRef.current) setText(htmlToMd(editorRef.current));
+                  }
+                }}
                 onPaste={async (e) => {
                   const cd = e.clipboardData;
                   if (!cd) return;
