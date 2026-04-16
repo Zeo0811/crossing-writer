@@ -8,6 +8,7 @@ import {
   useRestoreProject,
   useDestroyProject,
 } from "../hooks/useProjects";
+import { useToast } from "../components/ui/ToastProvider";
 import { PixelEmptyArt } from "../components/layout/PixelIcons";
 import { PHASES, phaseIndexOf, statusBadge } from "../components/layout/PhaseSteps";
 import type { Project, ProjectStatus } from "../api/types";
@@ -43,6 +44,7 @@ export function ProjectList() {
   const restore = useRestoreProject();
   const destroy = useDestroyProject();
   const nav = useNavigate();
+  const toast = useToast();
 
   const activeItems: Project[] = activeData?.items ?? [];
   const archivedItems: Project[] = archivedData?.items ?? [];
@@ -104,8 +106,8 @@ export function ProjectList() {
               menuOpen={menuId === p.id}
               onMenuToggle={(e) => { e.stopPropagation(); setMenuId(menuId === p.id ? null : p.id); }}
               onOpen={() => nav(`/projects/${p.id}`)}
-              onArchive={async () => { setMenuId(null); await archive.mutateAsync(p.id); }}
-              onRestore={async () => { setMenuId(null); await restore.mutateAsync(p.id); }}
+              onArchive={async () => { setMenuId(null); try { await archive.mutateAsync(p.id); toast.success("已归档"); } catch { toast.error("归档失败"); } }}
+              onRestore={async () => { setMenuId(null); try { await restore.mutateAsync(p.id); toast.success("已恢复"); } catch { toast.error("恢复失败"); } }}
               onDelete={() => { setMenuId(null); setDeleteTarget(p); }}
             />
           ))}
@@ -180,23 +182,22 @@ function ProjectCard({
         <span className="text-[10px] text-[var(--faint)] tabular-nums">{phase + 1}/{PHASES.length}</span>
       </div>
 
-      <button
-        onClick={onMenuToggle}
-        className="absolute bottom-3 right-3 w-7 h-7 flex items-center justify-center text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)] rounded transition-colors"
-        aria-label="actions"
-      >
-        ⋯
-      </button>
-      {menuOpen && (
-        <div
-          className="absolute right-2 bottom-12 z-20 w-36 rounded border border-[var(--hair-strong)] bg-[var(--bg-1)] shadow-lg overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
+      <div className="absolute bottom-3 right-3" onClick={(e) => e.stopPropagation()}>
+        <button
+          onClick={onMenuToggle}
+          className="w-7 h-7 flex items-center justify-center text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)] rounded transition-colors"
+          aria-label="actions"
         >
-          <MenuItem onClick={onOpen}>打开</MenuItem>
-          {archived ? <MenuItem onClick={onRestore}>恢复</MenuItem> : <MenuItem onClick={onArchive}>归档</MenuItem>}
-          <MenuItem onClick={onDelete} danger>删除…</MenuItem>
-        </div>
-      )}
+          ⋯
+        </button>
+        {menuOpen && (
+          <div className="absolute right-0 bottom-9 z-20 w-36 rounded border border-[var(--hair-strong)] bg-[var(--bg-1)] shadow-lg overflow-hidden">
+            <MenuItem onClick={onOpen}>打开</MenuItem>
+            {archived ? <MenuItem onClick={onRestore}>恢复</MenuItem> : <MenuItem onClick={onArchive}>归档</MenuItem>}
+            <MenuItem onClick={onDelete} danger>删除…</MenuItem>
+          </div>
+        )}
+      </div>
     </article>
   );
 }
