@@ -3,6 +3,7 @@ import { AgentsPanel } from "../components/config/AgentsPanel.js";
 import { TopicExpertPanel } from "../components/config/TopicExpertPanel.js";
 import { useCliHealth } from "../hooks/useCliHealth";
 import { getAgentConfigs, type AgentConfigEntry } from "../api/writer-client";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui";
 
 type TabKey = "agents" | "models" | "tools" | "topic-experts";
 
@@ -23,31 +24,19 @@ export function ConfigWorkbench() {
       <header className="flex items-center justify-between px-6 h-12 border-b border-[var(--hair)]">
         <h1 className="text-lg font-semibold text-[var(--heading)]">配置</h1>
       </header>
-      <div role="tablist" className="flex items-center gap-1 px-6 pt-3 border-b border-[var(--hair)]">
-        {TABS.map((t) => {
-          const selected = active === t.key;
-          return (
-            <button
-              key={t.key}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              onClick={() => setActive(t.key)}
-              className={`px-4 py-2.5 text-sm border-b-2 -mb-px ${
-                selected ? "border-[var(--accent)] text-[var(--heading)]" : "border-transparent text-[var(--meta)] hover:text-[var(--heading)]"
-              }`}
-            >
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
-      <section className="p-6">
-        {active === "agents" && <AgentsPanel />}
-        {active === "models" && <ModelsView />}
-        {active === "tools" && <ToolsView />}
-        {active === "topic-experts" && <TopicExpertPanel />}
-      </section>
+      <Tabs value={active} onValueChange={(v) => setActive(v as TabKey)}>
+        <div className="px-6 pt-3">
+          <TabsList>
+            {TABS.map((t) => (
+              <TabsTrigger key={t.key} value={t.key}>{t.label}</TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
+        <TabsContent value="agents" className="p-6"><AgentsPanel /></TabsContent>
+        <TabsContent value="models" className="p-6"><ModelsView /></TabsContent>
+        <TabsContent value="tools" className="p-6"><ToolsView /></TabsContent>
+        <TabsContent value="topic-experts" className="p-6"><TopicExpertPanel /></TabsContent>
+      </Tabs>
     </div>
   );
 }

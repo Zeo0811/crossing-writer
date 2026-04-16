@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { WikiPagePreview } from "../components/wiki/WikiPagePreview.js";
 import { IngestForm } from "../components/wiki/IngestForm.js";
 import { IngestProgressView } from "../components/wiki/IngestProgressView.js";
+import { Tabs, TabsList, TabsTrigger, TabsContent, Input, Button } from "../components/ui";
 import {
   getPages,
   search as searchWikiApi,
@@ -93,25 +94,15 @@ export function KnowledgePage() {
           {status && `${status.total} 条 · 上次入库 ${status.last_ingest_at ?? "—"}`}
         </div>
       </header>
-      <div className="flex items-center gap-1 px-6 pt-3 border-b border-[var(--hair)]">
-        <button
-          type="button" role="tab" aria-selected={tab === "browse"}
-          onClick={() => setTab("browse")}
-          className={`px-4 py-2.5 text-sm border-b-2 -mb-px ${tab === "browse" ? "border-[var(--accent)] text-[var(--heading)]" : "border-transparent text-[var(--meta)] hover:text-[var(--heading)]"}`}
-        >
-          浏览
-        </button>
-        <button
-          type="button" role="tab" aria-selected={tab === "ingest"}
-          onClick={() => setTab("ingest")}
-          className={`px-4 py-2.5 text-sm border-b-2 -mb-px ${tab === "ingest" ? "border-[var(--accent)] text-[var(--heading)]" : "border-transparent text-[var(--meta)] hover:text-[var(--heading)]"}`}
-        >
-          入库
-        </button>
-      </div>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
+        <div className="px-6 pt-3">
+          <TabsList>
+            <TabsTrigger value="browse">浏览</TabsTrigger>
+            <TabsTrigger value="ingest">入库</TabsTrigger>
+          </TabsList>
+        </div>
 
-      {tab === "browse" && (
-        <div className="p-6 space-y-4">
+      <TabsContent value="browse" className="p-6 space-y-4">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1 p-1 rounded border border-[var(--hair)]">
               {kinds.map((k) => (
@@ -124,14 +115,13 @@ export function KnowledgePage() {
                 </button>
               ))}
             </div>
-            <div className="flex-1 relative">
-              <input
+            <div className="flex-1">
+              <Input
                 value={q}
                 onChange={(e) => runSearch(e.target.value)}
                 placeholder="搜索标题 / 内容…"
-                className="w-full bg-[var(--bg-2)] border border-[var(--hair)] rounded px-3 py-2 pl-9 text-sm outline-none focus:border-[var(--accent-soft)]"
+                leftSlot="⌕"
               />
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--faint)]">⌕</span>
             </div>
           </div>
 
@@ -139,7 +129,7 @@ export function KnowledgePage() {
             <div className="rounded bg-[var(--bg-2)] p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-xs text-[var(--meta)] font-semibold">{selected}</div>
-                <button onClick={() => setSelected(null)} className="text-xs text-[var(--accent)] hover:underline">← 返回列表</button>
+                <Button variant="link" size="sm" onClick={() => setSelected(null)}>← 返回列表</Button>
               </div>
               <WikiPagePreview path={selected} />
             </div>
@@ -185,23 +175,21 @@ export function KnowledgePage() {
               {visible.length === 0 && <div className="col-span-2 py-12 text-center text-[var(--meta)]">无匹配条目</div>}
             </div>
           )}
-        </div>
-      )}
+      </TabsContent>
 
-      {tab === "ingest" && (
-        <div className="p-6">
-          <div className="max-w-[880px] space-y-5">
-            <IngestForm
-              accounts={accounts}
-              onSubmit={handleIngestStart}
-              disabled={ingestStatus === "running"}
-            />
-            {(ingestStatus !== "idle" || ingestEvents.length > 0 || ingestError) && (
-              <IngestProgressView events={ingestEvents} status={ingestStatus} error={ingestError} />
-            )}
-          </div>
+      <TabsContent value="ingest" className="p-6">
+        <div className="max-w-[880px] space-y-5">
+          <IngestForm
+            accounts={accounts}
+            onSubmit={handleIngestStart}
+            disabled={ingestStatus === "running"}
+          />
+          {(ingestStatus !== "idle" || ingestEvents.length > 0 || ingestError) && (
+            <IngestProgressView events={ingestEvents} status={ingestStatus} error={ingestError} />
+          )}
         </div>
-      )}
+      </TabsContent>
+      </Tabs>
     </div>
   );
 }
