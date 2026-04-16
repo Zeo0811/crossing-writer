@@ -11,6 +11,8 @@ import { SelectedMissionView } from "../components/left/SelectedMissionView";
 import { ProductOverviewCard } from "../components/left/ProductOverviewCard";
 import { OverviewIntakeForm } from "../components/right/OverviewIntakeForm";
 import { CaseExpertSelector } from "../components/right/CaseExpertSelector";
+import { MissionApprovePreview } from "../components/right/MissionApprovePreview";
+import { MissionReviewPanel } from "../components/right/MissionReviewPanel";
 import { CaseListPanel } from "../components/left/CaseListPanel";
 import { CaseSelectedGuide } from "../components/right/CaseSelectedGuide";
 import { EvidenceSection } from "../components/evidence/EvidenceSection";
@@ -242,6 +244,13 @@ function renderPhaseView(props: PhaseViewProps): React.ReactNode {
 
     case "awaiting_mission_pick":
       return <PhasePanel label="挑一条选题"><MissionCandidatesPanel projectId={projectId} onSelected={refetch} /></PhasePanel>;
+
+    case "mission_approved_preview":
+      return <MissionApprovePreview projectId={projectId} project={project} refetch={refetch} />;
+    case "mission_refining":
+      return <RunningView label="Coordinator 正在精修…" desc="基于你的反馈调整立意，约 30-60 秒" />;
+    case "mission_review":
+      return <MissionReviewPanel projectId={projectId} project={project} refetch={refetch} />;
 
     case "mission_approved":
       return (

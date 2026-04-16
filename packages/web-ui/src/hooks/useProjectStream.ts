@@ -74,6 +74,15 @@ const EVENT_TYPES = [
   "expert_done",
   "expert_failed",
   "all_done",
+  // Peer review + refine loop
+  "expert.round2_peer_review_started",
+  "expert.round2_peer_review_completed",
+  "coordinator.final_candidates_ready",
+  "mission.selected",
+  "mission.refine_requested",
+  "mission.refine_completed",
+  "mission.refine_failed",
+  "mission.confirmed",
 ];
 
 // ============================================================================
