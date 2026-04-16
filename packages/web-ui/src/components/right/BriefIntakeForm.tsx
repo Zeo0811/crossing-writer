@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../../api/client";
 import {
   uploadBriefAttachment,
@@ -20,16 +20,54 @@ export function BriefIntakeForm({
   const [files, setFiles] = useState<File[]>([]);
   const [imageFiles, setImageFiles] = useState<BriefAttachmentItem[]>([]);
   const imageTabInputRef = useRef<HTMLInputElement | null>(null);
-  const [productName, setProductName] = useState("");
-  const [productUrl, setProductUrl] = useState("");
-  const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [uploadedItems, setUploadedItems] = useState<BriefAttachmentItem[]>([]);
 
   const taRef = useRef<HTMLTextAreaElement | null>(null);
+  const editorRef = useRef<HTMLDivElement | null>(null);
+  const editorInitialized = useRef(false);
   const imgInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Convert markdown text to HTML with inline images
+  function mdToHtml(md: string, pid: string): string {
+    return md
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, url) => {
+        const src = url.startsWith("/api/") || url.startsWith("http") ? url : `/api/projects/${encodeURIComponent(pid)}/brief/${url}`;
+        return `<img src="${src}" alt="${alt}" data-md="![${alt}](${url})" style="max-width:240px;max-height:200px;border-radius:4px;display:inline-block;margin:2px;vertical-align:middle;" />`;
+      })
+      .replace(/\n/g, "<br/>");
+  }
+  // Extract text content from editor back to markdown (img → ![](url))
+  function htmlToMd(root: HTMLElement): string {
+    const parts: string[] = [];
+    function walk(node: Node) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        parts.push(node.textContent ?? "");
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as HTMLElement;
+        if (el.tagName === "IMG") {
+          const md = el.getAttribute("data-md");
+          if (md) { parts.push(md); return; }
+          const src = el.getAttribute("src") ?? "";
+          const alt = el.getAttribute("alt") ?? "";
+          parts.push(`![${alt}](${src})`);
+          return;
+        }
+        if (el.tagName === "BR") { parts.push("\n"); return; }
+        if (el.tagName === "DIV" || el.tagName === "P") {
+          if (parts.length > 0 && !parts[parts.length - 1]!.endsWith("\n")) parts.push("\n");
+          for (const c of Array.from(el.childNodes)) walk(c);
+          return;
+        }
+        for (const c of Array.from(el.childNodes)) walk(c);
+      }
+    }
+    for (const c of Array.from(root.childNodes)) walk(c);
+    return parts.join("").replace(/\n+$/, "");
+  }
 
   function insertAtCaret(insert: string) {
     const el = taRef.current;
@@ -56,11 +94,19 @@ export function BriefIntakeForm({
     onError: (e) => setErr(e.message),
     onUploaded: onAttachmentItems,
   });
-  const drop = useBriefDrop(taRef, {
+  const drop = useBriefDrop(editorRef as any, {
     projectId, onInsert: insertAtCaret,
     onError: (e) => setErr(e.message),
     onUploaded: onAttachmentItems,
   });
+
+  // Initial render of editor from `text` (only once, preserving caret after)
+  useEffect(() => {
+    if (editorRef.current && !editorInitialized.current) {
+      editorRef.current.innerHTML = mdToHtml(text, projectId);
+      editorInitialized.current = true;
+    }
+  }, [text, projectId]);
 
   async function uploadPickedFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -88,20 +134,11 @@ export function BriefIntakeForm({
     try {
       if (mode === "text") {
         if (!text.trim()) throw new Error("简报文本不能为空");
-        await api.uploadBriefText(projectId, {
-          text,
-          productName: productName || undefined,
-          productUrl: productUrl || undefined,
-          notes: notes || undefined,
-        });
+        await api.uploadBriefText(projectId, { text });
       } else {
         if (files.length === 0) throw new Error("请选择文件");
         for (const f of files) {
-          await api.uploadBriefFile(projectId, f, {
-            productName: productName || undefined,
-            productUrl: productUrl || undefined,
-            notes: notes || undefined,
-          });
+          await api.uploadBriefFile(projectId, f, {});
         }
       }
       onUploaded();
@@ -129,10 +166,14 @@ export function BriefIntakeForm({
         {mode === "text" ? (
           <>
             <div className="relative flex-1">
-              <textarea
-                ref={taRef}
-                value={text}
-                onChange={(e) => setText(e.target.value)}
+              <div
+                ref={editorRef}
+                contentEditable
+                suppressContentEditableWarning
+                data-placeholder="把甲方简报粘贴进来…（支持 Cmd+V 粘贴图片 / 拖拽上传）"
+                className="brief-editor w-full h-full min-h-[200px] bg-transparent p-3 text-sm text-[var(--body)] outline-none overflow-auto whitespace-pre-wrap"
+                data-testid="brief-textarea"
+                onInput={(e) => setText(htmlToMd(e.currentTarget))}
                 onPaste={async (e) => {
                   const cd = e.clipboardData;
                   if (!cd) return;
@@ -147,23 +188,36 @@ export function BriefIntakeForm({
                   if (files.length === 0 && cd.files && cd.files.length > 0) {
                     for (const f of Array.from(cd.files)) files.push(f);
                   }
-                  if (files.length === 0) return;
-                  e.preventDefault();
-                  try {
-                    const res = await uploadBriefAttachment(projectId, files);
-                    for (const it of res.items) {
-                      insertAtCaret(briefAttachmentMarkdown(it, projectId) + "\n");
-                    }
-                    onAttachmentItems(res.items);
-                  } catch (err: any) {
-                    setErr(String(err?.message ?? err));
+                  if (files.length > 0) {
+                    e.preventDefault();
+                    try {
+                      const res = await uploadBriefAttachment(projectId, files);
+                      for (const it of res.items) {
+                        if (it.kind === "image") {
+                          const src = `/api/projects/${encodeURIComponent(projectId)}/brief/${it.url}`;
+                          const md = briefAttachmentMarkdown(it, projectId);
+                          document.execCommand("insertHTML", false, `<img src="${src}" alt="${it.filename}" data-md="${md.replace(/"/g, "&quot;")}" style="max-width:240px;max-height:200px;border-radius:4px;display:inline-block;margin:2px;vertical-align:middle;" />`);
+                        } else {
+                          document.execCommand("insertText", false, briefAttachmentMarkdown(it, projectId) + "\n");
+                        }
+                      }
+                      if (editorRef.current) setText(htmlToMd(editorRef.current));
+                      onAttachmentItems(res.items);
+                    } catch (err: any) { setErr(String(err?.message ?? err)); }
+                    return;
+                  }
+                  // Plain text paste — strip formatting
+                  const pasteText = cd.getData("text/plain");
+                  if (pasteText) {
+                    e.preventDefault();
+                    document.execCommand("insertText", false, pasteText);
                   }
                 }}
-                rows={10}
-                className="w-full h-full min-h-[200px] bg-transparent p-3 text-sm text-[var(--body)] outline-none resize-none"
-                placeholder="把甲方简报粘贴进来…（支持 Cmd+V 粘贴图片 / 拖拽上传）"
-                data-testid="brief-textarea"
               />
+              <style>{`
+                .brief-editor:empty::before { content: attr(data-placeholder); color: var(--faint); pointer-events: none; }
+                .brief-editor img { user-select: none; }
+              `}</style>
               {drop.isDragging && (
                 <div
                   className="absolute inset-0 flex items-center justify-center bg-[var(--accent-fill)] border-2 border-dashed border-[var(--accent)] rounded pointer-events-none text-sm text-[var(--accent)] font-medium"
@@ -306,24 +360,6 @@ export function BriefIntakeForm({
             )}
           </div>
         )}
-      </div>
-
-      <div className="rounded bg-[var(--bg-2)] p-4 space-y-3">
-        <div className="text-xs text-[var(--meta)] font-semibold">产品信息（可选）</div>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="产品名" v={productName} set={setProductName} ph="例：Cursor IDE" />
-          <Field label="产品官网" v={productUrl} set={setProductUrl} ph="https://" />
-        </div>
-        <label className="block">
-          <span className="text-xs text-[var(--meta)] block mb-1">备注</span>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={2}
-            placeholder="想强调的角度…"
-            className="w-full bg-[var(--bg-1)] border border-[var(--hair)] rounded px-3 py-2 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)] resize-y"
-          />
-        </label>
       </div>
 
       {err && <div className="rounded border border-[var(--red)] bg-[rgba(255,107,107,0.05)] px-3 py-2 text-sm text-[var(--red)]">{err}</div>}
