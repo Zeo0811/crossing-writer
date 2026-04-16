@@ -228,18 +228,18 @@ export function MissionRefineModal({
             <button
               type="button"
               disabled={!!busy}
-              onClick={confirmFinal}
+              onClick={submitRefine}
               className="inline-flex items-center h-9 px-4 rounded border border-[var(--hair)] text-sm text-[var(--body)] hover:bg-[var(--bg-2)] disabled:opacity-50"
             >
-              {busy === "confirm" ? "确认中…" : "✓ 确认进入下一步"}
+              {busy === "refine" ? "提交中…" : mode === "review" ? "⬆ 再改一次" : "⬆ 提交修改意见"}
             </button>
             <button
               type="button"
               disabled={!!busy}
-              onClick={submitRefine}
+              onClick={confirmFinal}
               className="inline-flex items-center h-9 px-4 rounded border border-[var(--accent-soft)] bg-[var(--accent)] text-sm text-[var(--accent-on)] font-semibold hover:shadow-[0_0_12px_var(--accent-dim)] disabled:opacity-50"
             >
-              {busy === "refine" ? "提交中…" : mode === "review" ? "⬆ 再改一次" : "⬆ 提交修改意见"}
+              {busy === "confirm" ? "确认中…" : "✓ 确认进入下一步"}
             </button>
           </footer>
         )}
