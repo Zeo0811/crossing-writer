@@ -4,6 +4,7 @@ import { listConfigStylePanels, deleteStylePanel, type StylePanel } from "../api
 import { DistillForm } from "../components/style-panels/DistillForm.js";
 import { ProgressView } from "../components/style-panels/ProgressView.js";
 import { Button } from "../components/ui";
+import { useToast } from "../components/ui/ToastProvider";
 import { formatBeijingShort } from "../utils/time";
 
 type Tab = "distilled" | "pending";
@@ -16,6 +17,8 @@ export function StylePanelsPage() {
   const [tab, setTab] = useState<Tab>("distilled");
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>({ kind: "list" });
+
+  const toast = useToast();
 
   async function reload() {
     const [a, { panels: p }] = await Promise.all([getAccounts(), listConfigStylePanels()]);
@@ -125,10 +128,15 @@ export function StylePanelsPage() {
                   <Button
                     variant="danger"
                     onClick={async () => {
-                      if (!confirm(`确定删除 ${activePanel.account} / ${activePanel.role} v${activePanel.version}？`)) return;
-                      await deleteStylePanel(activePanel.account, activePanel.role as any, activePanel.version, true);
-                      setActiveKey(null);
-                      await reload();
+                      if (!window.confirm(`确定删除 ${activePanel.account} / ${activePanel.role} v${activePanel.version}？`)) return;
+                      try {
+                        await deleteStylePanel(activePanel.account, activePanel.role as any, activePanel.version, true);
+                        toast.success("已删除");
+                        setActiveKey(null);
+                        await reload();
+                      } catch (e) {
+                        toast.error(`删除失败：${e instanceof Error ? e.message : String(e)}`);
+                      }
                     }}
                   >
                     删除
