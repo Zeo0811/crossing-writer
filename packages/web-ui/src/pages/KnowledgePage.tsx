@@ -43,6 +43,7 @@ export function KnowledgePage() {
   const [ingestEvents, setIngestEvents] = useState<IngestStreamEvent[]>([]);
   const [ingestStatus, setIngestStatus] = useState<"idle" | "running" | "done" | "error">("idle");
   const [ingestError, setIngestError] = useState<string | null>(null);
+  const [logOpen, setLogOpen] = useState(false);
 
   useEffect(() => {
     void getPages().then(setPages).catch(() => setPages([]));
@@ -99,6 +100,25 @@ export function KnowledgePage() {
           {status && `${status.total} 条 · 上次入库 ${formatBeijingShort(status.last_ingest_at)}`}
         </div>
       </header>
+      {ingestStatus === "running" && (
+        <div className="px-6 py-2 border-b border-[var(--hair)] flex items-center gap-3 bg-[var(--accent-fill)]">
+          <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
+          <span className="text-xs text-[var(--accent)] font-semibold">正在入库…</span>
+          <span className="text-xs text-[var(--meta)]">{ingestEvents.length} 条事件</span>
+        </div>
+      )}
+      {(ingestStatus === "done") && (
+        <div className="px-6 py-2 border-b border-[var(--hair)] flex items-center gap-3 bg-[var(--accent-fill)]">
+          <span className="text-xs text-[var(--accent)] font-semibold">入库完成</span>
+          <button onClick={() => { setIngestStatus("idle"); setIngestEvents([]); }} className="text-xs text-[var(--meta)] hover:text-[var(--heading)] ml-auto">关闭</button>
+        </div>
+      )}
+      {ingestError && (
+        <div className="px-6 py-2 border-b border-[var(--red)] flex items-center gap-3 bg-[rgba(255,107,107,0.05)]">
+          <span className="text-xs text-[var(--red)] font-semibold">入库失败：{ingestError}</span>
+          <button onClick={() => { setIngestStatus("idle"); setIngestError(null); }} className="text-xs text-[var(--meta)] hover:text-[var(--heading)] ml-auto">关闭</button>
+        </div>
+      )}
       <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
         <div className="px-6 pt-3">
           <TabsList>
@@ -109,7 +129,7 @@ export function KnowledgePage() {
 
       <TabsContent value="browse" className="p-6 space-y-4">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 p-1 rounded border border-[var(--hair)]">
+            <div className="flex items-center gap-1 p-1 h-9 rounded border border-[var(--hair)]">
               {kinds.map((k) => (
                 <button
                   key={k}
@@ -126,6 +146,7 @@ export function KnowledgePage() {
                 onChange={(e) => runSearch(e.target.value)}
                 placeholder="搜索标题 / 内容…"
                 leftSlot="⌕"
+                className="h-9"
               />
             </div>
           </div>
@@ -183,18 +204,33 @@ export function KnowledgePage() {
       </TabsContent>
 
       <TabsContent value="ingest" className="p-6">
-        <div className="max-w-[880px] space-y-5">
           <IngestForm
             accounts={accounts}
             onSubmit={handleIngestStart}
             disabled={ingestStatus === "running"}
           />
-          {(ingestStatus !== "idle" || ingestEvents.length > 0 || ingestError) && (
-            <IngestProgressView events={ingestEvents} status={ingestStatus} error={ingestError} />
-          )}
-        </div>
       </TabsContent>
       </Tabs>
+
+      {(ingestStatus !== "idle" || ingestEvents.length > 0) && (
+        <div className="border-t border-[var(--hair)]">
+          <button
+            onClick={() => setLogOpen((o) => !o)}
+            className="w-full flex items-center justify-between px-6 py-2.5 text-xs text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"
+          >
+            <span className="flex items-center gap-2">
+              {ingestStatus === "running" && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />}
+              入库日志（{ingestEvents.length}）
+            </span>
+            <span>{logOpen ? "收起 ▴" : "展开 ▾"}</span>
+          </button>
+          {logOpen && (
+            <div className="px-6 pb-4">
+              <IngestProgressView events={ingestEvents} status={ingestStatus} error={ingestError} />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

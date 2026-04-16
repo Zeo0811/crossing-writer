@@ -70,7 +70,7 @@ export function ProjectList() {
       </header>
 
       <div className="flex items-center gap-3 mb-[18px]">
-        <div className="flex items-center gap-1 p-1 rounded border border-[var(--hair)] bg-[var(--bg-1)]">
+        <div className="flex items-center gap-1 p-1 h-9 rounded border border-[var(--hair)] bg-[var(--bg-1)]">
           <TabBtn active={tab === "active"} onClick={() => setTab("active")}>
             进行中 <span className="ml-1 text-[var(--faint)] text-xs">{activeCount}</span>
           </TabBtn>
@@ -84,10 +84,10 @@ export function ProjectList() {
             onChange={(e) => setQ(e.target.value)}
             placeholder="搜索项目名…"
             leftSlot="⌕"
+            className="h-9 bg-[var(--bg-1)]"
             rightSlot={q && (
               <button onClick={() => setQ("")} className="text-[var(--faint)] hover:text-[var(--heading)] text-xs">✕</button>
             )}
-            className="bg-[var(--bg-1)]"
           />
         </div>
       </div>
