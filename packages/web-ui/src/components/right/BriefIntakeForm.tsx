@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../api/client";
 import {
   uploadBriefAttachment,
@@ -7,6 +7,27 @@ import {
 } from "../../api/writer-client";
 import { useBriefPaste } from "../../hooks/useBriefPaste";
 import { useBriefDrop } from "../../hooks/useBriefDrop";
+
+// Parse brief.md to guess which tab the user originally used:
+// pure image markdown (no prose, no attachments) → image tab; anything else → text tab.
+function parseInitialBrief(md: string | undefined): {
+  mode: "text" | "image";
+  text: string;
+  imageFiles: BriefAttachmentItem[];
+} {
+  if (!md) return { mode: "text", text: "", imageFiles: [] };
+  const imgRe = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  const imageFiles: BriefAttachmentItem[] = [];
+  for (const m of md.matchAll(imgRe)) {
+    const alt = m[1] || "image";
+    // normalize: strip any leaked /api/projects/<pid>/brief/ prefix so url is always relative
+    const url = (m[2] || "").replace(/^\/api\/projects\/[^/]+\/brief\//, "");
+    imageFiles.push({ kind: "image", filename: alt, url, size: 0, mime: "image/*" });
+  }
+  const prose = md.replace(imgRe, "").trim();
+  const isPureImage = imageFiles.length > 0 && prose === "";
+  return { mode: isPureImage ? "image" : "text", text: md, imageFiles };
+}
 
 export function BriefIntakeForm({
   projectId,
@@ -21,10 +42,11 @@ export function BriefIntakeForm({
   submitLabel?: string;
   onCancel?: () => void;
 }) {
-  const [mode, setMode] = useState<"text" | "file" | "image">("text");
-  const [text, setText] = useState(initialText ?? "");
+  const initial = useMemo(() => parseInitialBrief(initialText), [initialText]);
+  const [mode, setMode] = useState<"text" | "file" | "image">(initial.mode);
+  const [text, setText] = useState(initial.text);
   const [files, setFiles] = useState<File[]>([]);
-  const [imageFiles, setImageFiles] = useState<BriefAttachmentItem[]>([]);
+  const [imageFiles, setImageFiles] = useState<BriefAttachmentItem[]>(initial.imageFiles);
   const imageTabInputRef = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -378,7 +400,7 @@ export function BriefIntakeForm({
           <button
             onClick={onCancel}
             disabled={busy}
-            className="px-4 py-2.5 text-sm text-[var(--meta)] hover:text-[var(--heading)] disabled:opacity-50"
+            className="inline-flex items-center h-9 px-4 rounded text-sm text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)] disabled:opacity-50 transition-colors"
           >
             取消
           </button>
@@ -386,7 +408,7 @@ export function BriefIntakeForm({
         <button
           onClick={submit}
           disabled={busy}
-          className="px-5 py-2.5 rounded border border-[var(--accent-soft)] bg-[var(--accent)] text-[var(--accent-on)] font-semibold hover:shadow-[0_0_12px_var(--accent-dim)] disabled:opacity-50 disabled:cursor-not-allowed transition-shadow"
+          className="inline-flex items-center h-9 px-4 rounded border border-[var(--accent-soft)] bg-[var(--accent)] text-sm text-[var(--accent-on)] font-semibold hover:shadow-[0_0_12px_var(--accent-dim)] disabled:opacity-50 disabled:cursor-not-allowed transition-shadow"
         >
           {busy ? "上传中…" : (submitLabel ?? "提交并解析 →")}
         </button>

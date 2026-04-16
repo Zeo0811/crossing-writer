@@ -144,7 +144,7 @@ function BriefReadyView({ projectId, project, refetch }: { projectId: string; pr
           <button
             type="button"
             data-testid="brief-edit-button"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded border border-[var(--accent-soft)] bg-[var(--accent-fill)] text-sm text-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-on)] transition-colors"
+            className="inline-flex items-center gap-1.5 h-9 px-4 rounded border border-[var(--accent-soft)] bg-[var(--accent-fill)] text-sm text-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-on)] transition-colors"
             onClick={() => { void openEditor(); }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -155,7 +155,7 @@ function BriefReadyView({ projectId, project, refetch }: { projectId: string; pr
           </button>
           <button
             type="button"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded border border-[var(--hair)] bg-[var(--bg-1)] text-sm text-[var(--body)] hover:border-[var(--hair-strong)] hover:bg-[var(--bg-2)] transition-colors"
+            className="inline-flex items-center gap-1.5 h-9 px-4 rounded border border-[var(--hair)] bg-[var(--bg-1)] text-sm text-[var(--body)] hover:border-[var(--hair-strong)] hover:bg-[var(--bg-2)] transition-colors"
             onClick={async () => {
               const res = await fetch(`/api/projects/${projectId}/brief/reanalyze`, { method: "POST" });
               if (res.ok) refetch();
