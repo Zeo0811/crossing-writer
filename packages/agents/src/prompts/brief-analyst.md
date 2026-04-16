@@ -37,6 +37,15 @@ competitors:
   - "..."
 category_positioning: <产品在赛道里的坐标描述，一句话>
 
+# 产品观察：brief 中的产品截图往往是理解产品功能 / 流程 / 使用姿势的**一手资料**。
+# 对每一张能看到产品界面的截图，生成一条观察。纯营销/口号海报不算产品截图，不要硬造。
+# 若 brief 里没有任何产品界面截图，填 []。
+product_observations:
+  - screen: <一句话描述这是什么界面/场景，例如"编辑器主界面" / "设置页" / "新建项目弹窗">
+    features: ["<这张图展示的功能点 1>", "<功能点 2>"]
+    flow_position: <entry | onboarding | main | action | result | settings | detail | null>
+    interaction_notes: <交互细节：触发路径 / 快捷键 / 状态变化 / 界面之间的跳转关系 or null>
+
 key_messages:
   - "..."
 value_props:
@@ -74,7 +83,7 @@ confidence: <0-1 浮点>
 
 # Brief 摘要
 
-<300 字段落式自然语言总结，覆盖客户、产品、传播目的、赛道坐标、关键信息、禁区、语气、参考对标、交付。>
+<300 字段落式自然语言总结，覆盖客户、产品（含从截图观察到的 UI / 流程 / 使用姿势）、传播目的、赛道坐标、关键信息、禁区、语气、参考对标、交付。>
 
 ## 原始 Brief 关键片段
 
