@@ -7,6 +7,7 @@ import { StylePanelsPage } from "./pages/StylePanelsPage.js";
 import { KnowledgePage } from "./pages/KnowledgePage.js";
 import { ConfigWorkbench } from "./pages/ConfigWorkbench";
 import { SettingsPage } from "./pages/SettingsPage";
+import { WritingHardRulesPage } from "./pages/WritingHardRulesPage";
 import { AppShell } from "./components/layout/AppShell";
 import { IngestProvider } from "./hooks/useIngestState";
 import { MockApp } from "./mock/MockApp";
@@ -41,6 +42,7 @@ export function App() {
               <Route path="/style-panels" element={<StylePanelsPage />} />
               <Route path="/knowledge" element={<KnowledgePage />} />
               <Route path="/config" element={<ConfigWorkbench />} />
+              <Route path="/writing-hard-rules" element={<WritingHardRulesPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Routes>
           </AppShell>

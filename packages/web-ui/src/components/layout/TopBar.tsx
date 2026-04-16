@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { to: "/", label: "项目", icon: IconProjects, end: true },
   { to: "/knowledge", label: "知识库", icon: IconKnowledge },
   { to: "/style-panels", label: "风格", icon: IconStyle },
+  { to: "/writing-hard-rules", label: "硬规则", icon: IconConfig },
   { to: "/config", label: "配置", icon: IconConfig },
   { to: "/settings", label: "设置", icon: IconSettings },
 ];
