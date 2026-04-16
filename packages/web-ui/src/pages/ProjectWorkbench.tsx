@@ -14,7 +14,6 @@ import { OverviewIntakeForm } from "../components/right/OverviewIntakeForm";
 import { CaseExpertSelector } from "../components/right/CaseExpertSelector";
 import { CaseListPanel } from "../components/left/CaseListPanel";
 import { CaseSelectedGuide } from "../components/right/CaseSelectedGuide";
-import { SettingsDrawer } from "../components/settings/SettingsDrawer";
 import { EvidenceSection } from "../components/evidence/EvidenceSection";
 import { WriterConfigForm } from "../components/writer/WriterConfigForm";
 import { WriterProgressPanel } from "../components/writer/WriterProgressPanel";
@@ -317,7 +316,6 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
   const projectId = propProjectId ?? params.id ?? "";
 
   const [project, setProject] = useState<any>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [selectedEvidenceCase, setSelectedEvidenceCase] = useState<string | null>(null);
   const { events, connectionState, lastEventTs } = useProjectStream(projectId);
@@ -412,19 +410,11 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
         <button
           type="button"
           onClick={() => setOverrideOpen(true)}
-          className="text-xs text-[var(--meta)] hover:text-[var(--heading)]"
-          title="本项目专属配置"
+          className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded border border-[var(--hair)] text-xs text-[var(--meta)] hover:text-[var(--heading)] hover:border-[var(--accent-soft)]"
+          title="覆盖本项目 agent 配置（模型 / 风格 / 工具）"
         >
-          本项目配置
-        </button>
-        <button
-          type="button"
-          onClick={() => setSettingsOpen(true)}
-          className="w-7 h-7 flex items-center justify-center rounded text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"
-          aria-label="settings"
-          title="设置"
-        >
-          ⚙
+          <span aria-hidden>⚙</span>
+          <span>本项目配置</span>
         </button>
       </header>
 
@@ -457,7 +447,6 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
 
       <ActivityDrawer events={events} connectionState={connectionState} lastEventTs={lastEventTs} />
 
-      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       {overrideOpen && (
         <ProjectOverridePanel projectId={projectId} onClose={() => setOverrideOpen(false)} />
       )}

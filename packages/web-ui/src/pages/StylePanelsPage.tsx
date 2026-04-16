@@ -115,7 +115,7 @@ export function StylePanelsPage() {
                 <div className="flex items-center gap-3">
                   <h2 className="text-lg text-[var(--heading)] font-semibold truncate">{activePanel.account}</h2>
                   <span className="text-xs px-2 py-0.5 rounded-sm bg-[var(--bg-2)] text-[var(--meta)]">{activePanel.role} · v{activePanel.version}</span>
-                  <span className="text-xs text-[var(--faint)]">{formatBeijingShort(activePanel.updated_at)}</span>
+                  <span className="text-xs text-[var(--faint)]">{formatBeijingShort(activePanel.created_at)}</span>
                 </div>
                 <div className="rounded bg-[var(--bg-2)] p-4">
                   <div className="text-xs text-[var(--meta)] mb-2 font-semibold">说明</div>

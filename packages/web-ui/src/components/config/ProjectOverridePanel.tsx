@@ -169,8 +169,8 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
 
   if (loading) {
     return (
-      <div role="dialog" className="fixed inset-0 flex items-center justify-center bg-[rgba(0,0,0,0.55)] backdrop-blur-[6px]">
-        <div className="p-6 bg-bg-1 border border-hair text-body rounded-[6px]">Loading…</div>
+      <div role="dialog" className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.55)] backdrop-blur-sm">
+        <div className="rounded border border-[var(--hair-strong)] bg-[var(--bg-1)] px-6 py-4 text-sm text-[var(--meta)]">加载中…</div>
       </div>
     );
   }
@@ -180,19 +180,32 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
       role="dialog"
       data-testid="project-override-panel"
       data-modal-root=""
-      className="fixed inset-0 z-50 flex items-start justify-end bg-[rgba(0,0,0,0.55)] backdrop-blur-[6px]"
+      className="fixed inset-0 z-50 flex items-start justify-end bg-[rgba(0,0,0,0.55)] backdrop-blur-sm"
+      onClick={onClose}
     >
       <div
-        className="h-full w-[640px] max-w-[95vw] overflow-auto shadow-xl p-5 bg-bg-1 border-l border-hair text-body"
+        className="h-full w-[560px] max-w-[95vw] overflow-auto shadow-2xl bg-[var(--bg-1)] border-l border-[var(--hair)] text-[var(--body)] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
       >
-        <header className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold">🔧 本项目专属配置</h2>
-          <span className="text-xs opacity-60 font-mono">{projectId}</span>
+        <header className="flex items-center justify-between px-6 h-14 border-b border-[var(--hair)]">
+          <div>
+            <h2 className="text-base font-semibold text-[var(--heading)]">本项目配置</h2>
+            <div className="text-[10px] text-[var(--faint)]" style={{ fontFamily: "var(--font-mono)" }}>{projectId}</div>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]">✕</button>
         </header>
 
-        {error && <div className="text-xs mb-3 text-red">{error}</div>}
+        <div className="flex-1 overflow-y-auto p-6 space-y-3">
+          {error && (
+            <div className="rounded border border-[var(--red)] bg-[rgba(255,107,107,0.05)] px-3 py-2 text-sm text-[var(--red)]">
+              {error}
+            </div>
+          )}
 
-        <div className="flex flex-col gap-4">
+          <p className="text-xs text-[var(--meta)] mb-2">
+            覆盖默认 agent 配置。只覆盖本项目，不改全局。
+          </p>
+
           {WRITER_AGENTS.map((agentKey) => {
             const defaultCfg = defaults[agentKey];
             if (!defaultCfg) return null;
@@ -202,84 +215,88 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
             const styleValue = ov.styleBinding ? styleKey(ov.styleBinding) : "";
             const hasOverride = Boolean(ov.model || ov.styleBinding || ov.tools || ov.promptVersion);
             const roleChoices = role ? (stylePanelsByRole.get(role) ?? []) : [];
+            const label =
+              agentKey === "writer.opening" ? "开篇 writer" :
+              agentKey === "writer.practice" ? "Case 正文 writer" :
+              agentKey === "writer.closing" ? "收束 writer" : agentKey;
 
             return (
               <div
                 key={agentKey}
-                className="border rounded p-3"
-                style={{ borderColor: "var(--border)" }}
+                className="rounded bg-[var(--bg-2)] p-4"
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-mono text-sm">{agentKey}</span>
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <div className="text-sm font-semibold text-[var(--heading)]">{label}</div>
+                    <div className="text-[10px] text-[var(--faint)]" style={{ fontFamily: "var(--font-mono)" }}>{agentKey}</div>
+                  </div>
                   {hasOverride && (
                     <button
                       type="button"
                       data-testid={`clear-override-${agentKey}`}
                       onClick={() => { void handleClear(agentKey); }}
-                      className="text-xs px-2 py-0.5 border rounded"
-                      style={{ borderColor: "var(--border)" }}
+                      className="text-xs text-[var(--accent)] hover:underline"
                     >
-                      清除覆盖，恢复默认
+                      恢复默认
                     </button>
                   )}
                 </div>
 
-                <div className="grid grid-cols-[80px_1fr] gap-y-2 gap-x-3 items-center text-sm">
-                  <label>🤖 MODEL</label>
-                  <select
-                    data-testid={`override-model-${agentKey}`}
-                    value={modelValue}
-                    onChange={(e) => handleModelChange(agentKey, e.target.value)}
-                    className="border rounded px-2 py-1 bg-transparent"
-                    style={{ borderColor: "var(--border)" }}
-                  >
-                    <option value="">
-                      默认: {modelLabel(defaultCfg.model)}
-                    </option>
-                    {MODEL_CHOICES.filter((m) => modelKey(m) !== modelKey(defaultCfg.model)).map((m) => (
-                      <option key={modelKey(m)} value={modelKey(m)}>
-                        {modelLabel(m)}
-                      </option>
-                    ))}
-                  </select>
-
-                  <label>🎨 STYLE</label>
-                  <select
-                    data-testid={`override-style-${agentKey}`}
-                    value={styleValue}
-                    onChange={(e) => handleStyleChange(agentKey, e.target.value)}
-                    className="border rounded px-2 py-1 bg-transparent"
-                    style={{ borderColor: "var(--border)" }}
-                  >
-                    <option value="">
-                      默认: {defaultCfg.styleBinding ? styleLabel(defaultCfg.styleBinding) : "(未绑定)"}
-                    </option>
-                    {roleChoices
-                      .filter((p) => {
-                        if (!defaultCfg.styleBinding) return true;
-                        return !(p.account === defaultCfg.styleBinding.account && p.role === defaultCfg.styleBinding.role);
-                      })
-                      .map((p) => (
-                        <option
-                          key={`${p.account}-${p.role}-${p.version}`}
-                          value={`${p.account}::${p.role}`}
-                        >
-                          {styleLabel({ account: p.account, role: p.role as StyleBindingRole }, p.version)}
+                <div className="space-y-2">
+                  <label className="block">
+                    <span className="text-xs text-[var(--meta)] block mb-1">模型</span>
+                    <select
+                      data-testid={`override-model-${agentKey}`}
+                      value={modelValue}
+                      onChange={(e) => handleModelChange(agentKey, e.target.value)}
+                      className="w-full bg-[var(--bg-1)] border border-[var(--hair)] rounded px-3 py-2 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
+                    >
+                      <option value="">默认：{modelLabel(defaultCfg.model)}</option>
+                      {MODEL_CHOICES.filter((m) => modelKey(m) !== modelKey(defaultCfg.model)).map((m) => (
+                        <option key={modelKey(m)} value={modelKey(m)}>
+                          {modelLabel(m)}
                         </option>
                       ))}
-                  </select>
+                    </select>
+                  </label>
+
+                  <label className="block">
+                    <span className="text-xs text-[var(--meta)] block mb-1">风格</span>
+                    <select
+                      data-testid={`override-style-${agentKey}`}
+                      value={styleValue}
+                      onChange={(e) => handleStyleChange(agentKey, e.target.value)}
+                      className="w-full bg-[var(--bg-1)] border border-[var(--hair)] rounded px-3 py-2 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
+                    >
+                      <option value="">
+                        默认：{defaultCfg.styleBinding ? styleLabel(defaultCfg.styleBinding) : "(未绑定)"}
+                      </option>
+                      {roleChoices
+                        .filter((p) => {
+                          if (!defaultCfg.styleBinding) return true;
+                          return !(p.account === defaultCfg.styleBinding.account && p.role === defaultCfg.styleBinding.role);
+                        })
+                        .map((p) => (
+                          <option
+                            key={`${p.account}-${p.role}-${p.version}`}
+                            value={`${p.account}::${p.role}`}
+                          >
+                            {styleLabel({ account: p.account, role: p.role as StyleBindingRole }, p.version)}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
                 </div>
               </div>
             );
           })}
         </div>
 
-        <footer className="flex justify-end gap-2 mt-6">
+        <footer className="flex items-center justify-end gap-2 px-6 py-3 border-t border-[var(--hair)]">
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1 text-sm border rounded"
-            style={{ borderColor: "var(--border)" }}
+            className="px-3 py-1.5 text-xs text-[var(--meta)] hover:text-[var(--heading)]"
           >
             取消
           </button>
@@ -287,8 +304,7 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
             type="button"
             disabled={saving}
             onClick={() => { void handleSave(); }}
-            className="px-3 py-1 text-sm border rounded"
-            style={{ borderColor: "var(--accent)", background: "var(--accent)", color: "var(--accent-on)" }}
+            className="px-4 py-1.5 text-xs rounded border border-[var(--accent-soft)] bg-[var(--accent)] text-[var(--accent-on)] font-semibold disabled:opacity-50"
           >
             {saving ? "保存中…" : "保存"}
           </button>
