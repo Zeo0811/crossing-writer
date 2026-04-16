@@ -103,13 +103,17 @@ export function BriefIntakeForm({
     onUploaded: onAttachmentItems,
   });
 
-  // Initial render of editor from `text` (only once, preserving caret after)
+  // When switching to text mode, rehydrate editor from `text` state (editor DOM remounted due to key={mode})
   useEffect(() => {
+    if (mode !== "text") {
+      editorInitialized.current = false;
+      return;
+    }
     if (editorRef.current && !editorInitialized.current) {
       editorRef.current.innerHTML = mdToHtml(text, projectId);
       editorInitialized.current = true;
     }
-  }, [text, projectId]);
+  }, [mode, text, projectId]);
 
   async function uploadPickedFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -165,16 +169,16 @@ export function BriefIntakeForm({
         ))}
       </div>
 
-      <div className="rounded border border-[var(--hair)] bg-[var(--bg-1)] h-[420px] flex flex-col overflow-hidden">
+      <div key={mode} className="rounded border border-[var(--hair)] bg-[var(--bg-1)] h-[420px] flex flex-col overflow-hidden isolate">
         {mode === "text" ? (
           <>
-            <div className="relative flex-1 min-h-0">
+            <div className="relative flex-1 min-h-0 overflow-hidden">
               <div
                 ref={editorRef}
                 contentEditable
                 suppressContentEditableWarning
                 data-placeholder="把甲方简报粘贴进来…（支持 Cmd+V 粘贴图片 / 拖拽上传）"
-                className="brief-editor w-full h-full bg-transparent p-3 text-sm text-[var(--body)] outline-none overflow-y-auto whitespace-pre-wrap"
+                className="brief-editor absolute inset-0 bg-transparent p-3 text-sm text-[var(--body)] outline-none overflow-y-auto whitespace-pre-wrap break-words"
                 data-testid="brief-textarea"
                 onInput={(e) => setText(htmlToMd(e.currentTarget))}
                 onPaste={async (e) => {
@@ -268,10 +272,10 @@ export function BriefIntakeForm({
             </div>
           </>
         ) : mode === "file" ? (
-          <div className="flex-1 min-h-0 flex flex-col">
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-[var(--bg-2)]"
+              className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-[var(--bg-2)] overflow-hidden"
             >
               <span className="text-3xl text-[var(--accent)]">⇣</span>
               <span className="text-sm text-[var(--body)]">拖入 .pdf / .docx / .md / .txt，可批量</span>
@@ -306,10 +310,10 @@ export function BriefIntakeForm({
             )}
           </div>
         ) : (
-          <div className="flex-1 min-h-0 flex flex-col">
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
             <div
               onClick={() => imageTabInputRef.current?.click()}
-              className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-[var(--bg-2)]"
+              className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-[var(--bg-2)] overflow-hidden"
             >
               <span className="text-3xl text-[var(--accent)]">⇣</span>
               <span className="text-sm text-[var(--body)]">拖入截图，可批量</span>
