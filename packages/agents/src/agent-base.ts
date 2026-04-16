@@ -1,4 +1,5 @@
-import { invokeAgent, type AgentResult } from "./model-adapter.js";
+import { invokeAgent, type AgentResult, type AgentStreamEvent } from "./model-adapter.js";
+export type { AgentStreamEvent };
 
 export interface AgentOptions {
   key: string;
@@ -23,7 +24,12 @@ export class AgentBase {
   async run(
     userMessage: string,
     extraVars?: Record<string, string>,
-    extra?: { images?: string[]; addDirs?: string[]; runLogDir?: string },
+    extra?: {
+      images?: string[];
+      addDirs?: string[];
+      runLogDir?: string;
+      onEvent?: (ev: AgentStreamEvent) => void;
+    },
   ): Promise<AgentResult> {
     const vars = { ...this.opts.vars, ...extraVars };
     const systemPrompt = this.interpolate(this.opts.systemPromptTemplate, vars);
@@ -37,6 +43,7 @@ export class AgentBase {
       images: extra?.images,
       addDirs: extra?.addDirs,
       runLogDir: extra?.runLogDir,
+      onEvent: extra?.onEvent,
     });
   }
 }

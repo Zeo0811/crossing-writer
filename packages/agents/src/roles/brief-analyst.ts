@@ -1,6 +1,6 @@
 import { AgentBase } from "../agent-base.js";
 import { loadPrompt } from "../prompts/index.js";
-import type { AgentResult } from "../model-adapter.js";
+import type { AgentResult, AgentStreamEvent } from "../model-adapter.js";
 
 export interface BriefAnalyzeInput {
   projectId: string;
@@ -9,6 +9,7 @@ export interface BriefAnalyzeInput {
   images?: string[];   // absolute paths; passed via @-ref to claude + added to --add-dir
   addDirs?: string[];  // absolute dirs to grant CLI access to
   runLogDir?: string;  // if set, adapter writes prompt/response/meta to <runLogDir>/<runId>/
+  onEvent?: (ev: AgentStreamEvent) => void;  // live tool_use / tool_result stream (claude)
 }
 
 export class BriefAnalyst {
@@ -37,7 +38,12 @@ export class BriefAnalyst {
         brief_body: input.briefBody,
         product_info: input.productInfo,
       },
-      { images: input.images, addDirs: input.addDirs, runLogDir: input.runLogDir },
+      {
+        images: input.images,
+        addDirs: input.addDirs,
+        runLogDir: input.runLogDir,
+        onEvent: input.onEvent,
+      },
     );
   }
 }

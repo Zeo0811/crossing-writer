@@ -23,6 +23,7 @@ interface TreeNode {
 // Sources: `writer`, `[TOOL]`, `state`, `agent`, `expert`, `coord`, `evidence`, `fallback to the event type prefix`.
 function logSource(ev: StreamEvent): { label: string; tone: "plain" | "tool" | "state" | "error" } {
   const t = ev.type;
+  if (t === "agent.tool_called" || t === "agent.tool_returned") return { label: "[TOOL]", tone: "tool" };
   if (t.startsWith("writer.tool_")) return { label: "[TOOL]", tone: "tool" };
   if (t === "state_changed") return { label: "state", tone: "state" };
   if (t.endsWith(".failed")) {
@@ -38,6 +39,23 @@ function logSource(ev: StreamEvent): { label: string; tone: "plain" | "tool" | "
   if (t.startsWith("overview.")) return { label: "overview", tone: "plain" };
   if (t.startsWith("agent.")) return { label: ev.agent ?? "agent", tone: "plain" };
   return { label: t.split(".")[0] ?? t, tone: "plain" };
+}
+
+function describeToolEvent(ev: StreamEvent): string {
+  const d = (ev.data ?? ev.payload ?? {}) as any;
+  if (ev.type === "agent.tool_called") {
+    const tool = d.toolName ?? "?";
+    let inputStr = "";
+    try { inputStr = JSON.stringify(d.input ?? {}); } catch { inputStr = "…"; }
+    if (inputStr.length > 180) inputStr = inputStr.slice(0, 180) + "…";
+    return `→ ${tool}(${inputStr})`;
+  }
+  if (ev.type === "agent.tool_returned") {
+    const prefix = d.isError ? "✗" : "←";
+    const preview = typeof d.preview === "string" ? d.preview.replace(/\s+/g, " ").slice(0, 140) : "";
+    return `${prefix} ${preview}${preview.length >= 140 ? "…" : ""}`;
+  }
+  return ev.type;
 }
 
 function toneClass(tone: "plain" | "tool" | "state" | "error"): string {
@@ -170,7 +188,10 @@ function TerminalLog({
             </button>
           );
         }
-        const msg = eventLabel(ev);
+        const msg =
+          ev.type === "agent.tool_called" || ev.type === "agent.tool_returned"
+            ? describeToolEvent(ev)
+            : eventLabel(ev);
         return (
           <div key={i} className="flex items-start gap-2 whitespace-pre">
             <span className="text-[var(--faint)] shrink-0">[{ts}]</span>
@@ -184,7 +205,7 @@ function TerminalLog({
   );
 }
 
-type RunDrawerTab = "prompt" | "response" | "meta" | "stderr";
+type RunDrawerTab = "prompt" | "response" | "meta" | "stderr" | "trace";
 function RunDrawer({
   projectId,
   runDir,
@@ -210,6 +231,7 @@ function RunDrawer({
       tab === "prompt" ? "prompt.txt" :
       tab === "response" ? "response.txt" :
       tab === "stderr" ? "stderr.txt" :
+      tab === "trace" ? "trace.ndjson" :
       "meta.json";
     setLoading(true);
     setErr(null);
@@ -232,6 +254,7 @@ function RunDrawer({
     { key: "prompt", label: "Prompt" },
     { key: "response", label: "Response" },
     { key: "meta", label: "Meta" },
+    { key: "trace", label: "Trace" },
     { key: "stderr", label: "Stderr" },
   ];
 

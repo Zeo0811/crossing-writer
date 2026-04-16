@@ -114,7 +114,7 @@ export function registerProjectTreeRoutes(app: FastifyInstance, deps: ProjectTre
   // Serve agent run artifacts (prompt.txt / response.txt / stderr.txt / meta.json)
   // Path format: /api/projects/:id/runs/:runId/:file
   // runId is sanitized agent-key-timestamped (e.g. 2026-04-16T15-50-00Z-brief_analyst)
-  const ALLOWED_FILES = new Set(["prompt.txt", "response.txt", "stderr.txt", "meta.json"]);
+  const ALLOWED_FILES = new Set(["prompt.txt", "response.txt", "stderr.txt", "meta.json", "trace.ndjson"]);
   const RUN_ID_RE = /^[\w.-]+$/;
   app.get<{ Params: { id: string; runId: string; file: string } }>(
     "/api/projects/:id/runs/:runId/:file",

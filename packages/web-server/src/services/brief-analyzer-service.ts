@@ -81,6 +81,27 @@ export async function analyzeBrief(opts: AnalyzeBriefOpts): Promise<void> {
       images: Array.from(imgPaths),
       addDirs: [briefDir],
       runLogDir: join(projectDir, "runs"),
+      onEvent: (ev) => {
+        // Fire-and-forget — best-effort streaming of live tool calls.
+        // We intentionally don't await each write so the adapter's parse loop isn't blocked.
+        if (ev.type === "tool_called") {
+          void appendEvent(projectDir, {
+            type: "agent.tool_called",
+            agent: "brief_analyst",
+            toolName: ev.toolName,
+            input: ev.input,
+            toolUseId: ev.toolUseId,
+          } as any).catch(() => {});
+        } else if (ev.type === "tool_returned") {
+          void appendEvent(projectDir, {
+            type: "agent.tool_returned",
+            agent: "brief_analyst",
+            toolUseId: ev.toolUseId,
+            preview: ev.resultPreview,
+            isError: ev.isError,
+          } as any).catch(() => {});
+        }
+      },
     });
 
     if (result.meta.runDir) {

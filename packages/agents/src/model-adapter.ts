@@ -3,6 +3,20 @@ import { mkdtempSync, readFileSync, unlinkSync, mkdirSync, writeFileSync } from 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+export type AgentStreamEvent =
+  | {
+      type: "tool_called";
+      toolName: string;
+      input: unknown;
+      toolUseId?: string;
+    }
+  | {
+      type: "tool_returned";
+      toolUseId?: string;
+      resultPreview?: string;
+      isError?: boolean;
+    };
+
 export interface InvokeOptions {
   agentKey: string;
   cli: "claude" | "codex";
@@ -14,6 +28,8 @@ export interface InvokeOptions {
   addDirs?: string[];
   /** If set, write prompt / response / meta.json into <runLogDir>/<runId>/ */
   runLogDir?: string;
+  /** Optional callback for streaming tool events (claude-only) */
+  onEvent?: (ev: AgentStreamEvent) => void;
 }
 
 export interface AgentRunMeta {
@@ -48,6 +64,129 @@ function sanitizeAgentKey(key: string): string {
 function makeRunId(agentKey: string): string {
   const ts = new Date().toISOString().replace(/[:.]/g, "-").replace(/Z$/, "Z");
   return `${ts}-${sanitizeAgentKey(agentKey)}`;
+}
+
+// Produce a human-readable preview for a tool_result content.
+// Handles: string, array of blocks (text | image), plain object.
+// For image blocks, shows "[image · <N>KB base64]" instead of the raw base64.
+function summarizeToolResult(content: unknown): string {
+  if (content == null) return "";
+  if (typeof content === "string") return content.slice(0, 500);
+  if (Array.isArray(content)) {
+    const parts: string[] = [];
+    for (const block of content) {
+      const b = block as any;
+      if (b?.type === "text" && typeof b.text === "string") {
+        parts.push(b.text);
+      } else if (b?.type === "image") {
+        const data = b?.source?.data;
+        const kb = typeof data === "string" ? Math.round((data.length * 3) / 4 / 1024) : 0;
+        parts.push(kb > 0 ? `[image · ${kb}KB base64]` : "[image]");
+      } else if (b?.type === "document") {
+        parts.push("[document]");
+      } else {
+        try { parts.push(JSON.stringify(b)); } catch { parts.push("[binary]"); }
+      }
+    }
+    return parts.join(" ").slice(0, 500);
+  }
+  try { return JSON.stringify(content).slice(0, 500); } catch { return "[unserializable]"; }
+}
+
+interface ClaudeStreamResult {
+  status: number | null;
+  fullText: string;
+  rawStdout: string;
+  stderr: string;
+}
+
+function runClaudeStreaming(
+  args: string[],
+  input: Buffer,
+  timeout: number,
+  onEvent?: (ev: AgentStreamEvent) => void,
+): Promise<ClaudeStreamResult> {
+  return new Promise((resolve) => {
+    const child = spawn("claude", args, { stdio: ["pipe", "pipe", "pipe"] });
+    let rawStdout = "";
+    let stderr = "";
+    let fullText = "";
+    let lineBuf = "";
+    let settled = false;
+    let extraErr = "";
+
+    const handleLine = (line: string) => {
+      if (!line.trim()) return;
+      let json: any;
+      try { json = JSON.parse(line); } catch { return; }
+      if (json.type === "assistant" && json.message?.content) {
+        for (const c of json.message.content) {
+          if (c?.type === "text" && typeof c.text === "string") {
+            fullText += c.text;
+          } else if (c?.type === "tool_use") {
+            onEvent?.({
+              type: "tool_called",
+              toolName: String(c.name ?? ""),
+              input: c.input ?? null,
+              toolUseId: c.id ? String(c.id) : undefined,
+            });
+          }
+        }
+      } else if (json.type === "user" && json.message?.content) {
+        for (const c of json.message.content) {
+          if (c?.type === "tool_result") {
+            onEvent?.({
+              type: "tool_returned",
+              toolUseId: c.tool_use_id ? String(c.tool_use_id) : undefined,
+              resultPreview: summarizeToolResult(c.content),
+              isError: Boolean(c.is_error),
+            });
+          }
+        }
+      } else if (json.type === "result" && json.subtype === "success") {
+        if (typeof json.result === "string" && json.result.length > 0) {
+          fullText = json.result;
+        }
+      }
+    };
+
+    const finish = (status: number | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (lineBuf.trim()) handleLine(lineBuf);
+      if (extraErr) stderr += `\n[adapter] ${extraErr}`;
+      resolve({ status, fullText, rawStdout, stderr });
+    };
+
+    const timer = setTimeout(() => {
+      extraErr = `killed after ${timeout}ms timeout`;
+      try { child.kill("SIGKILL"); } catch { /* ignore */ }
+      finish(null);
+    }, timeout);
+
+    child.stdout?.on("data", (chunk: Buffer) => {
+      const text = Buffer.isBuffer(chunk) ? chunk.toString("utf-8") : String(chunk);
+      rawStdout += text;
+      lineBuf += text;
+      let nlIdx: number;
+      while ((nlIdx = lineBuf.indexOf("\n")) >= 0) {
+        const line = lineBuf.slice(0, nlIdx);
+        lineBuf = lineBuf.slice(nlIdx + 1);
+        handleLine(line);
+      }
+    });
+    child.stderr?.on("data", (chunk: Buffer) => {
+      stderr += Buffer.isBuffer(chunk) ? chunk.toString("utf-8") : String(chunk);
+    });
+    child.on("error", (err) => { extraErr = `spawn error: ${err.message}`; finish(null); });
+    child.on("close", (code, signal) => {
+      if (code === null && signal) extraErr = `killed by signal ${signal}`;
+      finish(code);
+    });
+    child.stdin?.on("error", (err) => { extraErr = `stdin error: ${err.message}`; });
+    child.stdin?.end(input);
+  });
 }
 
 function writeRunArtifacts(
@@ -199,34 +338,47 @@ export async function invokeAgent(opts: InvokeOptions): Promise<AgentResult> {
   const addDirArgs = Array.from(allDirs).flatMap((d) => ["--add-dir", d]);
   // Read tool required for @path refs to trigger real vision input in Claude CLI;
   // keep it off otherwise so the agent stays sandboxed.
+  // --output-format stream-json + --verbose: emit NDJSON stream so we can intercept
+  //   tool_use / tool_result events live and surface them in the project console.
   const args = [
     "-p", "-",
+    "--output-format", "stream-json",
+    "--verbose",
     "--tools", images.length > 0 ? "Read" : "",
     ...addDirArgs,
     ...(opts.model ? ["--model", opts.model] : []),
   ];
-  const proc = await runChildProcess("claude", args, {
+  const stream = await runClaudeStreaming(
+    args,
+    Buffer.from(claudePrompt, "utf-8"),
     timeout,
-    input: Buffer.from(claudePrompt, "utf-8"),
-  });
-  if (proc.status !== 0) {
-    const detail = (proc.stderr || proc.stdout).trim();
-    persistRun("claude", claudePrompt, proc.stdout, proc.stderr, proc.status);
-    throw new Error(`claude exit=${proc.status}: ${detail.slice(0, 800) || "(no output)"}`);
+    opts.onEvent,
+  );
+  if (stream.status !== 0) {
+    const detail = (stream.stderr || stream.rawStdout).trim();
+    persistRun("claude", claudePrompt, stream.rawStdout, stream.stderr, stream.status);
+    throw new Error(`claude exit=${stream.status}: ${detail.slice(0, 800) || "(no output)"}`);
   }
-  if (/^API Error:/m.test(proc.stdout)) {
-    persistRun("claude", claudePrompt, proc.stdout, proc.stderr, proc.status);
-    throw new Error(`claude API error: ${proc.stdout.trim().slice(0, 800)}`);
+  if (/^API Error:/m.test(stream.fullText) || /^API Error:/m.test(stream.rawStdout)) {
+    persistRun("claude", claudePrompt, stream.rawStdout, stream.stderr, stream.status);
+    throw new Error(`claude API error: ${(stream.fullText || stream.rawStdout).trim().slice(0, 800)}`);
   }
-  if (!proc.stdout || proc.stdout.trim().length === 0) {
-    // Silent empty output — treat as failure so downstream doesn't write a 0-byte summary.
-    const stderrHint = proc.stderr.trim().slice(0, 400);
-    persistRun("claude", claudePrompt, proc.stdout, proc.stderr, proc.status);
-    throw new Error(`claude returned empty stdout${stderrHint ? ` · stderr: ${stderrHint}` : ""}`);
+  if (!stream.fullText || stream.fullText.trim().length === 0) {
+    const stderrHint = stream.stderr.trim().slice(0, 400);
+    persistRun("claude", claudePrompt, stream.rawStdout, stream.stderr, stream.status);
+    throw new Error(`claude returned empty result${stderrHint ? ` · stderr: ${stderrHint}` : ""}`);
   }
-  persistRun("claude", claudePrompt, proc.stdout, proc.stderr, proc.status);
+  // Write BOTH the parsed final text (response.txt) and the raw NDJSON stream (trace.ndjson)
+  // for full forensic traceability. persistRun handles response.txt; trace is extra.
+  persistRun("claude", claudePrompt, stream.fullText, stream.stderr, stream.status);
+  if (opts.runLogDir && runId) {
+    try {
+      const rawPath = join(opts.runLogDir, runId, "trace.ndjson");
+      writeFileSync(rawPath, stream.rawStdout, "utf-8");
+    } catch { /* ignore */ }
+  }
   return {
-    text: proc.stdout,
+    text: stream.fullText,
     meta: { cli: "claude", model: opts.model, durationMs: Date.now() - startedMs, runDir: runDirRel },
   };
 }
