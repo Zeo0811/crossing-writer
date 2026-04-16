@@ -326,7 +326,7 @@ function renderPhaseView(props: PhaseViewProps): React.ReactNode {
       );
 
     case "awaiting_case_selection":
-      return <PhasePanel label="挑选要带入正文的 Case"><CaseListPanel projectId={projectId} /></PhasePanel>;
+      return <CaseListPanel projectId={projectId} />;
 
     case "case_plan_approved":
       return <PhasePanel label="Case 已批准，去跑真实测"><CaseSelectedGuide projectId={projectId} selectedCaseId={selectedEvidenceCase} onSelectCase={setSelectedEvidenceCase} /></PhasePanel>;

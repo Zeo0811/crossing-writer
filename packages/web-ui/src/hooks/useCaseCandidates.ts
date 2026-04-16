@@ -58,9 +58,10 @@ function asString(x: unknown): string {
 }
 
 function parseCandidates(md: string): ParsedCase[] {
-  // Each case is: "# Case NN — name\n\n```yaml\n...\n```\n\n# 详细说明\n<prose>\n---"
-  // Use a greedy-but-bounded regex to capture the whole block until the next "# Case NN" or EOF.
-  const re = /# Case (\d+)[^\n]*\n([\s\S]*?)(?=^# Case \d+|$)/gm;
+  // Each case is: "# Case NN — name\n\n```yaml\n...\n```\n\n# 详细说明\n<prose>\n"
+  // Use explicit "\n# Case \d+" as the next-case boundary (end of string fallback) —
+  // a bare $ with /m flag matches any line end and makes the non-greedy body capture 0 chars.
+  const re = /# Case (\d+)[^\n]*\n([\s\S]*?)(?=\n# Case \d+\b|$(?![\r\n]))/g;
   const out: ParsedCase[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(md))) {
@@ -76,7 +77,19 @@ function parseCandidates(md: string): ParsedCase[] {
       try {
         const raw = yamlMatch[1]!;
         // The yaml has its own outer "---" frontmatter markers; strip them
-        const cleaned = raw.replace(/^---\s*$/m, "").replace(/^---\s*$/gm, "").trim();
+        let cleaned = raw.replace(/^---\s*$/m, "").replace(/^---\s*$/gm, "").trim();
+        // LLM 生成的 YAML 常见问题：list item 用了 "quoted-prefix"unquoted-suffix 混合格式。
+        // 例：- "新建一个任务"是否正确 → 严格 YAML 不合法。
+        // 修复思路：在 "- " 开头的行里，如果整行有 1 对以上非成对引号，就把所有内部 " 去掉，
+        // 然后给整个 value 加一对引号（并转义内部的冒号）。
+        const fixMixed = (_m: string, pre: string, q: string, rest: string) => {
+          const merged = (q + rest).replace(/"/g, "").replace(/:/g, "：");
+          return `${pre}"${merged}"`;
+        };
+        // list-item 格式：- "xxx"yyy
+        cleaned = cleaned.replace(/^(\s*-\s*)"([^"]*?)"([^\n]+)$/gm, fixMixed);
+        // key: value 格式：key: "xxx"yyy
+        cleaned = cleaned.replace(/^(\s*[\w_]+:\s*)"([^"]*?)"([^\n]+)$/gm, fixMixed);
         yamlData = parseYaml(cleaned) ?? {};
       } catch { yamlData = {}; }
     }
