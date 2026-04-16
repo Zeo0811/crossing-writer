@@ -19,7 +19,6 @@ import { WriterConfigForm } from "../components/writer/WriterConfigForm";
 import { WriterProgressPanel } from "../components/writer/WriterProgressPanel";
 import { ArticleEditor } from "../components/writer/ArticleEditor";
 import { ProjectOverridePanel } from "../components/config/ProjectOverridePanel";
-import { ContextChip } from "../components/project/ContextChip";
 import { PhaseSteps, statusBadge } from "../components/layout/PhaseSteps";
 
 interface FailureInfo {

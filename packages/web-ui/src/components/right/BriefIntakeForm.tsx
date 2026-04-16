@@ -30,13 +30,16 @@ export function BriefIntakeForm({
   const imgInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  function wrapImg(src: string, alt: string, md: string): string {
+    return `<span class="img-wrap" contenteditable="false"><img src="${src}" alt="${alt}" data-md="${md.replace(/"/g, "&quot;")}" /><button type="button" class="img-del" aria-label="删除">✕</button></span>`;
+  }
   // Convert markdown text to HTML with inline images
   function mdToHtml(md: string, pid: string): string {
     return md
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
       .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, url) => {
         const src = url.startsWith("/api/") || url.startsWith("http") ? url : `/api/projects/${encodeURIComponent(pid)}/brief/${url}`;
-        return `<img src="${src}" alt="${alt}" data-md="![${alt}](${url})" style="max-width:240px;max-height:200px;border-radius:4px;display:inline-block;margin:2px;vertical-align:middle;" />`;
+        return wrapImg(src, alt, `![${alt}](${url})`);
       })
       .replace(/\n/g, "<br/>");
   }
@@ -165,7 +168,7 @@ export function BriefIntakeForm({
       <div className="rounded border border-[var(--hair)] bg-[var(--bg-1)] h-[420px] flex flex-col">
         {mode === "text" ? (
           <>
-            <div className="relative flex-1">
+            <div className="relative flex-1 min-h-0">
               <div
                 ref={editorRef}
                 contentEditable
@@ -174,15 +177,6 @@ export function BriefIntakeForm({
                 className="brief-editor w-full h-full bg-transparent p-3 text-sm text-[var(--body)] outline-none overflow-y-auto whitespace-pre-wrap"
                 data-testid="brief-textarea"
                 onInput={(e) => setText(htmlToMd(e.currentTarget))}
-                onClick={(e) => {
-                  const t = e.target as HTMLElement;
-                  if (t.tagName === "IMG") {
-                    if (window.confirm("删除这张图片？")) {
-                      t.remove();
-                      if (editorRef.current) setText(htmlToMd(editorRef.current));
-                    }
-                  }
-                }}
                 onPaste={async (e) => {
                   const cd = e.clipboardData;
                   if (!cd) return;
@@ -205,7 +199,7 @@ export function BriefIntakeForm({
                         if (it.kind === "image") {
                           const src = `/api/projects/${encodeURIComponent(projectId)}/brief/${it.url}`;
                           const md = briefAttachmentMarkdown(it, projectId);
-                          document.execCommand("insertHTML", false, `<img src="${src}" alt="${it.filename}" data-md="${md.replace(/"/g, "&quot;")}" style="max-width:240px;max-height:200px;border-radius:4px;display:inline-block;margin:2px;vertical-align:middle;" />`);
+                          document.execCommand("insertHTML", false, wrapImg(src, it.filename, md));
                         } else {
                           document.execCommand("insertText", false, briefAttachmentMarkdown(it, projectId) + "\n");
                         }
@@ -225,8 +219,11 @@ export function BriefIntakeForm({
               />
               <style>{`
                 .brief-editor:empty::before { content: attr(data-placeholder); color: var(--faint); pointer-events: none; }
-                .brief-editor img { user-select: none; cursor: pointer; transition: box-shadow 0.15s; }
-                .brief-editor img:hover { box-shadow: 0 0 0 2px var(--red); }
+                .brief-editor .img-wrap { position: relative; display: inline-block; margin: 2px; vertical-align: middle; }
+                .brief-editor .img-wrap img { max-width: 240px; max-height: 200px; border-radius: 4px; display: block; user-select: none; }
+                .brief-editor .img-del { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0,0,0,0.6); color: white; border: 0; font-size: 11px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity 0.15s; display: flex; align-items: center; justify-content: center; }
+                .brief-editor .img-wrap:hover .img-del { opacity: 1; }
+                .brief-editor .img-del:hover { background: var(--red); }
               `}</style>
               {drop.isDragging && (
                 <div
@@ -271,10 +268,10 @@ export function BriefIntakeForm({
             </div>
           </>
         ) : mode === "file" ? (
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 min-h-0 flex flex-col">
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-[var(--bg-2)] py-12 min-h-[200px]"
+              className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-[var(--bg-2)]"
             >
               <span className="text-3xl text-[var(--accent)]">⇣</span>
               <span className="text-sm text-[var(--body)]">拖入 .pdf / .docx / .md / .txt，可批量</span>
@@ -290,7 +287,7 @@ export function BriefIntakeForm({
               />
             </div>
             {files.length > 0 && (
-              <div className="border-t border-[var(--hair)] p-3 space-y-1.5">
+              <div className="border-t border-[var(--hair)] p-3 space-y-1.5 overflow-y-auto max-h-[200px]">
                 {files.map((f, i) => (
                   <div key={`${f.name}-${i}`} className="flex items-center gap-3 px-3 py-2 rounded bg-[var(--bg-2)] text-sm">
                     <span className="text-[var(--accent)]">📄</span>
@@ -309,10 +306,10 @@ export function BriefIntakeForm({
             )}
           </div>
         ) : (
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 min-h-0 flex flex-col">
             <div
               onClick={() => imageTabInputRef.current?.click()}
-              className="flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-[var(--bg-2)] py-12 min-h-[200px]"
+              className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-[var(--bg-2)]"
             >
               <span className="text-3xl text-[var(--accent)]">⇣</span>
               <span className="text-sm text-[var(--body)]">拖入截图，可批量</span>
@@ -331,7 +328,7 @@ export function BriefIntakeForm({
               />
             </div>
             {imageFiles.length > 0 && (
-              <div className="border-t border-[var(--hair)] p-3 grid grid-cols-6 md:grid-cols-8 gap-2">
+              <div className="border-t border-[var(--hair)] p-3 grid grid-cols-6 md:grid-cols-8 gap-2 overflow-y-auto max-h-[240px]">
                 {imageFiles.map((f, i) => (
                   <div key={`${f.url}-${i}`} className="relative group rounded bg-[var(--bg-2)] overflow-hidden aspect-square">
                     <img
