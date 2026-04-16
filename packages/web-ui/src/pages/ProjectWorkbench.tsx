@@ -449,7 +449,6 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
       {overrideOpen && (
         <ProjectOverridePanel projectId={projectId} onClose={() => setOverrideOpen(false)} />
       )}
-      {projectId && <ContextChip projectId={projectId} />}
     </div>
   );
 }
