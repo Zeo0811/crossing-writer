@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAccounts, type AccountRow, type DistillRole } from "../api/style-panels-client.js";
+import { getAccounts, listActiveDistillRuns, type AccountRow, type DistillRole, type RunSummary } from "../api/style-panels-client.js";
 import { listConfigStylePanels, deleteStylePanel, type StylePanel } from "../api/writer-client";
 import { DistillForm } from "../components/style-panels/DistillForm.js";
 import { ProgressView } from "../components/style-panels/ProgressView.js";
@@ -11,7 +11,7 @@ type Tab = "distilled" | "pending";
 type Mode =
   | { kind: "list" }
   | { kind: "form"; account: string }
-  | { kind: "progress"; account: string; body: { roles: DistillRole[]; limit?: number } };
+  | { kind: "progress"; account: string; body: { roles: DistillRole[]; limit?: number }; runId?: string };
 
 export function StylePanelsPage() {
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
@@ -20,6 +20,7 @@ export function StylePanelsPage() {
   const [tab, setTab] = useState<Tab>("distilled");
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>({ kind: "list" });
+  const [activeRuns, setActiveRuns] = useState<RunSummary[]>([]);
 
   const toast = useToast();
 
@@ -31,6 +32,16 @@ export function StylePanelsPage() {
     setLoading(false);
   }
   useEffect(() => { void reload(); }, []);
+
+  useEffect(() => {
+    let cancel = false;
+    const tick = () => {
+      listActiveDistillRuns().then((r) => { if (!cancel) setActiveRuns(r); }).catch(() => {});
+    };
+    tick();
+    const iv = setInterval(tick, 3000);
+    return () => { cancel = true; clearInterval(iv); };
+  }, []);
 
   // "已蒸馏" means there's an active non-legacy panel. Accounts that only have
   // legacy flat kb files still count as pending — user can distill a proper
@@ -68,6 +79,7 @@ export function StylePanelsPage() {
             <ProgressView
               account={mode.account}
               body={mode.body}
+              runId={mode.runId}
               onDone={async () => { await reload(); setMode({ kind: "list" }); }}
             />
           </div>
@@ -99,17 +111,49 @@ export function StylePanelsPage() {
                   );
                 })}
               {tab === "pending" &&
-                pendingAccounts.map((a) => (
-                  <div key={a.account} className="p-2.5 rounded hover:bg-[var(--bg-2)] flex items-center justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs font-semibold text-[var(--heading)] truncate">{a.account}</div>
-                      <div className="text-[10px] text-[var(--meta)]">{a.count} 篇</div>
+                pendingAccounts.map((a) => {
+                  const activeRun = activeRuns.find((r) => r.account === a.account);
+                  return (
+                    <div key={a.account} className="p-2.5 rounded hover:bg-[var(--bg-2)] flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          {activeRun && (
+                            <span
+                              className="w-1.5 h-1.5 rounded-full bg-[var(--amber)] animate-pulse shrink-0"
+                              title="正在蒸馏"
+                            />
+                          )}
+                          <div className="text-xs font-semibold text-[var(--heading)] truncate">{a.account}</div>
+                        </div>
+                        <div className="text-[10px] text-[var(--meta)]">{a.count} 篇</div>
+                      </div>
+                      {activeRun ? (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() =>
+                            setMode({
+                              kind: "progress",
+                              account: a.account,
+                              body: { roles: ["opening", "practice", "closing"] },
+                              runId: activeRun.run_id,
+                            })
+                          }
+                        >
+                          查看进度
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setMode({ kind: "form", account: a.account })}
+                        >
+                          蒸馏
+                        </Button>
+                      )}
                     </div>
-                    <Button variant="secondary" size="sm" onClick={() => setMode({ kind: "form", account: a.account })}>
-                      蒸馏
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
               {tab === "distilled" && panels.length === 0 && <div className="p-4 text-xs text-[var(--faint)]">尚无已蒸馏面板</div>}
               {tab === "pending" && pendingAccounts.length === 0 && <div className="p-4 text-xs text-[var(--faint)]">全部已蒸馏</div>}
             </div>

@@ -1,23 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  startRoleDistillStream,
-  startAllRolesDistillStream,
-  type DistillRole,
+  startAllRolesDistillReturningRunId,
+  streamDistillRun,
 } from "../../api/style-panels-client.js";
+
+type DistillRole = 'opening' | 'practice' | 'closing';
 
 export interface ProgressViewProps {
   account: string;
   body: { roles: DistillRole[]; limit?: number };
+  runId?: string;
   onDone: () => void;
 }
 
-const ROLE_LABEL: Record<DistillRole, string> = {
-  opening: "开头",
-  practice: "Case",
-  closing: "结尾",
-};
-
-export function ProgressView({ account, body, onDone }: ProgressViewProps) {
+export function ProgressView({ account, body, runId, onDone }: ProgressViewProps) {
   const [lines, setLines] = useState<string[]>([]);
   const [finished, setFinished] = useState(false);
   const started = useRef(false);
@@ -25,43 +21,41 @@ export function ProgressView({ account, body, onDone }: ProgressViewProps) {
   useEffect(() => {
     if (started.current) return;
     started.current = true;
+
+    const appendEvent = (ev: { type: string; data: any }) => {
+      setLines((xs) => [...xs, formatLine(ev)]);
+      if (ev.type === 'distill.finished') {
+        setFinished(true);
+        onDone();
+      }
+    };
+
+    if (runId) {
+      setLines((xs) => [...xs, `重连蒸馏任务 run=${runId.slice(0, 16)}…`]);
+      const unsub = streamDistillRun(runId, appendEvent);
+      return () => { unsub(); };
+    }
+
+    let unsub: (() => void) | null = null;
     (async () => {
       try {
-        const roles = body.roles;
-        if (roles.length === 3) {
-          // All three — use the combined endpoint, shared slicer pass
-          setLines((xs) => [...xs, `启动：全量 3 个角色（${account}，共享 slicer 加速）`]);
-          await startAllRolesDistillStream(
-            { account, limit: body.limit },
-            (ev) => handleEvent(ev, setLines),
-          );
-          setLines((xs) => [...xs, `✓ 全部完成`]);
-          setFinished(true);
-          onDone();
-        } else {
-          // Partial — loop single-role endpoint per role
-          for (const role of roles) {
-            setLines((xs) => [...xs, `── 开始 ${ROLE_LABEL[role]} (${role}) ──`]);
-            await startRoleDistillStream(
-              { account, role, limit: body.limit },
-              (ev) => handleEvent(ev, setLines),
-            );
-          }
-          setLines((xs) => [...xs, `✓ 全部完成`]);
-          setFinished(true);
-          onDone();
-        }
-      } catch (e) {
-        setLines((xs) => [...xs, `ERROR: ${(e as Error).message}`]);
+        setLines((xs) => [...xs, `启动：${account}（目标 ${body.limit ?? 50} 篇，三角色并行）`]);
+        const { run_id } = await startAllRolesDistillReturningRunId({ account, limit: body.limit });
+        setLines((xs) => [...xs, `run_id=${run_id}`]);
+        unsub = streamDistillRun(run_id, appendEvent);
+      } catch (err) {
+        setLines((xs) => [...xs, `ERROR: ${(err as Error).message}`]);
       }
     })();
-  }, [account, body, onDone]);
+
+    return () => { if (unsub) unsub(); };
+  }, [account, body.limit, runId, onDone]);
 
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3">
         <h2 className="text-lg font-semibold text-[var(--heading)]">
-          蒸馏 {account} · <span className="text-[var(--accent)] font-mono-term text-sm">{body.roles.join(" / ")}</span>
+          蒸馏 {account}
         </h2>
         {!finished && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />}
       </div>
@@ -72,57 +66,28 @@ export function ProgressView({ account, body, onDone }: ProgressViewProps) {
   );
 }
 
-function handleEvent(
-  ev: { type: string; data: any },
-  setLines: React.Dispatch<React.SetStateAction<string[]>>,
-) {
-  const append = (s: string) => setLines((xs) => [...xs, s]);
+function formatLine(ev: { type: string; data: any }): string {
+  const d = ev.data ?? {};
   switch (ev.type) {
-    case "distill.started":
-      append(`[1/4] 启动 · ${ev.data.role} · run=${(ev.data.run_id ?? "").slice(0, 12)}…`);
-      break;
-    case "distill.slicer_progress":
-    case "slicer_progress":
-      append(`  [2/4] slicer → ${ev.data.processed}/${ev.data.total}`);
-      break;
-    case "distill.slicer_cache_hit":
-    case "slicer_cache_hit":
-      append(`  [2/4] slicer（缓存）${(ev.data.article_id ?? "").slice(0, 12)}…`);
-      break;
-    case "distill.snippets_done":
-      append(`[3/4] snippets · ${ev.data.count} 条`);
-      break;
-    case "distill.structure_done":
-      append(`[3/4] structure · 完成`);
-      break;
-    case "distill.composer_done":
-      append(`[4/4] composer · ${ev.data.panel_path}`);
-      break;
-    case "distill.finished":
-      append(`✓ ${ev.data.panel_path} (v${ev.data.version})`);
-      break;
-    case "distill.failed":
-      append(`✗ 失败：${ev.data.error}`);
-      break;
-    case "distill_all.started":
-      append(`启动全量蒸馏 · run=${(ev.data.run_id ?? "").slice(0, 12)}…`);
-      break;
-    case "role_started":
-      append(`── 角色 ${ev.data.role} ──`);
-      break;
-    case "role_done":
-      append(`✓ ${ev.data.role} → ${ev.data.panel_path} (v${ev.data.version})`);
-      break;
-    case "role_failed":
-      append(`✗ ${ev.data.role} 失败：${ev.data.error}`);
-      break;
-    case "distill_all.finished":
-      break; // caller will append overall success line
-    case "distill_all.failed":
-      append(`✗ 全量失败：${ev.data.error}`);
-      break;
+    case 'distill.started':
+      return `[1/4] 启动 · account=${d.account} · sample_size=${d.sample_size}`;
+    case 'sampling.done':
+      return `[1/4] 采样完成 · ${d.actual_count} 篇`;
+    case 'labeling.article_done':
+      return `  [2/4] label ${d.progress} · ${d.id?.slice(0, 12) ?? '?'}… → ${d.type}`;
+    case 'labeling.all_done':
+      return `[2/4] 全部文章打标完成`;
+    case 'aggregation.done':
+      return `[3/4] 聚合完成 · ${d.buckets_count} buckets`;
+    case 'composer.started':
+      return `[4/4] composer 启动 · ${d.role}`;
+    case 'composer.done':
+      return `[4/4] composer 完成 · ${d.role} → ${d.panel_path}`;
+    case 'distill.finished':
+      return `✓ 全部完成 · 写了 ${(d.files ?? []).length} 个 panel 文件`;
+    case 'distill.failed':
+      return `✗ 失败：${d.error}`;
     default:
-      // silent for unknown events
-      break;
+      return '';
   }
 }

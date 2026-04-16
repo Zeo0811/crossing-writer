@@ -90,6 +90,69 @@ export async function startAllRolesDistillStream(
   await consumeSse(res, onEvent);
 }
 
+export interface RunSummary {
+  run_id: string;
+  account?: string;
+  started_at: string;
+  status: 'active' | 'finished' | 'failed';
+  last_event_type?: string;
+}
+
+export async function listActiveDistillRuns(): Promise<RunSummary[]> {
+  const res = await fetchOk('/api/config/style-panels/runs?status=active');
+  return (await res.json()).runs as RunSummary[];
+}
+
+/**
+ * Start a v2 full-account distillation. Returns the run_id to subscribe to.
+ * Does NOT stream events directly; use streamDistillRun(runId, ...) next.
+ */
+export async function startAllRolesDistillReturningRunId(
+  body: { account: string; limit?: number },
+): Promise<{ run_id: string }> {
+  const res = await fetchOk('/api/config/style-panels/distill-all-v2', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
+/**
+ * Subscribe to a run's SSE stream. Replays history then streams live.
+ * Returns an unsubscribe function.
+ */
+const V2_EVENT_TYPES = [
+  'distill.started',
+  'sampling.done',
+  'labeling.article_done',
+  'labeling.all_done',
+  'aggregation.done',
+  'composer.started',
+  'composer.done',
+  'distill.finished',
+  'distill.failed',
+];
+
+export function streamDistillRun(
+  runId: string,
+  onEvent: (ev: { type: string; data: any }) => void,
+): () => void {
+  const es = new EventSource(
+    `/api/config/style-panels/runs/${encodeURIComponent(runId)}/stream`,
+  );
+  const handler = (e: MessageEvent, type: string) => {
+    try {
+      const data = JSON.parse(e.data);
+      onEvent({ type, data });
+    } catch { /* ignore malformed */ }
+  };
+  for (const t of V2_EVENT_TYPES) {
+    es.addEventListener(t, (e: MessageEvent) => handler(e, t));
+  }
+  return () => es.close();
+}
+
 async function consumeSse(res: Response, onEvent: (ev: { type: string; data: any }) => void) {
   if (!res.ok || !res.body) {
     const text = await res.text().catch(() => "");
