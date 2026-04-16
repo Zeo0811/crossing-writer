@@ -98,6 +98,20 @@ export function AccountHeatmap({ account, onIngestSelected }: Props) {
     });
   }
 
+  function toggleDate(date: string, rawIds: string[]) {
+    if (rawIds.length === 0) return;
+    setSelected((s) => {
+      const n = new Set(s);
+      const allIn = rawIds.every((id) => n.has(id));
+      if (allIn) {
+        for (const id of rawIds) n.delete(id);
+      } else {
+        for (const id of rawIds) n.add(id);
+      }
+      return n;
+    });
+  }
+
   function selectAllRaw() {
     if (!articles) return;
     setSelected(new Set(articles.filter((a) => a.ingest_status === "raw" || a.ingest_status === "tag_failed").map((a) => a.id)));
@@ -142,8 +156,15 @@ export function AccountHeatmap({ account, onIngestSelected }: Props) {
             }
             const allIngested = c.ingested === c.total;
             const partial = c.ingested > 0 && c.ingested < c.total;
+            const rawIds = c.articles.filter((a) => a.ingest_status === "raw" || a.ingest_status === "tag_failed").map((a) => a.id);
+            const someSelected = rawIds.some((id) => selected.has(id));
+            const allSelected = rawIds.length > 0 && rawIds.every((id) => selected.has(id));
             const fill = allIngested
               ? "var(--accent)"
+              : allSelected
+              ? "var(--amber)"
+              : someSelected
+              ? "var(--amber-hair)"
               : partial
               ? "var(--accent-soft)"
               : "var(--hair-strong)";
@@ -159,6 +180,7 @@ export function AccountHeatmap({ account, onIngestSelected }: Props) {
                 fill={fill}
                 opacity={opacity}
                 className="cursor-pointer"
+                onClick={() => toggleDate(c.date, rawIds)}
                 onMouseEnter={() => setHoveredDate(c.date)}
                 onMouseLeave={() => setHoveredDate(null)}
               />
@@ -172,12 +194,15 @@ export function AccountHeatmap({ account, onIngestSelected }: Props) {
           <span className="w-3 h-3 rounded-sm" style={{ background: "var(--hair-strong)" }} /> 未入库
         </span>
         <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm" style={{ background: "var(--amber)" }} /> 已选中
+        </span>
+        <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-sm" style={{ background: "var(--accent-soft)" }} /> 部分入库
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-sm" style={{ background: "var(--accent)" }} /> 全部入库
         </span>
-        <span className="ml-auto">{rawCount} 篇未入库</span>
+        <span className="ml-auto">{selected.size > 0 ? `已选 ${selected.size} / ` : ""}{rawCount} 篇未入库</span>
       </div>
 
       {hoveredDate && hoveredArticles.length > 0 && (
