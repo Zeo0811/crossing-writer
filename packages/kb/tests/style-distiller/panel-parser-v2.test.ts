@@ -80,6 +80,26 @@ describe('parsePanelV2', () => {
     const bad = SAMPLE.replace('version: 2', 'version: 1');
     expect(() => parsePanelV2('/tmp/x.md', bad)).toThrow(/version/);
   });
+
+  it('throws on missing account', () => {
+    const bad = SAMPLE.replace('account: 十字路口Crossing\n', '');
+    expect(() => parsePanelV2('/tmp/x.md', bad)).toThrow(/account/);
+  });
+
+  it('throws on invalid role', () => {
+    const bad = SAMPLE.replace('role: opening', 'role: invalid');
+    expect(() => parsePanelV2('/tmp/x.md', bad)).toThrow(/role/);
+  });
+
+  it('throws on invalid type key', () => {
+    const bad = SAMPLE.replace('  - key: 实测', '  - key: 乱来');
+    expect(() => parsePanelV2('/tmp/x.md', bad)).toThrow(/type/);
+  });
+
+  it('throws on invalid tone.primary', () => {
+    const bad = SAMPLE.replace('primary: 客观克制', 'primary: 无效调子');
+    expect(() => parsePanelV2('/tmp/x.md', bad)).toThrow(/tone/);
+  });
 });
 
 describe('extractTypeSection', () => {
