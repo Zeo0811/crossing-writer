@@ -123,20 +123,12 @@ function CaseCard({
                 <span className="text-[var(--body)]">{p}</span>
               </span>
             ))}
-            {c.supportsClaims.length > 0 && (
-              <span className="text-[var(--faint)]">支持：</span>
-            )}
-            {c.supportsClaims.map((claim) => (
-              <span key={claim} className="px-2 py-0.5 rounded bg-[var(--bg-2)] text-[var(--meta)] font-mono-term">
-                {claim}
-              </span>
-            ))}
           </div>
 
           {c.whyItMatters && (
             <div className="mb-2 pl-3 border-l-2 border-[var(--accent-soft)]">
               <div className="text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold mb-1">为什么值得做</div>
-              <p className="text-sm text-[var(--body)] leading-relaxed">
+              <p className="text-xs text-[var(--body)] leading-relaxed">
                 {c.whyItMatters}
               </p>
             </div>
