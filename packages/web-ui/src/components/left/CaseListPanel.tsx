@@ -135,6 +135,14 @@ function CaseCard({
           )}
 
           <div className="flex items-center gap-4 text-[11px] text-[var(--faint)]">
+            <span>{c.steps.length} 步</span>
+            <span>·</span>
+            <span>{c.prompts.length} 条 prompt</span>
+            <span>·</span>
+            <span>{c.expectedMedia.length} 项素材</span>
+            <span>·</span>
+            <span>{c.risks.length} 项风险</span>
+            <span className="text-[var(--faint)]">·</span>
             <button
               type="button"
               onClick={onToggleExpand}
@@ -143,14 +151,6 @@ function CaseCard({
             >
               {expanded ? "收起" : "展开详情"} {expanded ? "▴" : "▾"}
             </button>
-            <span className="text-[var(--faint)]">·</span>
-            <span>{c.steps.length} 步</span>
-            <span>·</span>
-            <span>{c.prompts.length} 条 prompt</span>
-            <span>·</span>
-            <span>{c.expectedMedia.length} 项素材</span>
-            <span>·</span>
-            <span>{c.risks.length} 项风险</span>
           </div>
         </div>
       </div>
