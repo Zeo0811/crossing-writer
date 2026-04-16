@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ConnectionState, StreamEvent } from "../../hooks/useProjectStream";
 import { SseHealthDot } from "./SseHealthDot";
+import { formatBeijingTime } from "../../utils/time";
 import {
   deriveAgentPipeline,
   eventLabel,
@@ -135,7 +136,8 @@ function TerminalLog({ events }: { events: StreamEvent[] }) {
         <div className="text-[var(--faint)]">等待 agent 事件…</div>
       )}
       {recent.map((ev, i) => {
-        const ts = typeof ev.ts === "string" ? ev.ts.slice(11, 19) : new Date(ev.ts as any).toISOString().slice(11, 19);
+        const rawTs = typeof ev.ts === "number" ? new Date(ev.ts) : ev.ts;
+        const ts = formatBeijingTime(rawTs as string | Date | null | undefined);
         const src = logSource(ev);
         const msg = eventLabel(ev);
         return (

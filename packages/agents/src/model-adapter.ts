@@ -136,6 +136,11 @@ export async function invokeAgent(opts: InvokeOptions): Promise<AgentResult> {
   if (/^API Error:/m.test(proc.stdout)) {
     throw new Error(`claude API error: ${proc.stdout.trim().slice(0, 800)}`);
   }
+  if (!proc.stdout || proc.stdout.trim().length === 0) {
+    // Silent empty output — treat as failure so downstream doesn't write a 0-byte summary.
+    const stderrHint = proc.stderr.trim().slice(0, 400);
+    throw new Error(`claude returned empty stdout${stderrHint ? ` · stderr: ${stderrHint}` : ""}`);
+  }
   return {
     text: proc.stdout,
     meta: { cli: "claude", model: opts.model, durationMs: Date.now() - started },
