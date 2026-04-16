@@ -101,7 +101,7 @@ function RunningView({ label, desc, children }: { label: string; desc?: string; 
   );
 }
 
-function BriefReadyPanel({ projectId, project, refetch }: { projectId: string; project: any; refetch: () => void }) {
+function BriefReadyView({ projectId, project, refetch }: { projectId: string; project: any; refetch: () => void }) {
   const [editing, setEditing] = useState(false);
   const [initialText, setInitialText] = useState<string | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
@@ -118,53 +118,61 @@ function BriefReadyPanel({ projectId, project, refetch }: { projectId: string; p
     }
   };
 
+  // Editing mode: hide expert-selection panel since the brief is being rewritten
   if (editing && initialText !== null) {
     return (
-      <BriefIntakeForm
-        projectId={projectId}
-        initialText={initialText}
-        submitLabel="保存并重新解析 →"
-        onCancel={() => setEditing(false)}
-        onUploaded={() => { setEditing(false); refetch(); }}
-      />
+      <PhasePanel label="重新上传简报">
+        <BriefIntakeForm
+          projectId={projectId}
+          initialText={initialText}
+          submitLabel="保存并重新解析 →"
+          onCancel={() => setEditing(false)}
+          onUploaded={() => { setEditing(false); refetch(); }}
+        />
+      </PhasePanel>
     );
   }
 
   return (
-    <>
-      <BriefSummaryCard projectId={projectId} />
-      {loadErr && (
-        <div className="mt-2 text-xs text-[var(--red)]">读取 brief 失败：{loadErr}</div>
-      )}
-      <div className="mt-4 flex items-center gap-2">
-        <button
-          type="button"
-          data-testid="brief-edit-button"
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded border border-[var(--accent-soft)] bg-[var(--accent-fill)] text-sm text-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-on)] transition-colors"
-          onClick={() => { void openEditor(); }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-          </svg>
-          重新上传
-        </button>
-        <button
-          type="button"
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded border border-[var(--hair)] bg-[var(--bg-1)] text-sm text-[var(--body)] hover:border-[var(--hair-strong)] hover:bg-[var(--bg-2)] transition-colors"
-          onClick={async () => {
-            const res = await fetch(`/api/projects/${projectId}/brief/reanalyze`, { method: "POST" });
-            if (res.ok) refetch();
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M23 4v6h-6" />
-            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-          </svg>
-          重新解析
-        </button>
-      </div>
-    </>
+    <div className="space-y-4">
+      <PhasePanel label="brief.md">
+        <BriefSummaryCard projectId={projectId} />
+        {loadErr && (
+          <div className="mt-2 text-xs text-[var(--red)]">读取 brief 失败：{loadErr}</div>
+        )}
+        <div className="mt-4 flex items-center gap-2">
+          <button
+            type="button"
+            data-testid="brief-edit-button"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded border border-[var(--accent-soft)] bg-[var(--accent-fill)] text-sm text-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-on)] transition-colors"
+            onClick={() => { void openEditor(); }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+            重新上传
+          </button>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded border border-[var(--hair)] bg-[var(--bg-1)] text-sm text-[var(--body)] hover:border-[var(--hair-strong)] hover:bg-[var(--bg-2)] transition-colors"
+            onClick={async () => {
+              const res = await fetch(`/api/projects/${projectId}/brief/reanalyze`, { method: "POST" });
+              if (res.ok) refetch();
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M23 4v6h-6" />
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+            </svg>
+            重新解析
+          </button>
+        </div>
+      </PhasePanel>
+      <PhasePanel label="挑一位选题专家 →">
+        <ExpertSelector projectId={projectId} onStarted={refetch} />
+      </PhasePanel>
+    </div>
   );
 }
 
@@ -191,16 +199,7 @@ function renderPhaseView(props: PhaseViewProps): React.ReactNode {
       return <RunningView label="正在解析简报" desc="Brief Analyst 在抽取产品名 / 调性 / 卖点…" />;
 
     case "brief_ready":
-      return (
-        <div className="space-y-4">
-          <PhasePanel label="brief.md">
-            <BriefReadyPanel projectId={projectId} project={project} refetch={refetch} />
-          </PhasePanel>
-          <PhasePanel label="挑一位选题专家 →">
-            <ExpertSelector projectId={projectId} onStarted={refetch} />
-          </PhasePanel>
-        </div>
-      );
+      return <BriefReadyView projectId={projectId} project={project} refetch={refetch} />;
 
     case "awaiting_expert_selection":
       return <PhasePanel label="挑一位选题专家"><ExpertSelector projectId={projectId} onStarted={refetch} /></PhasePanel>;
