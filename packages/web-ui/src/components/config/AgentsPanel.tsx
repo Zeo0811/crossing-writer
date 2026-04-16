@@ -9,8 +9,8 @@ import {
 import { AgentCard, type ModelChoice } from "./AgentCard.js";
 
 const MODEL_CHOICES: ModelChoice[] = [
-  { cli: "claude", model: "claude-opus-4.6", label: "claude claude-opus-4.6" },
-  { cli: "claude", model: "claude-sonnet-4.5", label: "claude claude-sonnet-4.5" },
+  { cli: "claude", model: "claude-opus-4-6", label: "claude claude-opus-4-6" },
+  { cli: "claude", model: "claude-sonnet-4-5", label: "claude claude-sonnet-4-5" },
   { cli: "codex", model: "gpt-5", label: "codex gpt-5" },
 ];
 
@@ -54,7 +54,7 @@ function defaultAgentConfig(key: string): AgentConfigEntry {
   const isWriter = key.startsWith("writer.");
   const base: AgentConfigEntry = {
     agentKey: key,
-    model: { cli: "claude", model: "claude-opus-4.6" },
+    model: { cli: "claude", model: "claude-opus-4-6" },
   };
   if (isWriter) {
     base.tools = { search_wiki: true, search_raw: true };
