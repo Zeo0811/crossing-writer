@@ -1,13 +1,25 @@
 import { useMemo, useState } from "react";
 import type { IngestStartArgs } from "../../api/wiki-client";
 
+interface AccountStats {
+  account: string;
+  count: number;
+  ingested_count: number;
+}
+
 export interface IngestFormProps {
   accounts: string[];
+  accountStats?: AccountStats[];
   onSubmit: (args: IngestStartArgs) => void;
   disabled?: boolean;
 }
 
-export function IngestForm({ accounts, onSubmit, disabled }: IngestFormProps) {
+export function IngestForm({ accounts, accountStats, onSubmit, disabled }: IngestFormProps) {
+  const statsMap = useMemo(() => {
+    const m = new Map<string, AccountStats>();
+    for (const s of accountStats ?? []) m.set(s.account, s);
+    return m;
+  }, [accountStats]);
   const [selected, setSelected] = useState<string[]>([]);
   const [q, setQ] = useState("");
   const [perAccount, setPerAccount] = useState("50");
@@ -84,6 +96,8 @@ export function IngestForm({ accounts, onSubmit, disabled }: IngestFormProps) {
         <div className="grid grid-cols-3 gap-2 max-h-[280px] overflow-auto pr-1">
           {visible.map((a) => {
             const picked = selected.includes(a);
+            const stats = statsMap.get(a);
+            const pct = stats && stats.count > 0 ? Math.round((stats.ingested_count / stats.count) * 100) : 0;
             return (
               <button
                 key={a}
@@ -96,7 +110,17 @@ export function IngestForm({ accounts, onSubmit, disabled }: IngestFormProps) {
                 <span className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center text-[9px] shrink-0 ${picked ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-on)]" : "border-[var(--hair-strong)]"}`}>
                   {picked && "✓"}
                 </span>
-                <span className="truncate flex-1">{a}</span>
+                <div className="truncate flex-1 min-w-0">
+                  <div className="truncate">{a}</div>
+                  {stats && (
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <div className="flex-1 h-1 rounded-full bg-[var(--bg-1)] overflow-hidden">
+                        <div className="h-full bg-[var(--accent)]" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-[9px] text-[var(--faint)] shrink-0">{stats.ingested_count}/{stats.count}</span>
+                    </div>
+                  )}
+                </div>
               </button>
             );
           })}

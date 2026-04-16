@@ -4,14 +4,12 @@ import { IngestForm } from "../components/wiki/IngestForm.js";
 import { IngestProgressView } from "../components/wiki/IngestProgressView.js";
 import { Tabs, TabsList, TabsTrigger, TabsContent, Input, Button } from "../components/ui";
 import { formatBeijingShort } from "../utils/time";
+import { useIngestState } from "../hooks/useIngestState";
 import {
   getPages,
   search as searchWikiApi,
-  startIngestStream,
   status as wikiStatus,
   type WikiPageMeta,
-  type IngestStreamEvent,
-  type IngestStartArgs,
   type WikiSearchResult,
   type WikiStatus,
 } from "../api/wiki-client.js";
@@ -30,6 +28,14 @@ const KIND_LABEL: Record<string, string> = {
   person: "人物 person",
 };
 
+interface AccountWithStats {
+  account: string;
+  count: number;
+  ingested_count: number;
+  earliest_published_at: string;
+  latest_published_at: string;
+}
+
 export function KnowledgePage() {
   const [tab, setTab] = useState<Tab>("browse");
   const [pages, setPages] = useState<WikiPageMeta[]>([]);
@@ -37,24 +43,30 @@ export function KnowledgePage() {
   const [hits, setHits] = useState<WikiSearchResult[] | null>(null);
   const [q, setQ] = useState("");
   const [kindFilter, setKindFilter] = useState<string>("全部");
-  const [status, setStatusInfo] = useState<WikiStatus | null>(null);
-  const [accounts, setAccounts] = useState<string[]>([]);
-
-  const [ingestEvents, setIngestEvents] = useState<IngestStreamEvent[]>([]);
-  const [ingestStatus, setIngestStatus] = useState<"idle" | "running" | "done" | "error">("idle");
-  const [ingestError, setIngestError] = useState<string | null>(null);
+  const [statusInfo, setStatusInfo] = useState<WikiStatus | null>(null);
+  const [accounts, setAccounts] = useState<AccountWithStats[]>([]);
   const [logOpen, setLogOpen] = useState(false);
+
+  const ingest = useIngestState();
 
   useEffect(() => {
     void getPages().then(setPages).catch(() => setPages([]));
     void wikiStatus().then(setStatusInfo).catch(() => setStatusInfo(null));
     void fetch("/api/kb/accounts").then(async (r) => {
-      if (r.ok) {
-        const j = (await r.json()) as Array<{ account: string }>;
-        setAccounts(j.map((a) => a.account));
-      }
+      if (r.ok) setAccounts(await r.json());
     }).catch(() => setAccounts([]));
   }, []);
+
+  // Refresh after ingest done
+  useEffect(() => {
+    if (ingest.status === "done") {
+      void getPages().then(setPages);
+      void wikiStatus().then(setStatusInfo);
+      void fetch("/api/kb/accounts").then(async (r) => {
+        if (r.ok) setAccounts(await r.json());
+      });
+    }
+  }, [ingest.status]);
 
   const kinds = useMemo(() => {
     const s = new Set<string>(pages.map((p) => p.kind));
@@ -76,47 +88,33 @@ export function KnowledgePage() {
     void searchWikiApi({ query, limit: 40 }).then(setHits).catch(() => setHits([]));
   }
 
-  const handleIngestStart = (args: IngestStartArgs) => {
-    setIngestEvents([]);
-    setIngestStatus("running");
-    setIngestError(null);
-    startIngestStream(
-      args,
-      (e) => setIngestEvents((prev) => [...prev, e]),
-      () => {
-        setIngestStatus("done");
-        void getPages().then(setPages);
-        void wikiStatus().then(setStatusInfo);
-      },
-      (err) => { setIngestStatus("error"); setIngestError(err); },
-    );
-  };
+  const accountNames = useMemo(() => accounts.map((a) => a.account), [accounts]);
 
   return (
     <div data-testid="page-knowledge" className="rounded border border-[var(--hair)] bg-[var(--bg-1)] overflow-hidden">
       <header className="flex items-center justify-between px-6 h-12 border-b border-[var(--hair)]">
         <h1 className="text-lg font-semibold text-[var(--heading)]">知识库</h1>
         <div className="text-xs text-[var(--meta)]" style={{ fontFamily: "var(--font-mono)" }}>
-          {status && `${status.total} 条 · 上次入库 ${formatBeijingShort(status.last_ingest_at)}`}
+          {statusInfo && `${statusInfo.total} 条 · 上次入库 ${formatBeijingShort(statusInfo.last_ingest_at)}`}
         </div>
       </header>
-      {ingestStatus === "running" && (
+      {ingest.status === "running" && (
         <div className="px-6 py-2 border-b border-[var(--hair)] flex items-center gap-3 bg-[var(--accent-fill)]">
           <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
           <span className="text-xs text-[var(--accent)] font-semibold">正在入库…</span>
-          <span className="text-xs text-[var(--meta)]">{ingestEvents.length} 条事件</span>
+          <span className="text-xs text-[var(--meta)]">{ingest.events.length} 条事件</span>
         </div>
       )}
-      {(ingestStatus === "done") && (
+      {ingest.status === "done" && (
         <div className="px-6 py-2 border-b border-[var(--hair)] flex items-center gap-3 bg-[var(--accent-fill)]">
           <span className="text-xs text-[var(--accent)] font-semibold">入库完成</span>
-          <button onClick={() => { setIngestStatus("idle"); setIngestEvents([]); }} className="text-xs text-[var(--meta)] hover:text-[var(--heading)] ml-auto">关闭</button>
+          <button onClick={ingest.dismiss} className="text-xs text-[var(--meta)] hover:text-[var(--heading)] ml-auto">关闭</button>
         </div>
       )}
-      {ingestError && (
+      {ingest.status === "error" && (
         <div className="px-6 py-2 border-b border-[var(--red)] flex items-center gap-3 bg-[rgba(255,107,107,0.05)]">
-          <span className="text-xs text-[var(--red)] font-semibold">入库失败：{ingestError}</span>
-          <button onClick={() => { setIngestStatus("idle"); setIngestError(null); }} className="text-xs text-[var(--meta)] hover:text-[var(--heading)] ml-auto">关闭</button>
+          <span className="text-xs text-[var(--red)] font-semibold">入库失败：{ingest.error}</span>
+          <button onClick={ingest.dismiss} className="text-xs text-[var(--meta)] hover:text-[var(--heading)] ml-auto">关闭</button>
         </div>
       )}
       <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
@@ -205,28 +203,29 @@ export function KnowledgePage() {
 
       <TabsContent value="ingest" className="p-6">
           <IngestForm
-            accounts={accounts}
-            onSubmit={handleIngestStart}
-            disabled={ingestStatus === "running"}
+            accounts={accountNames}
+            accountStats={accounts}
+            onSubmit={ingest.start}
+            disabled={ingest.status === "running"}
           />
       </TabsContent>
       </Tabs>
 
-      {(ingestStatus !== "idle" || ingestEvents.length > 0) && (
+      {(ingest.status !== "idle" || ingest.events.length > 0) && (
         <div className="border-t border-[var(--hair)]">
           <button
             onClick={() => setLogOpen((o) => !o)}
             className="w-full flex items-center justify-between px-6 py-2.5 text-xs text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"
           >
             <span className="flex items-center gap-2">
-              {ingestStatus === "running" && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />}
-              入库日志（{ingestEvents.length}）
+              {ingest.status === "running" && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />}
+              入库日志（{ingest.events.length}）
             </span>
             <span>{logOpen ? "收起 ▴" : "展开 ▾"}</span>
           </button>
           {logOpen && (
             <div className="px-6 pb-4">
-              <IngestProgressView events={ingestEvents} status={ingestStatus} error={ingestError} />
+              <IngestProgressView events={ingest.events} status={ingest.status} error={ingest.error} />
             </div>
           )}
         </div>

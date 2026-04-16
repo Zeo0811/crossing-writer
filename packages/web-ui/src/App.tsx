@@ -8,6 +8,7 @@ import { KnowledgePage } from "./pages/KnowledgePage.js";
 import { ConfigWorkbench } from "./pages/ConfigWorkbench";
 import { SettingsPage } from "./pages/SettingsPage";
 import { AppShell } from "./components/layout/AppShell";
+import { IngestProvider } from "./hooks/useIngestState";
 import { MockApp } from "./mock/MockApp";
 
 const qc = new QueryClient();
@@ -31,6 +32,7 @@ export function App() {
   return (
     <ToastProvider>
       <QueryClientProvider client={qc}>
+        <IngestProvider>
         <BrowserRouter>
           <AppShell>
             <Routes>
@@ -43,6 +45,7 @@ export function App() {
             </Routes>
           </AppShell>
         </BrowserRouter>
+        </IngestProvider>
       </QueryClientProvider>
     </ToastProvider>
   );
