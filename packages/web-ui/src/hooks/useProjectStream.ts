@@ -54,6 +54,10 @@ const EVENT_TYPES = [
   "writer.tool_failed",
   "writer.tool_round_completed",
   "writer.selection_rewritten",
+  // T3: generic agent stream + io snapshot
+  "agent.tool_called",
+  "agent.tool_returned",
+  "agent.io_snapshot",
   // SP-10: role-scoped distill + run gating
   "distill.started",
   "distill.slicer_progress",
