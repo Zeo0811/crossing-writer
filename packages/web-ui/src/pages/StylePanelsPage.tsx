@@ -1,51 +1,48 @@
 import { useEffect, useState } from "react";
-import { getAccounts, listStylePanels, type AccountRow, type StylePanelEntry, type DistillBody } from "../api/style-panels-client.js";
+import { getAccounts, type AccountRow, type DistillBody } from "../api/style-panels-client.js";
+import { listConfigStylePanels, deleteStylePanel, type StylePanel } from "../api/writer-client";
 import { DistillForm } from "../components/style-panels/DistillForm.js";
 import { ProgressView } from "../components/style-panels/ProgressView.js";
 import { Button } from "../components/ui";
+import { formatBeijingShort } from "../utils/time";
 
 type Tab = "distilled" | "pending";
 type Mode = { kind: "list" } | { kind: "form"; account: string } | { kind: "progress"; account: string; body: DistillBody };
 
-function timeAgo(iso?: string): string {
-  if (!iso) return "—";
-  const d = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(d / 60000);
-  if (m < 60) return `${m} 分钟前`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h} 小时前`;
-  return `${Math.floor(h / 24)} 天前`;
-}
-
 export function StylePanelsPage() {
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
-  const [panels, setPanels] = useState<StylePanelEntry[]>([]);
+  const [panels, setPanels] = useState<StylePanel[]>([]);
+  const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("distilled");
-  const [active, setActive] = useState<string | null>(null);
+  const [activeKey, setActiveKey] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>({ kind: "list" });
 
   async function reload() {
-    const [a, p] = await Promise.all([getAccounts(), listStylePanels()]);
+    const [a, { panels: p }] = await Promise.all([getAccounts(), listConfigStylePanels()]);
     setAccounts(a);
     setPanels(p);
-    if (!active && p.length > 0) setActive(p[0]!.id);
+    if (!activeKey && p.length > 0) setActiveKey(`${p[0]!.account}/${p[0]!.role}/v${p[0]!.version}`);
+    setLoading(false);
   }
   useEffect(() => { void reload(); }, []);
 
-  const distilledIds = new Set(panels.map((p) => p.id));
-  const pendingAccounts = accounts.filter((a) => !distilledIds.has(a.account));
-  const activePanel = panels.find((p) => p.id === active);
+  const distilledAccounts = new Set(panels.map((p) => p.account));
+  const pendingAccounts = accounts.filter((a) => !distilledAccounts.has(a.account));
+  const activePanel = panels.find((p) => `${p.account}/${p.role}/v${p.version}` === activeKey);
 
   return (
     <div data-testid="page-style-panels" className="rounded border border-[var(--hair)] bg-[var(--bg-1)] overflow-hidden">
       <header className="flex items-center justify-between px-6 h-12 border-b border-[var(--hair)]">
         <h1 className="text-lg font-semibold text-[var(--heading)]">风格库</h1>
-        {mode.kind === "list" && (
+        {mode.kind === "list" && !loading && (
           <div className="text-xs text-[var(--meta)]">已蒸馏 {panels.length} · 待蒸馏 {pendingAccounts.length}</div>
         )}
       </header>
+      {loading && (
+        <div className="p-12 text-center text-[var(--meta)]">加载中…</div>
+      )}
 
-      {mode.kind === "form" ? (
+      {loading ? null : mode.kind === "form" ? (
         <div className="p-6">
           <div className="rounded bg-[var(--bg-2)] p-5">
             <DistillForm
@@ -79,18 +76,19 @@ export function StylePanelsPage() {
             </div>
             <div className="flex-1 overflow-auto p-2 space-y-1">
               {tab === "distilled" &&
-                panels.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => setActive(p.id)}
-                    className={`w-full text-left p-2.5 rounded text-xs ${active === p.id ? "bg-[var(--accent-fill)] text-[var(--heading)]" : "hover:bg-[var(--bg-2)] text-[var(--body)]"}`}
-                  >
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className="font-semibold truncate">{p.id}</span>
-                    </div>
-                    <div className="text-[10px] text-[var(--meta)]">{timeAgo(p.last_updated_at)}</div>
-                  </button>
-                ))}
+                panels.map((p) => {
+                  const key = `${p.account}/${p.role}/v${p.version}`;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setActiveKey(key)}
+                      className={`w-full text-left p-2.5 rounded text-xs ${activeKey === key ? "bg-[var(--accent-fill)] text-[var(--heading)]" : "hover:bg-[var(--bg-2)] text-[var(--body)]"}`}
+                    >
+                      <div className="font-semibold truncate mb-0.5">{p.account}</div>
+                      <div className="text-[10px] text-[var(--meta)]">{p.role} · v{p.version}</div>
+                    </button>
+                  );
+                })}
               {tab === "pending" &&
                 pendingAccounts.map((a) => (
                   <div key={a.account} className="p-2.5 rounded hover:bg-[var(--bg-2)] flex items-center justify-between gap-2">
@@ -112,25 +110,33 @@ export function StylePanelsPage() {
             {activePanel ? (
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-lg text-[var(--heading)] font-semibold truncate">{activePanel.id}</h2>
-                  <span className="text-xs px-2 py-0.5 rounded-sm bg-[var(--bg-2)] text-[var(--meta)]">上次更新 {timeAgo(activePanel.last_updated_at)}</span>
-                </div>
-                <div className="rounded bg-[var(--bg-2)] p-4">
-                  <div className="text-xs text-[var(--meta)] mb-2 font-semibold">文件路径</div>
-                  <code className="block text-xs text-[var(--body)] break-all" style={{ fontFamily: "var(--font-mono)" }}>{activePanel.path}</code>
+                  <h2 className="text-lg text-[var(--heading)] font-semibold truncate">{activePanel.account}</h2>
+                  <span className="text-xs px-2 py-0.5 rounded-sm bg-[var(--bg-2)] text-[var(--meta)]">{activePanel.role} · v{activePanel.version}</span>
+                  <span className="text-xs text-[var(--faint)]">{formatBeijingShort(activePanel.updated_at)}</span>
                 </div>
                 <div className="rounded bg-[var(--bg-2)] p-4">
                   <div className="text-xs text-[var(--meta)] mb-2 font-semibold">说明</div>
                   <p className="text-sm text-[var(--body)]">风格面板内容存于本地 vault 文件，打开该 markdown 可查看全文（高频用词 / 示例段落 / 结构提示 / 声线）。</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="primary" onClick={() => setMode({ kind: "form", account: activePanel.id })}>
+                  <Button variant="primary" onClick={() => setMode({ kind: "form", account: activePanel.account })}>
                     重新蒸馏
+                  </Button>
+                  <Button
+                    variant="danger"
+                    onClick={async () => {
+                      if (!confirm(`确定删除 ${activePanel.account} / ${activePanel.role} v${activePanel.version}？`)) return;
+                      await deleteStylePanel(activePanel.account, activePanel.role as any, activePanel.version, true);
+                      setActiveKey(null);
+                      await reload();
+                    }}
+                  >
+                    删除
                   </Button>
                 </div>
               </div>
             ) : (
-              <div className="py-12 text-center text-[var(--meta)]">挑一个账号查看详情</div>
+              <div className="py-12 text-center text-[var(--meta)]">挑一个面板查看详情</div>
             )}
           </main>
         </div>

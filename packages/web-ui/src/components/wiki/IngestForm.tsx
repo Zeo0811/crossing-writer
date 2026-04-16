@@ -10,8 +10,8 @@ export interface IngestFormProps {
 export function IngestForm({ accounts, onSubmit, disabled }: IngestFormProps) {
   const [selected, setSelected] = useState<string[]>([]);
   const [q, setQ] = useState("");
-  const [perAccount, setPerAccount] = useState(50);
-  const [batchSize, setBatchSize] = useState(5);
+  const [perAccount, setPerAccount] = useState("50");
+  const [batchSize, setBatchSize] = useState("5");
   const [mode, setMode] = useState<"full" | "incremental">("full");
   const [since, setSince] = useState("");
   const [until, setUntil] = useState("");
@@ -30,8 +30,8 @@ export function IngestForm({ accounts, onSubmit, disabled }: IngestFormProps) {
   function submit() {
     onSubmit({
       accounts: selected,
-      per_account_limit: perAccount,
-      batch_size: batchSize,
+      per_account_limit: Number(perAccount) || 50,
+      batch_size: Number(batchSize) || 5,
       mode,
       since: since || undefined,
       until: until || undefined,
@@ -39,7 +39,7 @@ export function IngestForm({ accounts, onSubmit, disabled }: IngestFormProps) {
     });
   }
 
-  const estimate = selected.length * perAccount;
+  const estimate = selected.length * (Number(perAccount) || 50);
 
   return (
     <div className="space-y-5">
@@ -137,7 +137,7 @@ export function IngestForm({ accounts, onSubmit, disabled }: IngestFormProps) {
             <input
               type="number"
               value={perAccount}
-              onChange={(e) => setPerAccount(Number(e.target.value))}
+              onChange={(e) => setPerAccount(e.target.value)}
               aria-label="per account"
               className="w-full bg-[var(--bg-1)] border border-[var(--hair)] rounded px-3 py-2 text-sm outline-none focus:border-[var(--accent-soft)]"
             />
@@ -151,7 +151,7 @@ export function IngestForm({ accounts, onSubmit, disabled }: IngestFormProps) {
                 <input
                   type="number"
                   value={batchSize}
-                  onChange={(e) => setBatchSize(Number(e.target.value))}
+                  onChange={(e) => setBatchSize(e.target.value)}
                   aria-label="batch size"
                   className="w-full bg-[var(--bg-1)] border border-[var(--hair)] rounded px-3 py-2 text-sm outline-none focus:border-[var(--accent-soft)]"
                 />
