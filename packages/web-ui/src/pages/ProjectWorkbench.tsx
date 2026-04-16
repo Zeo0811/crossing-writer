@@ -102,6 +102,66 @@ function RunningView({ label, desc, children }: { label: string; desc?: string; 
   );
 }
 
+function BriefReadyPanel({ projectId, project, refetch }: { projectId: string; project: any; refetch: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [initialText, setInitialText] = useState<string | null>(null);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+
+  const openEditor = async () => {
+    setLoadErr(null);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/brief/markdown`);
+      if (!res.ok) throw new Error(`${res.status} ${await res.text().catch(() => "")}`);
+      setInitialText(await res.text());
+      setEditing(true);
+    } catch (e: any) {
+      setLoadErr(String(e?.message ?? e));
+    }
+  };
+
+  if (editing && initialText !== null) {
+    return (
+      <BriefIntakeForm
+        projectId={projectId}
+        initialText={initialText}
+        submitLabel="保存并重新解析 →"
+        onCancel={() => setEditing(false)}
+        onUploaded={() => { setEditing(false); refetch(); }}
+      />
+    );
+  }
+
+  return (
+    <>
+      <BriefSummaryCard projectId={projectId} />
+      {loadErr && (
+        <div className="mt-2 text-xs text-[var(--red)]">读取 brief 失败：{loadErr}</div>
+      )}
+      <div className="mt-3 flex items-center gap-3">
+        <button
+          type="button"
+          data-testid="brief-edit-button"
+          className="text-xs text-[var(--accent)] hover:underline"
+          onClick={() => { void openEditor(); }}
+        >
+          修改简报
+        </button>
+        <button
+          type="button"
+          className="text-xs text-[var(--meta)] hover:text-[var(--heading)] hover:underline"
+          onClick={async () => {
+            const res = await fetch(`/api/projects/${projectId}/brief/reanalyze`, { method: "POST" });
+            if (res.ok) refetch();
+          }}
+        >
+          重新解析
+        </button>
+        <TopicExpertSummonButton projectId={projectId} briefSummary={project?.brief?.summary ?? undefined} />
+      </div>
+    </>
+  );
+}
+
 interface PhaseViewProps {
   project: any;
   projectId: string;
@@ -128,20 +188,7 @@ function renderPhaseView(props: PhaseViewProps): React.ReactNode {
       return (
         <div className="space-y-4">
           <PhasePanel label="brief.md">
-            <BriefSummaryCard projectId={projectId} />
-            <div className="mt-3 flex items-center gap-2">
-              <button
-                type="button"
-                className="text-xs text-[var(--accent)] hover:underline"
-                onClick={async () => {
-                  const res = await fetch(`/api/projects/${projectId}/brief/reanalyze`, { method: "POST" });
-                  if (res.ok) refetch();
-                }}
-              >
-                重新解析
-              </button>
-              <TopicExpertSummonButton projectId={projectId} briefSummary={project?.brief?.summary ?? undefined} />
-            </div>
+            <BriefReadyPanel projectId={projectId} project={project} refetch={refetch} />
           </PhasePanel>
           <PhasePanel label="挑一位选题专家 →">
             <ExpertSelector projectId={projectId} onStarted={refetch} />

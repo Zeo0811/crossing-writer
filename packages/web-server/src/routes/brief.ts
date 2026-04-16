@@ -140,6 +140,22 @@ export function registerBriefRoutes(app: FastifyInstance, deps: BriefDeps) {
     },
   );
 
+  app.get<{ Params: { id: string } }>(
+    "/api/projects/:id/brief/markdown",
+    async (req, reply) => {
+      const project = await deps.store.get(req.params.id);
+      if (!project || !project.brief?.md_path) {
+        return reply.code(404).send({ error: "no brief uploaded" });
+      }
+      const buf = await readFile(
+        join(deps.projectsDir, req.params.id, project.brief.md_path),
+        "utf-8",
+      );
+      reply.header("content-type", "text/markdown; charset=utf-8");
+      return buf;
+    },
+  );
+
   app.post<{ Params: { id: string } }>(
     "/api/projects/:id/brief/reanalyze",
     async (req, reply) => {
