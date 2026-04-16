@@ -135,7 +135,15 @@ export function StylePanelsPage() {
                         setActiveKey(null);
                         await reload();
                       } catch (e) {
-                        toast.error(`删除失败：${e instanceof Error ? e.message : String(e)}`);
+                        const msg = e instanceof Error ? e.message : String(e);
+                        // Panel was already gone on disk — sync the UI and tell the user quietly
+                        if (/404/.test(msg) || /not found/i.test(msg)) {
+                          toast.info("此面板已不存在，列表已刷新");
+                          setActiveKey(null);
+                          await reload();
+                        } else {
+                          toast.error(`删除失败：${msg}`);
+                        }
                       }
                     }}
                   >
