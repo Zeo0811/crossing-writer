@@ -94,11 +94,24 @@ export function EvidenceSection({
                           <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent)] text-[var(--accent-on)] font-semibold uppercase tracking-wider font-mono-term">完成</span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-[11px] text-[var(--meta)]">
+                      <div className="flex items-center gap-2 text-[11px] text-[var(--meta)] flex-wrap">
                         <KindBadge on={c.has_screenshot} label="截图" count={c.counts.screenshots} />
                         <KindBadge on={c.counts.recordings > 0} label="录屏" count={c.counts.recordings} />
                         <KindBadge on={c.has_generated} label="产出" count={c.counts.generated} />
                         <KindBadge on={c.has_notes} label="笔记" />
+                        {(() => {
+                          const miss: string[] = [];
+                          if (!c.has_screenshot) miss.push("截图");
+                          if (c.counts.recordings === 0) miss.push("录屏");
+                          if (!c.has_generated) miss.push("产出");
+                          if (!c.has_notes) miss.push("笔记");
+                          if (miss.length === 0) return null;
+                          return (
+                            <span className="text-[10px] text-[var(--amber)] ml-1">
+                              缺 {miss.join("、")}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </div>
                     <span className="text-[var(--faint)] text-sm shrink-0">{sel ? "▴" : "▾"}</span>
