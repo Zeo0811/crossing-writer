@@ -7,6 +7,9 @@ import {
   type RoleDistillRole,
   type AllRolesDistillEvent,
 } from "../services/style-distill-role-orchestrator.js";
+import type { DistillRunStore } from "../services/distill-run-store.js";
+import { runDistillV2 } from "@crossing/kb";
+import { invokeAgent } from "@crossing/agents";
 
 export interface ConfigStylePanelsDistillDeps {
   vaultPath: string;
@@ -14,6 +17,7 @@ export interface ConfigStylePanelsDistillDeps {
   stylePanelStore: StylePanelStore;
   runRoleDistill?: typeof defaultRunRoleDistill;
   runRoleDistillAll?: typeof defaultRunRoleDistillAll;
+  distillRunStore?: DistillRunStore;
 }
 
 interface DistillBody {
@@ -168,6 +172,58 @@ export function registerConfigStylePanelsDistillRoutes(
       } finally {
         reply.raw.end();
       }
+    },
+  );
+
+  app.post<{ Body: DistillAllBody }>(
+    "/api/config/style-panels/distill-all-v2",
+    async (req, reply) => {
+      const body = req.body ?? {};
+      const account = (body.account ?? "").trim();
+      if (!account) {
+        return reply.code(400).send({ error: "account is required" });
+      }
+      if (!deps.distillRunStore) {
+        return reply.code(500).send({ error: "distill-run-store not wired" });
+      }
+      const runStore = deps.distillRunStore;
+      const runId = `rdall-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+      const invokeLabeler = async (o: { systemPrompt: string; userMessage: string; model?: string }) => {
+        const r = await invokeAgent({
+          agentKey: "style_distiller.labeler",
+          cli: "claude",
+          model: o.model ?? "claude-opus-4-6",
+          systemPrompt: o.systemPrompt,
+          userMessage: o.userMessage,
+        });
+        return { text: r.text, meta: { cli: r.meta.cli, durationMs: r.meta.durationMs } };
+      };
+      const invokeComposer = async (o: { systemPrompt: string; userMessage: string; model?: string }) => {
+        const r = await invokeAgent({
+          agentKey: "style_distiller.composer",
+          cli: "claude",
+          model: o.model ?? "claude-opus-4-6",
+          systemPrompt: o.systemPrompt,
+          userMessage: o.userMessage,
+        });
+        return { text: r.text, meta: { cli: r.meta.cli, durationMs: r.meta.durationMs } };
+      };
+
+      // Fire-and-forget; errors are captured as distill.failed events in the run log
+      void runDistillV2(
+        {
+          account,
+          sampleSize: body.limit ?? 50,
+          runId,
+          invokeLabeler,
+          invokeComposer,
+          onEvent: (ev: { type: string; data: Record<string, unknown> }) => { void runStore.append(runId, ev); },
+        },
+        { vaultPath: deps.vaultPath, sqlitePath: deps.sqlitePath },
+      ).catch(() => { /* failure already emitted as distill.failed by the orchestrator */ });
+
+      return reply.send({ run_id: runId });
     },
   );
 }

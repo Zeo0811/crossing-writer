@@ -28,6 +28,8 @@ import { registerConfigAgentsRoutes } from "./routes/config-agents.js";
 import { registerConfigStylePanelsRoutes } from "./routes/config-style-panels.js";
 import { registerConfigStylePanelsDistillRoutes } from "./routes/config-style-panels-distill.js";
 import { registerConfigProjectOverridesRoutes } from "./routes/config-project-overrides.js";
+import { DistillRunStore } from "./services/distill-run-store.js";
+import { registerDistillRunsRoutes } from "./routes/config-distill-runs.js";
 import { createCliHealthProber } from "./services/cli-health.js";
 import { registerSystemHealthRoutes } from "./routes/system-health.js";
 import { registerProjectImageRoutes } from "./routes/project-images.js";
@@ -190,6 +192,10 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     },
   });
 
+  const distillRunStore = new DistillRunStore(
+    join(configStore.current.vaultPath, '08_experts/style-panel/_runs'),
+  );
+
   // SP-10 config workbench routes (stores created above, shared with writer routes)
   registerConfigAgentsRoutes(app, { agentConfigStore });
   registerConfigStylePanelsRoutes(app, { stylePanelStore });
@@ -197,7 +203,9 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     vaultPath: configStore.current.vaultPath,
     sqlitePath: configStore.current.sqlitePath,
     stylePanelStore,
+    distillRunStore,
   });
+  registerDistillRunsRoutes(app, { runStore: distillRunStore });
   registerConfigProjectOverridesRoutes(app, {
     projectOverrideStore,
     projectStore: store,
