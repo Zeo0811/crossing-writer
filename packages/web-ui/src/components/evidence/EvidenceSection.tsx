@@ -11,7 +11,7 @@ import {
   type EvidenceKind,
 } from "../../api/evidence-client";
 import { useProjectEvidence } from "../../hooks/useProjectEvidence";
-import { getSelectedCases } from "../../api/client";
+import { getCaseCandidates } from "../../api/client";
 import { parseCandidates, type ParsedCase } from "../../hooks/useCaseCandidates";
 import { ActionButton } from "../ui/ActionButton";
 
@@ -35,9 +35,11 @@ export function EvidenceSection({
   const [guideFor, setGuideFor] = useState<string | null>(null);
 
   useEffect(() => {
+    // Fetch the full candidates.md (has complete yaml bodies) — selected.md only
+    // has case titles without fields, so it can't drive the guide modal.
     (async () => {
       try {
-        const md = await getSelectedCases(projectId);
+        const md = await getCaseCandidates(projectId);
         if (md) setPlans(parseCandidates(md));
       } catch { /* ignore */ }
     })();
