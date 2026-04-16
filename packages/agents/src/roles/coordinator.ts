@@ -25,6 +25,24 @@ export interface Round2AggregateInput {
   addDirs?: string[];
 }
 
+export interface FinalSynthesizeInput {
+  projectId: string;
+  runId: string;
+  candidatesMd: string;
+  peerReviewsBundle: string;
+  images?: string[];
+  addDirs?: string[];
+}
+
+export interface RefineInput {
+  projectId: string;
+  currentMission: string;
+  userFeedback: string;
+  refineHistory: string;
+  images?: string[];
+  addDirs?: string[];
+}
+
 export class Coordinator {
   constructor(private opts: CoordinatorOpts) {}
 
@@ -57,6 +75,44 @@ export class Coordinator {
       vars: {
         candidates_md: input.candidatesMd,
         round2_bundle: input.round2Bundle,
+      },
+      cli: this.opts.cli,
+      model: this.opts.model,
+    });
+    return base.run("", undefined, { images: input.images, addDirs: input.addDirs });
+  }
+
+  async finalSynthesize(input: FinalSynthesizeInput): Promise<AgentResult> {
+    const template = loadPrompt("coordinator-final-synthesize");
+    const base = new AgentBase({
+      key: "coordinator",
+      systemPromptTemplate: template,
+      vars: {
+        project_id: input.projectId,
+        run_id: input.runId,
+        candidates_md: input.candidatesMd,
+        peer_reviews_bundle: input.peerReviewsBundle,
+        model_used: this.opts.model ?? "auto",
+        now: new Date().toISOString(),
+      },
+      cli: this.opts.cli,
+      model: this.opts.model,
+    });
+    return base.run("", undefined, { images: input.images, addDirs: input.addDirs });
+  }
+
+  async refine(input: RefineInput): Promise<AgentResult> {
+    const template = loadPrompt("coordinator-refine");
+    const base = new AgentBase({
+      key: "coordinator.refine",
+      systemPromptTemplate: template,
+      vars: {
+        project_id: input.projectId,
+        current_mission: input.currentMission,
+        user_feedback: input.userFeedback,
+        refine_history: input.refineHistory,
+        model_used: this.opts.model ?? "auto",
+        now: new Date().toISOString(),
       },
       cli: this.opts.cli,
       model: this.opts.model,
