@@ -243,7 +243,7 @@ export function BriefIntakeForm({
                 {imageFiles.map((f, i) => (
                   <div key={`${f.url}-${i}`} className="relative group rounded bg-[var(--bg-2)] overflow-hidden aspect-square">
                     <img
-                      src={f.url}
+                      src={`/api/projects/${encodeURIComponent(projectId)}/brief/${f.url}`}
                       alt={f.filename}
                       className="w-full h-full object-cover"
                       loading="lazy"
