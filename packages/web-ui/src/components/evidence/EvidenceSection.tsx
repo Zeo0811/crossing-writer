@@ -133,20 +133,23 @@ export function EvidenceSection({
       <div className="flex items-center justify-between gap-4 pt-3 border-t border-[var(--hair)]">
         <div className="flex-1">
           <div className="flex items-center gap-2 text-xs text-[var(--meta)] mb-1">
-            <span>进度：{completeCount} / {total} 完整</span>
+            <span>进度：{completeCount} / {total} 完整（每条需笔记 + 至少一份素材）</span>
             <span className="font-mono-term text-[var(--accent)]">{progress}%</span>
           </div>
           <div className="h-1.5 rounded-full bg-[var(--bg-2)] overflow-hidden">
             <div className="h-full bg-[var(--accent)] transition-all" style={{ width: `${progress}%` }} />
           </div>
+          <div className="text-[10px] text-[var(--faint)] mt-1">
+            上传 / 删除 / 保存笔记都是即时持久化，随时可回来继续
+          </div>
         </div>
         <ActionButton
           onClick={async () => { await submitEvidence(projectId); reload(); }}
           disabled={!evidence.all_complete || evidence.submitted_at !== null}
-          successMsg="已提交 Evidence"
-          errorMsg={(e) => `提交失败：${String(e)}`}
+          successMsg="已保存并进入创作"
+          errorMsg={(e) => `保存失败：${String(e)}`}
         >
-          {evidence.submitted_at ? "已提交" : "提交 Evidence →"}
+          {evidence.submitted_at ? "已开始创作" : "保存并开始创作 →"}
         </ActionButton>
       </div>
 

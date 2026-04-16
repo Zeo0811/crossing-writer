@@ -1,9 +1,8 @@
 import type { CompletenessResult } from "../../api/evidence-client";
 
 const LABEL: Record<string, string> = {
-  screenshot: "截图",
+  material: "素材",
   notes: "笔记",
-  generated: "产出",
 };
 
 export function CaseCompletenessBadge({ completeness }: { completeness: CompletenessResult }) {

@@ -9,10 +9,11 @@ export interface FileInfo {
 
 export interface CompletenessResult {
   complete: boolean;
-  missing: Array<"screenshot" | "notes" | "generated">;
+  missing: Array<"material" | "notes">;
   has_screenshot: boolean;
   has_notes: boolean;
   has_generated: boolean;
+  has_recording?: boolean;
 }
 
 export interface CaseDetail {
