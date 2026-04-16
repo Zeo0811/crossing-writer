@@ -84,6 +84,7 @@ export function KnowledgePage() {
 
   function runSearch(query: string) {
     setQ(query);
+    setSelected(null);
     if (!query.trim()) { setHits(null); return; }
     void searchWikiApi({ query, limit: 40 }).then(setHits).catch(() => setHits([]));
   }
@@ -131,7 +132,7 @@ export function KnowledgePage() {
               {kinds.map((k) => (
                 <button
                   key={k}
-                  onClick={() => setKindFilter(k)}
+                  onClick={() => { setKindFilter(k); setSelected(null); }}
                   className={`px-3 py-1 text-xs rounded ${kindFilter === k ? "bg-[var(--accent-fill)] text-[var(--accent)]" : "text-[var(--meta)] hover:text-[var(--heading)]"}`}
                 >
                   {KIND_LABEL[k] ?? k}
@@ -150,10 +151,17 @@ export function KnowledgePage() {
           </div>
 
           {selected ? (
-            <div className="rounded bg-[var(--bg-2)] p-4">
+            <div className="rounded bg-[var(--bg-2)] p-4 relative">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-xs text-[var(--meta)] font-semibold">{selected}</div>
-                <Button variant="link" size="sm" onClick={() => setSelected(null)}>← 返回列表</Button>
+                <button
+                  onClick={() => setSelected(null)}
+                  className="w-7 h-7 flex items-center justify-center rounded text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-1)]"
+                  aria-label="关闭"
+                  title="关闭"
+                >
+                  ✕
+                </button>
               </div>
               <WikiPagePreview path={selected} />
             </div>
