@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { flushSync } from "react-dom";
 import { getFinal, putSection, rewriteSectionStream } from "../../api/writer-client";
+import { formatBeijingTime } from "../../utils/time";
 
 export interface ArticleEditorProps {
   projectId: string;
@@ -112,7 +113,7 @@ export function ArticleEditor({ projectId }: ArticleEditorProps) {
         }
       }
       lastSavedRef.current = content;
-      setLastSavedAt(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+      setLastSavedAt(formatBeijingTime(new Date()));
     }, 3000);
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, [content, projectId]);

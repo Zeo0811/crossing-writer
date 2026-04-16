@@ -3,6 +3,7 @@ import type { Project } from "../../api/types";
 import { Card } from "../ui/Card";
 import { Button } from "../ui/Button";
 import { Chip } from "../ui/Chip";
+import { formatBeijingShort } from "../../utils/time";
 
 export interface ArchivedProjectListProps {
   items: Project[];
@@ -37,7 +38,7 @@ export function ArchivedProjectList({ items, onRestore, onDelete }: ArchivedProj
             <Chip variant="legacy">已归档</Chip>
           </div>
           <div className="font-mono-term text-[11px] text-meta tracking-[0.04em]">
-            {p.stage} · UPDATED {new Date(p.updated_at).toLocaleString()}
+            {p.stage} · 更新于 {formatBeijingShort(p.updated_at)}
           </div>
           <div className="flex gap-2 mt-3">
             <Button variant="secondary" onClick={() => onRestore(p.id)}>

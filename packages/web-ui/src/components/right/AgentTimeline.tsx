@@ -1,4 +1,5 @@
 import { useProjectStream } from "../../hooks/useProjectStream";
+import { formatBeijingTime } from "../../utils/time";
 
 const LABELS: Record<string, string> = {
   state_changed: "状态",
@@ -35,7 +36,7 @@ export function AgentTimeline({ projectId }: { projectId: string }) {
         {events.map((e, i) => (
           <li key={i} className="flex gap-2">
             <span className="text-gray-400">
-              {new Date(e.ts ?? Date.now()).toLocaleTimeString()}
+              {formatBeijingTime(new Date(e.ts ?? Date.now()))}
             </span>
             <span
               className={`font-medium ${e.type === "agent.failed" ? "text-red-600" : ""}`}
