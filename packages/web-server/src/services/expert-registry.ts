@@ -58,7 +58,10 @@ export class ExpertRegistry {
   readKb(panel: string, name: string): string {
     const entry = this.listAll(panel).find((e) => e.name === name);
     if (!entry) throw new Error(`expert not found: ${name}`);
-    return readFileSync(join(this.expertsRootDir, panel, entry.file), "utf-8");
+    // index.yaml may omit `file` for entries created by the TopicExpertStore,
+    // which lives at <panel>/experts/<name>_kb.md. Fall back to that convention.
+    const filename = entry.file ?? `experts/${name}_kb.md`;
+    return readFileSync(join(this.expertsRootDir, panel, filename), "utf-8");
   }
 
   async topByCreativity(n: number): Promise<ExpertRecord[]> {

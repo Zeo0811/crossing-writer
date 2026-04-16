@@ -151,7 +151,7 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
       const agent = new TopicExpert({
         name,
         kbContent,
-        kbSource: `08_experts/topic-panel/${entry.file}`,
+        kbSource: `08_experts/topic-panel/${entry.file ?? `experts/${name}_kb.md`}`,
         cli: expertResolved.cli,
         model: expertResolved.model,
       });
@@ -223,7 +223,7 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
       const agent = new TopicExpert({
         name,
         kbContent,
-        kbSource: `08_experts/topic-panel/${entry.file}`,
+        kbSource: `08_experts/topic-panel/${entry.file ?? `experts/${name}_kb.md`}`,
         cli: expertResolved.cli,
         model: expertResolved.model,
       });
