@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type { IngestStartArgs } from "../../api/wiki-client";
+import { AccountHeatmap } from "./AccountHeatmap";
 
 interface AccountStats {
   account: string;
@@ -30,6 +31,7 @@ export function IngestForm({ accounts, accountStats, onSubmit, disabled }: Inges
   const [cli, setCli] = useState<"claude" | "codex">("claude");
   const [model, setModel] = useState("opus");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [expandedAccount, setExpandedAccount] = useState<string | null>(null);
 
   const visible = useMemo(() => {
     return accounts.filter((a) => !q || a.toLowerCase().includes(q.toLowerCase()));
@@ -98,30 +100,44 @@ export function IngestForm({ accounts, accountStats, onSubmit, disabled }: Inges
             const picked = selected.includes(a);
             const stats = statsMap.get(a);
             const pct = stats && stats.count > 0 ? Math.round((stats.ingested_count / stats.count) * 100) : 0;
+            const expanded = expandedAccount === a;
             return (
-              <button
-                key={a}
-                onClick={() => !disabled && toggle(a)}
-                disabled={disabled}
-                className={`flex items-center gap-2 px-3 py-2 rounded border text-sm text-left transition-colors ${
-                  picked ? "border-[var(--accent)] bg-[var(--accent-fill)] text-[var(--accent)]" : "border-[var(--hair)] bg-[var(--bg-2)] text-[var(--body)] hover:border-[var(--accent-soft)]"
-                } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
-              >
-                <span className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center text-[9px] shrink-0 ${picked ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-on)]" : "border-[var(--hair-strong)]"}`}>
-                  {picked && "✓"}
-                </span>
-                <div className="truncate flex-1 min-w-0">
-                  <div className="truncate">{a}</div>
-                  {stats && (
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <div className="flex-1 h-1 rounded-full bg-[var(--bg-1)] overflow-hidden">
-                        <div className="h-full bg-[var(--accent)]" style={{ width: `${pct}%` }} />
+              <div key={a} className={expanded ? "col-span-3" : ""}>
+                <button
+                  onClick={() => !disabled && toggle(a)}
+                  disabled={disabled}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded border text-sm text-left transition-colors ${
+                    picked ? "border-[var(--accent)] bg-[var(--accent-fill)] text-[var(--accent)]" : "border-[var(--hair)] bg-[var(--bg-2)] text-[var(--body)] hover:border-[var(--accent-soft)]"
+                  } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
+                >
+                  <span className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center text-[9px] shrink-0 ${picked ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-on)]" : "border-[var(--hair-strong)]"}`}>
+                    {picked && "✓"}
+                  </span>
+                  <div className="truncate flex-1 min-w-0">
+                    <div className="truncate">{a}</div>
+                    {stats && (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <div className="flex-1 h-1 rounded-full bg-[var(--bg-1)] overflow-hidden">
+                          <div className="h-full bg-[var(--accent)]" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-[9px] text-[var(--faint)] shrink-0">{stats.ingested_count}/{stats.count}</span>
                       </div>
-                      <span className="text-[9px] text-[var(--faint)] shrink-0">{stats.ingested_count}/{stats.count}</span>
-                    </div>
-                  )}
-                </div>
-              </button>
+                    )}
+                  </div>
+                  <span
+                    onClick={(e) => { e.stopPropagation(); setExpandedAccount(expanded ? null : a); }}
+                    className="text-[var(--faint)] hover:text-[var(--heading)] text-xs shrink-0 px-1"
+                    title="展开详情"
+                  >
+                    {expanded ? "▴" : "▾"}
+                  </span>
+                </button>
+                {expanded && (
+                  <div className="mt-2 rounded bg-[var(--bg-2)] p-4 border border-[var(--hair)]">
+                    <AccountHeatmap account={a} />
+                  </div>
+                )}
+              </div>
             );
           })}
           {visible.length === 0 && (
