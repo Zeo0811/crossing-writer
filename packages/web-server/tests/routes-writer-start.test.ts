@@ -35,7 +35,7 @@ describe("POST /api/projects/:id/writer/start", () => {
   it("400 when a specified reference_account does not exist in kb", async () => {
     const { vault, projectsDir, store } = setup();
     const p = await store.create({ name: "T" });
-    await store.update(p.id, { status: "evidence_ready" });
+    await store.update(p.id, { status: "evidence_ready", article_type: "实测" });
     const app = Fastify();
     registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: { async get() { return undefined; } } as any });
     await app.ready();
@@ -53,7 +53,7 @@ describe("POST /api/projects/:id/writer/start", () => {
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "赛博禅心.md"), "x", "utf-8");
     const p = await store.create({ name: "T" });
-    await store.update(p.id, { status: "evidence_ready" });
+    await store.update(p.id, { status: "evidence_ready", article_type: "实测" });
     const app = Fastify();
     registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: { async get() { return { cli: "claude", model: "opus" }; } } as any });
     await app.ready();

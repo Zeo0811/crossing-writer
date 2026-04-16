@@ -162,6 +162,10 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
   });
   registerProjectsRoutes(app, { store, checklistService });
 
+  const hardRulesStore = new HardRulesStore(
+    join(configStore.current.vaultPath, '08_experts'),
+  );
+
   registerWriterRoutes(app, {
     store,
     projectsDir: configStore.current.projectsDir,
@@ -172,6 +176,7 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     projectOverrideStore,
     stylePanelStore,
     contextBundleService,
+    hardRulesStore,
   });
 
   registerWriterRewriteSelectionRoutes(app, {
@@ -211,9 +216,6 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     projectStore: store,
   });
 
-  const hardRulesStore = new HardRulesStore(
-    join(configStore.current.vaultPath, '08_experts'),
-  );
   registerWritingHardRulesRoutes(app, { hardRulesStore });
 
   registerProjectImageRoutes(app, { projectsRoot: configStore.current.projectsDir });

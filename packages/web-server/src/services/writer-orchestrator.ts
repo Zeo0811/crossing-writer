@@ -25,6 +25,13 @@ import {
 } from "./context-bundle-service.js";
 import { collectProjectImages } from "./brief-images.js";
 
+export class MissingArticleTypeError extends Error {
+  constructor(public projectId: string) {
+    super(`project ${projectId} has no article_type; please set it in Brief stage`);
+    this.name = 'MissingArticleTypeError';
+  }
+}
+
 export type WriterAgentKey =
   | "writer.opening" | "writer.practice" | "writer.closing"
   | "practice.stitcher" | "style_critic";
@@ -36,7 +43,8 @@ export interface WriterConfig {
 
 export interface ResolvedStyle {
   panel: StylePanel;
-  bodyContent: string;
+  typeSection: string;       // v2: only the section for the current article_type
+  hardRulesBlock: string;    // pre-rendered markdown block; empty string if no store wired
 }
 
 /**
@@ -46,7 +54,7 @@ export interface ResolvedStyle {
  * Contract:
  * - Return `null` when the agent has no styleBinding configured (legacy /
  *   backward-compat path — no injection, no block).
- * - Return `{ panel, bodyContent }` when a binding resolves to an active panel.
+ * - Return `{ panel, typeSection, hardRulesBlock }` when a binding resolves to an active panel.
  * - Throw `StyleNotBoundError` (or any error with `{ binding, reason }`
  *   shape) when a binding exists but is unresolvable — orchestrator will
  *   treat this as a blocker and emit `run.blocked`.
@@ -60,6 +68,10 @@ export interface MissingBinding {
   account?: string;
   role?: string;
   reason: string;
+  // v2 extras (optional):
+  found_version?: number;
+  article_type?: string;
+  available_types?: string[];
 }
 
 export interface RunBlockedResult {
@@ -238,7 +250,10 @@ function parseCriticRewrites(text: string, allowedKeys: string[]): Record<string
 
 function formatStyleReference(resolved: ResolvedStyle): string {
   const { account, role, version } = resolved.panel.frontmatter;
-  return `\n\n# Style Reference — ${account}/${role} v${version}\n\n${resolved.bodyContent}\n`;
+  const hardRules = resolved.hardRulesBlock
+    ? `${resolved.hardRulesBlock}\n\n`
+    : '';
+  return `\n\n${hardRules}# Style Reference — ${account}/${role} v${version}\n\n${resolved.typeSection}\n`;
 }
 
 export async function runWriter(
@@ -247,6 +262,24 @@ export async function runWriter(
   const pDir = join(opts.projectsDir, opts.projectId);
   const articleStore = new ArticleStore(pDir);
   await articleStore.init();
+
+  // --- SP-A: article_type gate -----------------------------------------------
+  // Writer v2 requires project.article_type so we know which panel type
+  // section to inject. Missing → emit run.blocked (no agents started).
+  const project = await opts.store.get(opts.projectId);
+  if (!project) {
+    throw new Error(`project not found: ${opts.projectId}`);
+  }
+  if (!project.article_type) {
+    opts.onEvent?.({
+      type: 'run.blocked',
+      reason: 'missing_article_type',
+      projectId: opts.projectId,
+      missingBindings: [],
+    });
+    return { blocked: true, missingBindings: [] };
+  }
+  // ---------------------------------------------------------------------------
 
   // --- SP-10: Pre-run style-binding validation ------------------------------
   // Gate: if a resolver is supplied, we require every writer.* agent whose
@@ -266,13 +299,28 @@ export async function runWriter(
         const r = await opts.resolveStyleForAgent(agentKey);
         resolvedStyles[agentKey] = r;
       } catch (err) {
-        const e = err as { binding?: { account?: string; role?: string }; reason?: string };
-        missing.push({
-          agentKey,
-          account: e?.binding?.account,
-          role: e?.binding?.role,
-          reason: e?.reason ?? "unresolved",
-        });
+        const e = err as any;
+        const account = e?.binding?.account;
+        const role = e?.binding?.role;
+        let reason = 'unresolved';
+        const extra: Record<string, unknown> = {};
+        if (err && typeof err === 'object' && 'name' in err) {
+          switch ((err as any).name) {
+            case 'StyleVersionTooOldError':
+              reason = 'panel_version_too_old';
+              extra.found_version = e.foundVersion;
+              break;
+            case 'TypeNotInPanelError':
+              reason = 'type_not_in_panel';
+              extra.article_type = e.articleType;
+              extra.available_types = e.availableTypes;
+              break;
+            case 'StyleNotBoundError':
+              reason = e.reason ?? 'style_not_bound';
+              break;
+          }
+        }
+        missing.push({ agentKey, account, role, reason, ...extra });
       }
     }
     if (missing.length > 0) {

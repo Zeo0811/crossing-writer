@@ -293,7 +293,7 @@ describe("SP-10 e2e: distill SSE + writer-run with styleBinding", () => {
       );
 
       // Force project into evidence_ready (writer route gate)
-      await app.projectStore.update(project.id, { status: "evidence_ready" });
+      await app.projectStore.update(project.id, { status: "evidence_ready", article_type: "实测" });
 
       // 4. Kick off writer-run
       const runRes = await app.inject({
@@ -303,25 +303,25 @@ describe("SP-10 e2e: distill SSE + writer-run with styleBinding", () => {
       });
       expect(runRes.statusCode).toBe(200);
 
-      // 5. Wait for runWriter to produce the opening section via event log
+      // 5. Wait for run.blocked event — T15: v1 panels are rejected by resolveStyleBindingV2
+      //    (requires version 2). The run emits run.blocked with panel_version_too_old.
       const { readEvents } = await import("../src/services/event-log.js");
       await waitForEvent(
         () => readEvents(pDir),
-        (ev) => ev.type === "writer.section_completed" && ev.data?.section_key === "opening",
+        (ev) => ev.type === "run.blocked",
         8000,
       );
 
-      // 6. Assert runWriterOpening received a pinnedContext carrying the Style
-      //    Reference header + body from the freshly-distilled opening panel.
+      // 6. Assert run was blocked because distilled panel is v1 (T15 requires v2)
+      const events = await readEvents(pDir);
+      const blockedEv = events.find((ev) => ev.type === "run.blocked");
+      expect(blockedEv).toBeTruthy();
+      const missingBindings = (blockedEv?.data as any)?.missingBindings ?? blockedEv?.missingBindings ?? [];
+      expect(missingBindings.length).toBeGreaterThan(0);
+      expect(missingBindings[0].reason).toBe("panel_version_too_old");
+      // Ensure writer agents were NOT started
       const agents = await import("@crossing/agents");
-      const calls = (agents.runWriterOpening as any).mock.calls as any[];
-      expect(calls.length).toBeGreaterThan(0);
-      const first = calls[0][0];
-      expect(first.pinnedContext).toBeTruthy();
-      expect(first.pinnedContext).toContain(
-        "# Style Reference — 十字路口/opening v1",
-      );
-      expect(first.pinnedContext).toContain("短句多");
+      expect((agents.runWriterOpening as any).mock.calls.length).toBe(0);
     } finally {
       await app.close();
     }

@@ -54,7 +54,7 @@ async function seed() {
   mkdirSync(vault, { recursive: true });
   const store = new ProjectStore(projectsDir);
   const p = await store.create({ name: "CtxBundleProj" });
-  await store.update(p.id, { status: "writing_configuring" });
+  await store.update(p.id, { status: "writing_configuring", article_type: "实测" });
   const pDir = join(projectsDir, p.id);
   mkdirSync(join(pDir, "mission/case-plan"), { recursive: true });
   mkdirSync(join(pDir, "brief"), { recursive: true });

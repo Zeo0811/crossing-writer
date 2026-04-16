@@ -7,9 +7,10 @@ import type { AgentConfigStore } from "../services/agent-config-store.js";
 import type { ProjectOverrideStore } from "../services/project-override-store.js";
 import type { StylePanelStore } from "../services/style-panel-store.js";
 import { mergeAgentConfig } from "../services/config-merger.js";
-import { resolveStyleBinding } from "../services/style-binding-resolver.js";
+import { resolveStyleBindingV2 } from "../services/style-binding-resolver.js";
 import { runWriter, type WriterAgentKey, type WriterConfig, type ResolveStyleForAgent } from "../services/writer-orchestrator.js";
 import type { ContextBundleService } from "../services/context-bundle-service.js";
+import type { HardRulesStore, WritingHardRules } from "../services/hard-rules-store.js";
 import { ArticleStore, type SectionKey } from "../services/article-store.js";
 import {
   WriterOpeningAgent, WriterPracticeAgent, WriterClosingAgent,
@@ -17,7 +18,7 @@ import {
   runWriterOpening, runWriterPractice, runWriterClosing,
   type ReferenceAccountKb, type ChatMessage, type WriterToolEvent,
 } from "@crossing/agents";
-import { dispatchSkill } from "@crossing/kb";
+import { dispatchSkill, type ArticleType } from "@crossing/kb";
 import { readFile } from "node:fs/promises";
 import { appendEvent } from "../services/event-log.js";
 
@@ -33,6 +34,8 @@ export interface WriterDeps {
   /** SP-19 optional — when provided, the orchestrator prepends a unified
    *  [Project Context] block to every writer user message. */
   contextBundleService?: ContextBundleService;
+  /** SP-A optional — when provided, hard rules are merged into the style reference block. */
+  hardRulesStore?: HardRulesStore;
 }
 
 const SECTION_AGENT_TO_CONFIG_KEY: Record<string, string> = {
@@ -41,21 +44,65 @@ const SECTION_AGENT_TO_CONFIG_KEY: Record<string, string> = {
   "writer.closing": "writer.closing",
 };
 
+function renderHardRulesBlock(
+  rules: WritingHardRules,
+  panelBannedVocab: string[],
+): string {
+  const phrases = rules.banned_phrases.length
+    ? rules.banned_phrases
+        .map((p) => `  - ${p.pattern}${p.is_regex ? ' (regex)' : ''}：${p.reason}`)
+        .join('\n')
+    : '  （无）';
+
+  const mergedVocab = Array.from(new Set([
+    ...rules.banned_vocabulary.map((v) => v.word),
+    ...panelBannedVocab,
+  ]));
+  const vocab = mergedVocab.length
+    ? mergedVocab.map((w) => `  - ${w}`).join('\n')
+    : '  （无）';
+
+  const layout = rules.layout_rules.length
+    ? rules.layout_rules.map((r) => `  - ${r}`).join('\n')
+    : '  （无）';
+
+  return `## 写作硬规则（绝对不允许违反）\n\n禁用句式：\n${phrases}\n\n禁用词汇：\n${vocab}\n\n排版规则：\n${layout}`;
+}
+
 function buildResolveStyleForAgent(
   deps: WriterDeps,
   projectId: string,
+  articleType: ArticleType,
 ): ResolveStyleForAgent | undefined {
-  if (!deps.agentConfigStore || !deps.stylePanelStore) return undefined;
+  if (!deps.agentConfigStore || !deps.stylePanelStore || !deps.hardRulesStore) return undefined;
   const agentConfigStore = deps.agentConfigStore;
   const projectOverrideStore = deps.projectOverrideStore;
   const stylePanelStore = deps.stylePanelStore;
+  const hardRulesStore = deps.hardRulesStore;
+
   return async (agentKey) => {
     const cfgKey = SECTION_AGENT_TO_CONFIG_KEY[agentKey] ?? agentKey;
     const global = agentConfigStore.get(cfgKey);
     if (!global) return null;
     const override = projectOverrideStore?.get(projectId)?.agents?.[cfgKey];
     const merged = mergeAgentConfig(global, override as any);
-    return resolveStyleBinding(merged.styleBinding, stylePanelStore);
+    if (!merged.styleBinding) return null;
+    const resolved = await resolveStyleBindingV2(
+      merged.styleBinding,
+      articleType,
+      stylePanelStore,
+    );
+    const rules = await hardRulesStore.read();
+    // v2 resolver returns PanelV2; downstream formatStyleReference only reads
+    // frontmatter.{account, role, version} which exist on both shapes. Cast is
+    // a pragmatic bridge until the whole orchestrator moves to v2-only types.
+    const panelBannedVocab: string[] = (resolved.panel.frontmatter as any).banned_vocabulary ?? [];
+    const hardRulesBlock = renderHardRulesBlock(rules, panelBannedVocab);
+    return {
+      panel: resolved.panel as any,
+      typeSection: resolved.typeSection,
+      hardRulesBlock,
+    };
   };
 }
 
@@ -120,6 +167,9 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
       if (project.status !== "evidence_ready" && project.status !== "writing_configuring") {
         return reply.code(400).send({ error: `invalid status: ${project.status}` });
       }
+      if (!project.article_type) {
+        return reply.code(400).send({ error: 'project.article_type is required; please set it in Brief stage' });
+      }
       const body = req.body ?? {};
       const missing = validateReferenceAccounts(deps.vaultPath, body.reference_accounts_per_agent ?? {});
       if (missing.length > 0) {
@@ -135,7 +185,7 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
           reference_accounts_per_agent: writerConfig.reference_accounts_per_agent as Record<string, string[]>,
         },
       });
-      const resolveStyleForAgent = buildResolveStyleForAgent(deps, req.params.id);
+      const resolveStyleForAgent = buildResolveStyleForAgent(deps, req.params.id, project.article_type);
       void (async () => {
         try {
           await runWriter({
@@ -431,13 +481,16 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
       if (project.status !== "writing_failed") {
         return reply.code(400).send({ error: `invalid status: ${project.status}` });
       }
+      if (!project.article_type) {
+        return reply.code(400).send({ error: 'project.article_type is required; please set it in Brief stage' });
+      }
       const failed = project.writer_failed_sections ?? [];
       const cfg = project.writer_config;
       const writerConfig: WriterConfig = {
         cli_model_per_agent: (cfg?.cli_model_per_agent ?? {}) as WriterConfig["cli_model_per_agent"],
         reference_accounts_per_agent: (cfg?.reference_accounts_per_agent ?? {}) as WriterConfig["reference_accounts_per_agent"],
       };
-      const resolveStyleForAgent = buildResolveStyleForAgent(deps, req.params.id);
+      const resolveStyleForAgent = buildResolveStyleForAgent(deps, req.params.id, project.article_type);
       void (async () => {
         try {
           await runWriter({

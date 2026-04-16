@@ -48,7 +48,7 @@ function setupProject() {
 
 async function seedProject(store: ProjectStore, projectsDir: string, caseCount: number) {
   const project = await store.create({ name: "T" });
-  await store.update(project.id, { status: "writing_configuring" });
+  await store.update(project.id, { status: "writing_configuring", article_type: "实测" });
   const pDir = join(projectsDir, project.id);
   mkdirSync(join(pDir, "mission/case-plan"), { recursive: true });
   mkdirSync(join(pDir, "context"), { recursive: true });

@@ -58,7 +58,7 @@ describe("SP-05 e2e", () => {
     const projectsDir = join(vault, "07_projects");
     const store = new ProjectStore(projectsDir);
     const p = await store.create({ name: "E2E" });
-    await store.update(p.id, { status: "evidence_ready" });
+    await store.update(p.id, { status: "evidence_ready", article_type: "实测" });
     const pDir = join(projectsDir, p.id);
     mkdirSync(join(pDir, "mission/case-plan"), { recursive: true });
     mkdirSync(join(pDir, "context"), { recursive: true });

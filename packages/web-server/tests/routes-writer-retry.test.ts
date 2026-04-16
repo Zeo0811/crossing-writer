@@ -34,6 +34,7 @@ describe("POST /writer/retry-failed", () => {
     const p = await store.create({ name: "T" });
     await store.update(p.id, {
       status: "writing_failed",
+      article_type: "实测",
       writer_failed_sections: ["practice.case-01"],
       writer_config: { cli_model_per_agent: {}, reference_accounts_per_agent: {} },
     });

@@ -54,7 +54,7 @@ async function setup({ briefBody = "small-brief", productOverviewBody = "small-p
   mkdirSync(vault, { recursive: true });
   const store = new ProjectStore(projectsDir);
   const project = await store.create({ name: "E2E" });
-  await store.update(project.id, { status: "writing_configuring" });
+  await store.update(project.id, { status: "writing_configuring", article_type: "实测" });
   const pDir = join(projectsDir, project.id);
   mkdirSync(join(pDir, "brief"), { recursive: true });
   writeFileSync(join(pDir, "brief", "brief.md"), briefBody);

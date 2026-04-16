@@ -55,7 +55,7 @@ function setup() {
 
 async function seed(store: ProjectStore, projectsDir: string) {
   const project = await store.create({ name: "T" });
-  await store.update(project.id, { status: "writing_configuring" });
+  await store.update(project.id, { status: "writing_configuring", article_type: "实测" });
   const pDir = join(projectsDir, project.id);
   mkdirSync(join(pDir, "mission/case-plan"), { recursive: true });
   mkdirSync(join(pDir, "context"), { recursive: true });
@@ -95,19 +95,19 @@ describe("writer-orchestrator sp10 style binding integration", () => {
     vi.clearAllMocks();
   });
 
-  it("injects styleBinding bodyContent into systemPrompt when all bindings resolve", async () => {
+  it("injects styleBinding typeSection into systemPrompt when all bindings resolve", async () => {
     const { vault, projectsDir, store } = setup();
     const pid = await seed(store, projectsDir);
 
     const resolveStyleForAgent = vi.fn(async (agentKey: string) => {
       if (agentKey === "writer.opening") {
-        return { panel: panel("acctA", "opening", 2), bodyContent: "OPENING_STYLE_BODY" };
+        return { panel: panel("acctA", "opening", 2), typeSection: "OPENING_STYLE_BODY", hardRulesBlock: "" };
       }
       if (agentKey === "writer.practice") {
-        return { panel: panel("acctA", "practice", 1), bodyContent: "PRACTICE_STYLE_BODY" };
+        return { panel: panel("acctA", "practice", 1), typeSection: "PRACTICE_STYLE_BODY", hardRulesBlock: "" };
       }
       if (agentKey === "writer.closing") {
-        return { panel: panel("acctA", "closing", 1), bodyContent: "CLOSING_STYLE_BODY" };
+        return { panel: panel("acctA", "closing", 1), typeSection: "CLOSING_STYLE_BODY", hardRulesBlock: "" };
       }
       return null;
     });
@@ -144,10 +144,10 @@ describe("writer-orchestrator sp10 style binding integration", () => {
 
     const resolveStyleForAgent = vi.fn(async (agentKey: string) => {
       if (agentKey === "writer.opening") {
-        return { panel: panel("acctA", "opening", 1), bodyContent: "O" };
+        return { panel: panel("acctA", "opening", 1), typeSection: "O", hardRulesBlock: "" };
       }
       if (agentKey === "writer.practice") {
-        return { panel: panel("acctA", "practice", 1), bodyContent: "P" };
+        return { panel: panel("acctA", "practice", 1), typeSection: "P", hardRulesBlock: "" };
       }
       if (agentKey === "writer.closing") {
         const err: any = new Error("missing");
@@ -208,7 +208,8 @@ describe("writer-orchestrator sp10 style binding integration", () => {
       if (!spec) return null;
       return {
         panel: panel(spec.account, spec.role, spec.version),
-        bodyContent: spec.body,
+        typeSection: spec.body,
+        hardRulesBlock: "",
       };
     });
 
