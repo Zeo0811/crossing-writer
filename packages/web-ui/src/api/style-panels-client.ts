@@ -59,15 +59,30 @@ export async function startDistillStream(
 }
 
 /**
- * Role-scoped distillation (new format).
- * Produces <base>/<account>/<role>-v<version>.md with proper role frontmatter,
- * which is what the writer + ProjectOverridePanel expect.
+ * Role-scoped distillation (new format, single role).
+ * Produces <base>/<account>/<role>-v<version>.md with proper role frontmatter.
  */
 export async function startRoleDistillStream(
   body: { account: string; role: DistillRole; limit?: number },
   onEvent: (ev: { type: string; data: any }) => void,
 ): Promise<void> {
   const res = await fetch(`/api/config/style-panels/distill`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  await consumeSse(res, onEvent);
+}
+
+/**
+ * All-roles distillation — shares the slicer pass across opening/practice/closing,
+ * much faster than calling per-role three times.
+ */
+export async function startAllRolesDistillStream(
+  body: { account: string; limit?: number },
+  onEvent: (ev: { type: string; data: any }) => void,
+): Promise<void> {
+  const res = await fetch(`/api/config/style-panels/distill-all`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

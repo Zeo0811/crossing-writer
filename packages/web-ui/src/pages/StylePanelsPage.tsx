@@ -11,7 +11,7 @@ type Tab = "distilled" | "pending";
 type Mode =
   | { kind: "list" }
   | { kind: "form"; account: string }
-  | { kind: "progress"; account: string; body: { role: DistillRole; limit?: number } };
+  | { kind: "progress"; account: string; body: { roles: DistillRole[]; limit?: number } };
 
 export function StylePanelsPage() {
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
