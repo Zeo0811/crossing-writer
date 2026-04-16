@@ -19,6 +19,13 @@ export interface DistillBody {
   cli_model_per_step?: Partial<Record<"structure" | "snippets" | "composer", { cli: "claude" | "codex"; model?: string }>>;
 }
 
+export type DistillRole = "opening" | "practice" | "closing";
+
+export interface RoleDistillBody {
+  role: DistillRole;
+  limit?: number;
+}
+
 async function fetchOk(input: string, init?: RequestInit): Promise<Response> {
   const res = await fetch(input, init);
   if (!res.ok) {
@@ -48,6 +55,27 @@ export async function startDistillStream(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+  await consumeSse(res, onEvent);
+}
+
+/**
+ * Role-scoped distillation (new format).
+ * Produces <base>/<account>/<role>-v<version>.md with proper role frontmatter,
+ * which is what the writer + ProjectOverridePanel expect.
+ */
+export async function startRoleDistillStream(
+  body: { account: string; role: DistillRole; limit?: number },
+  onEvent: (ev: { type: string; data: any }) => void,
+): Promise<void> {
+  const res = await fetch(`/api/config/style-panels/distill`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  await consumeSse(res, onEvent);
+}
+
+async function consumeSse(res: Response, onEvent: (ev: { type: string; data: any }) => void) {
   if (!res.ok || !res.body) {
     const text = await res.text().catch(() => "");
     throw new Error(`distill start failed: ${res.status}: ${text}`);

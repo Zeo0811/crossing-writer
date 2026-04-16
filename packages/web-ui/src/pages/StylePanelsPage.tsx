@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAccounts, type AccountRow, type DistillBody } from "../api/style-panels-client.js";
+import { getAccounts, type AccountRow, type DistillRole } from "../api/style-panels-client.js";
 import { listConfigStylePanels, deleteStylePanel, type StylePanel } from "../api/writer-client";
 import { DistillForm } from "../components/style-panels/DistillForm.js";
 import { ProgressView } from "../components/style-panels/ProgressView.js";
@@ -8,7 +8,10 @@ import { useToast } from "../components/ui/ToastProvider";
 import { formatBeijingShort } from "../utils/time";
 
 type Tab = "distilled" | "pending";
-type Mode = { kind: "list" } | { kind: "form"; account: string } | { kind: "progress"; account: string; body: DistillBody };
+type Mode =
+  | { kind: "list" }
+  | { kind: "form"; account: string }
+  | { kind: "progress"; account: string; body: { role: DistillRole; limit?: number } };
 
 export function StylePanelsPage() {
   const [accounts, setAccounts] = useState<AccountRow[]>([]);

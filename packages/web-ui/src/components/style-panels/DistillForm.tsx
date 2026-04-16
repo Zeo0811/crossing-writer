@@ -1,96 +1,101 @@
 import { useState } from "react";
-import type { DistillBody } from "../../api/style-panels-client.js";
+import type { DistillRole } from "../../api/style-panels-client.js";
 
 export interface DistillFormProps {
   account: string;
   totalInRange: number;
   onCancel: () => void;
-  onSubmit: (body: DistillBody) => void;
+  onSubmit: (body: { role: DistillRole; limit?: number }) => void;
 }
 
-type StepKey = "structure" | "snippets" | "composer";
+const ROLE_OPTIONS: Array<{ key: DistillRole; label: string; desc: string; color: string }> = [
+  { key: "opening", label: "开头", desc: "钩子 / 悬念 / 场景化提问", color: "var(--accent)" },
+  { key: "practice", label: "Case", desc: "实测段落、demo、prompt 文本", color: "var(--amber)" },
+  { key: "closing", label: "结尾", desc: "收束 / 金句 / 回声钩子", color: "var(--pink)" },
+];
 
 export function DistillForm({ account, totalInRange, onCancel, onSubmit }: DistillFormProps) {
-  const [sampleSize, setSampleSize] = useState<number>(Math.min(200, totalInRange));
-  const [since, setSince] = useState("");
-  const [until, setUntil] = useState("");
-  const [clis, setClis] = useState<Record<StepKey, { cli: "claude" | "codex"; model: string }>>({
-    structure: { cli: "claude", model: "opus" },
-    snippets:  { cli: "claude", model: "opus" },
-    composer:  { cli: "claude", model: "opus" },
-  });
+  const [role, setRole] = useState<DistillRole>("opening");
+  const [limit, setLimit] = useState<number>(Math.min(50, totalInRange));
   const [error, setError] = useState<string | null>(null);
 
   function submit() {
-    if (sampleSize < 20) { setError("sample_size 至少 20"); return; }
-    if (sampleSize > totalInRange) { setError(`sample_size 超过总文章数 ${totalInRange}`); return; }
-    if (since && until && since > until) { setError("时间范围反了"); return; }
-    onSubmit({
-      sample_size: sampleSize,
-      since: since || undefined,
-      until: until || undefined,
-      cli_model_per_step: {
-        structure: clis.structure,
-        snippets: clis.snippets,
-        composer: clis.composer,
-      },
-    });
+    if (limit < 5) { setError("取样至少 5 篇"); return; }
+    if (limit > totalInRange) { setError(`超过总文章数 ${totalInRange}`); return; }
+    onSubmit({ role, limit });
   }
 
   return (
-    <div className="border rounded p-4 space-y-4 bg-[var(--bg-1)]">
+    <div className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold">蒸馏 {account}</h2>
-        <div className="text-xs text-[var(--meta)] mt-1">文章来源: refs.sqlite · {totalInRange} 篇</div>
+        <h2 className="text-lg font-semibold text-[var(--heading)]">蒸馏 {account}</h2>
+        <div className="text-xs text-[var(--meta)] mt-1">vault 里已有 {totalInRange} 篇可用文章</div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3 text-sm">
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-[var(--meta)]">sample_size</span>
+      <section>
+        <div className="text-xs text-[var(--meta)] font-semibold uppercase tracking-wider mb-2">
+          风格角色 <span className="text-[var(--red)]">*</span>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {ROLE_OPTIONS.map((r) => {
+            const active = role === r.key;
+            return (
+              <button
+                key={r.key}
+                type="button"
+                onClick={() => setRole(r.key)}
+                className={`text-left rounded border p-3 transition-colors ${
+                  active ? "border-[var(--accent)] bg-[var(--accent-fill)]" : "border-[var(--hair)] bg-[var(--bg-1)] hover:border-[var(--accent-soft)]"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="w-2 h-2 rounded-full" style={{ background: r.color }} />
+                  <span className="text-sm font-semibold text-[var(--heading)]">{r.label}</span>
+                  <span className="text-[10px] text-[var(--faint)] font-mono-term ml-auto">{r.key}</span>
+                </div>
+                <div className="text-xs text-[var(--meta)] leading-relaxed">{r.desc}</div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="text-[11px] text-[var(--faint)] mt-2">
+          每个角色会生成一份独立的 `{"<account>/<role>-v<version>.md"}` 风格面板，writer 按 opening / practice / closing 分别读取对应面板。
+        </div>
+      </section>
+
+      <section>
+        <label className="block">
+          <span className="text-xs text-[var(--meta)] font-semibold uppercase tracking-wider">取样篇数</span>
           <input
-            aria-label="sample_size" type="number" min={20} max={totalInRange}
-            value={sampleSize} onChange={(e) => setSampleSize(Number(e.target.value))}
-            className="border rounded px-2 py-1"
+            aria-label="limit"
+            type="number"
+            min={5}
+            max={totalInRange}
+            value={limit}
+            onChange={(e) => setLimit(Number(e.target.value))}
+            className="mt-1.5 w-32 h-9 px-3 rounded border border-[var(--hair)] bg-[var(--bg-1)] text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
           />
+          <span className="ml-3 text-xs text-[var(--faint)]">建议 30-80；太少风格不稳，太多耗时长</span>
         </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-[var(--meta)]">since</span>
-          <input aria-label="since" type="date" value={since} onChange={(e) => setSince(e.target.value)} className="border rounded px-2 py-1" />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-[var(--meta)]">until</span>
-          <input aria-label="until" type="date" value={until} onChange={(e) => setUntil(e.target.value)} className="border rounded px-2 py-1" />
-        </label>
-      </div>
+      </section>
 
-      <fieldset className="border rounded p-3 space-y-2">
-        <legend className="text-xs text-[var(--meta)] px-1">agent 配置</legend>
-        {(["structure", "snippets", "composer"] as StepKey[]).map((k) => (
-          <div key={k} className="flex items-center gap-2 text-sm">
-            <span className="w-20 font-mono text-xs">{k}:</span>
-            <select
-              value={clis[k].cli}
-              onChange={(e) => setClis({ ...clis, [k]: { ...clis[k], cli: e.target.value as "claude" | "codex" } })}
-              className="border rounded px-2 py-1"
-            >
-              <option value="claude">claude</option>
-              <option value="codex">codex</option>
-            </select>
-            <input
-              value={clis[k].model}
-              onChange={(e) => setClis({ ...clis, [k]: { ...clis[k], model: e.target.value } })}
-              className="border rounded px-2 py-1 flex-1"
-              placeholder="model (e.g. opus)"
-            />
-          </div>
-        ))}
-      </fieldset>
+      {error && <div className="text-xs text-[var(--red)]">{error}</div>}
 
-      {error && <div className="text-sm text-[var(--red)]">{error}</div>}
-
-      <div className="flex gap-2">
-        <button type="button" onClick={submit} className="px-4 py-2 bg-[var(--accent)] text-white rounded text-sm">开始蒸馏</button>
-        <button type="button" onClick={onCancel} className="px-4 py-2 border rounded text-sm">取消</button>
+      <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--hair)]">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="inline-flex items-center h-9 px-4 rounded text-sm text-[var(--meta)] hover:text-[var(--heading)]"
+        >
+          取消
+        </button>
+        <button
+          type="button"
+          onClick={submit}
+          className="inline-flex items-center h-9 px-4 rounded border border-[var(--accent-soft)] bg-[var(--accent)] text-sm text-[var(--accent-on)] font-semibold hover:shadow-[0_0_12px_var(--accent-dim)]"
+        >
+          开始蒸馏 →
+        </button>
       </div>
     </div>
   );
