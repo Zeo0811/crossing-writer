@@ -65,6 +65,9 @@ export function BriefIntakeForm({
   const [text, setText] = useState(initial.text);
   const [files, setFiles] = useState<File[]>([]);
   const [imageFiles, setImageFiles] = useState<BriefAttachmentItem[]>(initial.imageFiles);
+  // Whether the user has explicitly removed the "已上传" card in 文件 tab — local-only until submit.
+  const [rawFileRemoved, setRawFileRemoved] = useState(false);
+  const effectiveInitialRawFile = rawFileRemoved ? undefined : initialRawFile;
   const imageTabInputRef = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -202,7 +205,7 @@ export function BriefIntakeForm({
           for (const f of files) {
             await api.uploadBriefFile(projectId, f, {});
           }
-        } else if (initialRawFile) {
+        } else if (effectiveInitialRawFile) {
           // No new files, but there's an existing raw file — just re-analyze it
           const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/brief/reanalyze`, { method: "POST" });
           if (!res.ok) throw new Error(`重新解析失败: ${res.status}`);
@@ -373,17 +376,26 @@ export function BriefIntakeForm({
                 }}
               />
             </div>
-            {(files.length > 0 || (initialRawFile && files.length === 0)) && (
+            {(files.length > 0 || (effectiveInitialRawFile && files.length === 0)) && (
               <div className="border-t border-[var(--hair)] p-3 space-y-1.5 overflow-y-auto max-h-[200px]">
-                {initialRawFile && files.length === 0 && (
+                {effectiveInitialRawFile && files.length === 0 && (
                   <div
                     className="flex items-center gap-3 px-3 py-2 rounded bg-[var(--bg-2)] text-sm"
                     data-testid="brief-existing-raw-file"
                   >
                     <span className="text-[var(--accent)]">📄</span>
-                    <span className="flex-1 truncate text-[var(--body)]">{initialRawFile.filename}</span>
+                    <span className="flex-1 truncate text-[var(--body)]">{effectiveInitialRawFile.filename}</span>
                     <span className="text-[10px] px-2 py-0.5 rounded bg-[var(--accent-fill)] text-[var(--accent)] font-semibold">已上传</span>
-                    <span className="text-xs text-[var(--faint)]">.{initialRawFile.sourceType}</span>
+                    <span className="text-xs text-[var(--faint)]">.{effectiveInitialRawFile.sourceType}</span>
+                    <button
+                      type="button"
+                      onClick={() => setRawFileRemoved(true)}
+                      className="text-[var(--meta)] hover:text-[var(--red)]"
+                      aria-label={`移除 ${effectiveInitialRawFile.filename}`}
+                      title="移除该文件（提交时生效）"
+                    >
+                      ✕
+                    </button>
                   </div>
                 )}
                 {files.map((f, i) => (
