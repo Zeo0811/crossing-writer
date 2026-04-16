@@ -12,6 +12,7 @@ import {
 } from "../../api/evidence-client";
 import { useProjectEvidence } from "../../hooks/useProjectEvidence";
 import { getCaseCandidates } from "../../api/client";
+import { startWriter } from "../../api/writer-client";
 import { parseCandidates, type ParsedCase } from "../../hooks/useCaseCandidates";
 import { ActionButton } from "../ui/ActionButton";
 
@@ -151,10 +152,33 @@ export function EvidenceSection({
           <span className="text-xs text-[var(--meta)] font-mono-term tabular-nums">{completeCount} / {total} · {progress}%</span>
         </div>
         <ActionButton
-          onClick={async () => { await submitEvidence(projectId); reload(); }}
+          onClick={async () => {
+            // Submit evidence → advance state (route already chains evidence_ready
+            // → writing_configuring). Then auto-start writer with defaults so the
+            // user doesn't land on a blank config form — per-agent cli/model
+            // tweaks already live in the top-right ⚙ ProjectOverridePanel.
+            await submitEvidence(projectId);
+            try {
+              await startWriter(projectId, {
+                cli_model_per_agent: {
+                  "writer.opening": { cli: "claude", model: "opus" },
+                  "writer.practice": { cli: "claude", model: "sonnet" },
+                  "writer.closing": { cli: "claude", model: "opus" },
+                  "practice.stitcher": { cli: "claude", model: "haiku" },
+                  "style_critic": { cli: "claude", model: "opus" },
+                } as any,
+                reference_accounts_per_agent: {
+                  "writer.opening": [],
+                  "writer.practice": [],
+                  "writer.closing": [],
+                } as any,
+              });
+            } catch { /* writer may already be running; refetch will show reality */ }
+            reload();
+          }}
           disabled={!evidence.all_complete || evidence.submitted_at !== null}
-          successMsg="已保存并进入创作"
-          errorMsg={(e) => `保存失败：${String(e)}`}
+          successMsg="已开始创作"
+          errorMsg={(e) => `开始失败：${String(e)}`}
         >
           {evidence.submitted_at ? "已开始创作" : "保存并开始创作 →"}
         </ActionButton>
