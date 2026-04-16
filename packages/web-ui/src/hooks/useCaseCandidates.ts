@@ -138,6 +138,8 @@ function parseCandidates(md: string): ParsedCase[] {
   return out;
 }
 
+export { parseCandidates };
+
 export function useCaseCandidates(projectId: string) {
   const [cases, setCases] = useState<ParsedCase[]>([]);
   const [loading, setLoading] = useState(true);

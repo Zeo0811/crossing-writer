@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import {
   submitEvidence,
   getCaseEvidence,
@@ -10,6 +11,8 @@ import {
   type EvidenceKind,
 } from "../../api/evidence-client";
 import { useProjectEvidence } from "../../hooks/useProjectEvidence";
+import { getSelectedCases } from "../../api/client";
+import { parseCandidates, type ParsedCase } from "../../hooks/useCaseCandidates";
 import { ActionButton } from "../ui/ActionButton";
 
 const KIND_LABEL: Record<EvidenceKind, string> = {
@@ -28,6 +31,17 @@ export function EvidenceSection({
   onSelectCase: (caseId: string) => void;
 }) {
   const { evidence, reload } = useProjectEvidence(projectId);
+  const [plans, setPlans] = useState<ParsedCase[]>([]);
+  const [guideFor, setGuideFor] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const md = await getSelectedCases(projectId);
+        if (md) setPlans(parseCandidates(md));
+      } catch { /* ignore */ }
+    })();
+  }, [projectId]);
 
   if (!evidence) return <div className="text-sm text-[var(--meta)]">加载中…</div>;
 
@@ -36,42 +50,79 @@ export function EvidenceSection({
   const total = entries.length;
   const progress = total === 0 ? 0 : Math.round((completeCount / total) * 100);
 
+  const planFor = (caseId: string): ParsedCase | undefined => {
+    // case-01 → Case 01 → index 1
+    const m = caseId.match(/(\d+)$/);
+    if (!m) return undefined;
+    const idx = Number(m[1]);
+    return plans.find((p) => p.index === idx);
+  };
+
   return (
     <div className="space-y-3">
-      <ul className="space-y-2">
+      <ul className="space-y-3">
         {entries.map(([caseId, c]) => {
           const sel = caseId === selectedCaseId;
+          const plan = planFor(caseId);
           return (
             <li key={caseId} data-testid={`case-row-${caseId}`}>
-              <button
-                type="button"
-                onClick={() => onSelectCase(sel ? "" : caseId)}
-                className={`w-full text-left rounded-lg border transition-colors ${
-                  sel ? "border-[var(--accent)] bg-[var(--accent-fill)]" : c.complete ? "border-[var(--accent-soft)] bg-[var(--bg-1)]" : "border-[var(--hair)] bg-[var(--bg-1)] hover:border-[var(--accent-soft)]"
+              <div
+                className={`rounded-lg border overflow-hidden transition-colors ${
+                  sel ? "border-[var(--accent)]" :
+                  c.complete ? "border-[var(--accent-soft)]" :
+                  "border-[var(--hair)]"
                 }`}
               >
-                <div className="flex items-center gap-3 p-3">
-                  <StatusDot complete={c.complete} missing={!c.has_screenshot || !c.has_notes || !c.has_generated} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-mono-term text-sm text-[var(--heading)] font-semibold">{caseId}</span>
-                      {c.complete && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent)] text-[var(--accent-on)] font-semibold uppercase tracking-wider font-mono-term">完成</span>
-                      )}
+                <button
+                  type="button"
+                  onClick={() => onSelectCase(sel ? "" : caseId)}
+                  className={`w-full text-left transition-colors ${
+                    sel ? "bg-[var(--accent-fill)]" : "bg-[var(--bg-1)] hover:bg-[var(--bg-2)]"
+                  }`}
+                >
+                  <div className="flex items-center gap-3 p-3">
+                    <StatusDot complete={c.complete} missing={!c.has_screenshot || !c.has_notes || !c.has_generated} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono-term text-sm text-[var(--heading)] font-semibold">{caseId}</span>
+                        {plan?.name && (
+                          <span className="text-sm text-[var(--body)] truncate">· {plan.name}</span>
+                        )}
+                        {c.complete && (
+                          <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent)] text-[var(--accent-on)] font-semibold uppercase tracking-wider font-mono-term">完成</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] text-[var(--meta)]">
+                        <KindBadge on={c.has_screenshot} label="截图" count={c.counts.screenshots} />
+                        <KindBadge on={c.counts.recordings > 0} label="录屏" count={c.counts.recordings} />
+                        <KindBadge on={c.has_generated} label="产出" count={c.counts.generated} />
+                        <KindBadge on={c.has_notes} label="笔记" />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-[11px] text-[var(--meta)]">
-                      <KindBadge on={c.has_screenshot} label="截图" count={c.counts.screenshots} />
-                      <KindBadge on={c.counts.recordings > 0} label="录屏" count={c.counts.recordings} />
-                      <KindBadge on={c.has_generated} label="产出" count={c.counts.generated} />
-                      <KindBadge on={c.has_notes} label="笔记" />
-                    </div>
+                    <span className="text-[var(--faint)] text-sm shrink-0">{sel ? "▴" : "▾"}</span>
                   </div>
-                  <span className="text-[var(--faint)] text-sm">{sel ? "▴" : "▾"}</span>
-                </div>
-              </button>
-              {sel && (
-                <CaseUploader projectId={projectId} caseId={caseId} onChange={reload} />
-              )}
+                </button>
+
+                {sel && (
+                  <div className="border-t border-[var(--accent-soft)] bg-[var(--bg-1)]">
+                    {plan && (
+                      <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--hair)] bg-[var(--bg-2)]">
+                        <span className="text-xs text-[var(--meta)]">
+                          {plan.steps.length} 步 · {plan.prompts.length} 条 prompt · {plan.screenshotPoints.length} 个截图点 · {plan.recordingPoints.length} 个录制点
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setGuideFor(caseId)}
+                          className="inline-flex items-center gap-1 h-7 px-3 rounded text-xs text-[var(--accent)] hover:bg-[var(--accent-fill)] transition-colors"
+                        >
+                          📋 查看测试引导
+                        </button>
+                      </div>
+                    )}
+                    <CaseUploader projectId={projectId} caseId={caseId} onChange={reload} />
+                  </div>
+                )}
+              </div>
             </li>
           );
         })}
@@ -96,6 +147,14 @@ export function EvidenceSection({
           {evidence.submitted_at ? "已提交" : "提交 Evidence →"}
         </ActionButton>
       </div>
+
+      {guideFor && (
+        <GuideModal
+          caseId={guideFor}
+          plan={planFor(guideFor)}
+          onClose={() => setGuideFor(null)}
+        />
+      )}
     </div>
   );
 }
@@ -116,6 +175,153 @@ function KindBadge({ on, label, count }: { on: boolean; label: string; count?: n
       <span>{label}</span>
       {typeof count === "number" && <span className="font-mono-term">{count}</span>}
     </span>
+  );
+}
+
+function GuideModal({
+  caseId,
+  plan,
+  onClose,
+}: {
+  caseId: string;
+  plan?: ParsedCase;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-label={`${caseId} 测试引导`}
+      className="fixed inset-0 z-50 flex items-stretch justify-end bg-[rgba(0,0,0,0.45)] backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="h-full w-[680px] max-w-[95vw] flex flex-col bg-[var(--bg-0)] border-l border-[var(--hair)] shadow-2xl"
+      >
+        <header className="flex items-start justify-between gap-4 px-6 py-4 border-b border-[var(--hair)] bg-[var(--bg-1)]">
+          <div>
+            <div className="text-xs text-[var(--meta)] font-mono-term">{caseId}</div>
+            <h2 className="text-base font-semibold text-[var(--heading)] mt-0.5">{plan?.name ?? "测试引导"}</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"
+            aria-label="关闭"
+          >✕</button>
+        </header>
+        <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-5 text-sm text-[var(--body)]">
+          {!plan ? (
+            <div className="text-[var(--faint)]">这个 Case 没有对应的测试计划</div>
+          ) : (
+            <>
+              {plan.whyItMatters && (
+                <div className="pl-3 border-l-2 border-[var(--accent-soft)]">
+                  <div className="text-[10px] uppercase tracking-wider text-[var(--accent)] font-semibold mb-1">为什么值得做</div>
+                  <p className="text-xs leading-relaxed">{plan.whyItMatters}</p>
+                </div>
+              )}
+              {plan.steps.length > 0 && (
+                <GuideSection title="步骤" count={plan.steps.length}>
+                  <ol className="space-y-2">
+                    {plan.steps.map((s) => (
+                      <li key={s.step} className="flex items-start gap-3">
+                        <span className="shrink-0 w-6 h-6 rounded-full bg-[var(--bg-2)] text-[var(--accent)] font-mono-term text-xs flex items-center justify-center font-semibold">
+                          {s.step}
+                        </span>
+                        <div className="flex-1">
+                          <p className="leading-relaxed">{s.action}</p>
+                          {s.prep_required && (
+                            <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded bg-[var(--amber)] text-[var(--accent-on)] font-mono-term">需准备</span>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                </GuideSection>
+              )}
+              {plan.prompts.length > 0 && (
+                <GuideSection title="示范 Prompt" count={plan.prompts.length}>
+                  <div className="space-y-3">
+                    {plan.prompts.map((p, i) => (
+                      <div key={i} className="rounded bg-[var(--bg-1)] border border-[var(--hair)] overflow-hidden">
+                        <div className="px-3 py-1.5 text-[11px] text-[var(--meta)] bg-[var(--bg-2)] border-b border-[var(--hair)]">
+                          {p.purpose}
+                        </div>
+                        <pre className="px-3 py-2 text-xs whitespace-pre-wrap break-words font-mono-term leading-relaxed">{p.text}</pre>
+                      </div>
+                    ))}
+                  </div>
+                </GuideSection>
+              )}
+              {plan.observationPoints.length > 0 && (
+                <GuideSection title="观察点" count={plan.observationPoints.length}>
+                  <ul className="space-y-1 list-disc list-inside leading-relaxed">
+                    {plan.observationPoints.map((p, i) => <li key={i}>{p}</li>)}
+                  </ul>
+                </GuideSection>
+              )}
+              {(plan.screenshotPoints.length > 0 || plan.recordingPoints.length > 0) && (
+                <div className="grid grid-cols-2 gap-4">
+                  {plan.screenshotPoints.length > 0 && (
+                    <GuideSection title="截图点" count={plan.screenshotPoints.length}>
+                      <ul className="space-y-1 list-disc list-inside text-xs leading-relaxed">
+                        {plan.screenshotPoints.map((p, i) => <li key={i}>{p}</li>)}
+                      </ul>
+                    </GuideSection>
+                  )}
+                  {plan.recordingPoints.length > 0 && (
+                    <GuideSection title="录制点" count={plan.recordingPoints.length}>
+                      <ul className="space-y-1 list-disc list-inside text-xs leading-relaxed">
+                        {plan.recordingPoints.map((p, i) => <li key={i}>{p}</li>)}
+                      </ul>
+                    </GuideSection>
+                  )}
+                </div>
+              )}
+              {plan.risks.length > 0 && (
+                <GuideSection title="风险" count={plan.risks.length} tone="red">
+                  <ul className="space-y-1.5">
+                    {plan.risks.map((r, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="shrink-0 text-[var(--red)]">⚠</span>
+                        <span className="leading-relaxed">{r}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </GuideSection>
+              )}
+              {plan.predictedOutcome && (
+                <GuideSection title="预测结果">
+                  <div className="leading-relaxed">
+                    <ReactMarkdown>{plan.predictedOutcome}</ReactMarkdown>
+                  </div>
+                </GuideSection>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GuideSection({
+  title, count, tone, children,
+}: {
+  title: string;
+  count?: number;
+  tone?: "red";
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div className="flex items-baseline gap-2 mb-2">
+        <h5 className={`text-[11px] uppercase tracking-wider font-semibold ${tone === "red" ? "text-[var(--red)]" : "text-[var(--meta)]"}`}>{title}</h5>
+        {typeof count === "number" && <span className="text-[10px] text-[var(--faint)] font-mono-term">{count}</span>}
+      </div>
+      {children}
+    </div>
   );
 }
 
@@ -178,17 +384,11 @@ function CaseUploader({
   };
 
   if (!detail) return (
-    <div className="mt-2 p-4 rounded border border-[var(--hair)] bg-[var(--bg-0)] text-xs text-[var(--faint)]">加载中…</div>
+    <div className="p-4 text-xs text-[var(--faint)]">加载中…</div>
   );
 
   return (
-    <div className="mt-2 p-4 rounded border border-[var(--hair)] bg-[var(--bg-0)] space-y-4" onClick={(e) => e.stopPropagation()}>
-      {detail.name && (
-        <div className="text-sm text-[var(--body)] leading-relaxed pl-3 border-l-2 border-[var(--accent-soft)]">
-          {detail.name}
-        </div>
-      )}
-
+    <div className="p-4 space-y-4" onClick={(e) => e.stopPropagation()}>
       <UploadPane
         projectId={projectId}
         caseId={caseId}
@@ -233,7 +433,7 @@ function CaseUploader({
           value={notesBody}
           onChange={(e) => setNotesBody(e.target.value)}
           placeholder="记录：实测中遇到的卡点 / 超预期的地方 / 产品真实表现..."
-          className="w-full min-h-[100px] p-3 rounded border border-[var(--hair)] bg-[var(--bg-1)] text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
+          className="w-full min-h-[100px] p-3 rounded border border-[var(--hair)] bg-[var(--bg-2)] text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
         />
       </div>
 
@@ -327,7 +527,7 @@ function UploadPane({
       ) : (
         <div
           onClick={() => inputRef.current?.click()}
-          className="rounded border border-dashed border-[var(--hair-strong)] py-6 text-center text-xs text-[var(--meta)] cursor-pointer hover:border-[var(--accent-soft)] hover:bg-[var(--bg-2)]"
+          className="rounded border border-dashed border-[var(--hair-strong)] py-4 text-center text-xs text-[var(--meta)] cursor-pointer hover:border-[var(--accent-soft)] hover:bg-[var(--bg-2)]"
         >
           点击上传 {KIND_LABEL[kind]}
         </div>
