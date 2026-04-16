@@ -200,7 +200,7 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
     model: coordResolved.model ?? null,
   });
 
-  // round2 parallel
+  // round2 parallel — 专家互评
   await store.update(projectId, { status: "round2_running" });
   await appendEvent(projectDir, {
     type: "state_changed",
@@ -213,13 +213,14 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
     experts.map(async (name) => {
       const expertResolved = resolveFor(`topic_expert.${name}`, opts);
       await appendEvent(projectDir, {
-        type: "expert.round2_started",
+        type: "expert.round2_peer_review_started",
         expert: name,
         cli: expertResolved.cli,
         model: expertResolved.model ?? null,
       });
       const kbContent = registry.readKb("topic-panel", name);
       const entry = registry.listAll("topic-panel").find((e) => e.name === name)!;
+      const peersBundle = bundle(round1Results.filter((r) => r.name !== name));
       const agent = new TopicExpert({
         name,
         kbContent,
@@ -227,11 +228,18 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
         cli: expertResolved.cli,
         model: expertResolved.model,
       });
-      const out = await agent.round2({ projectId, runId, candidatesMd: candidatesResult.text, images: briefImages, addDirs });
+      const out = await agent.round2PeerReview({
+        projectId,
+        runId,
+        candidatesMd: candidatesResult.text,
+        peersRound1Bundle: peersBundle,
+        images: briefImages,
+        addDirs,
+      });
       await writeFile(join(projectDir, `mission/round2/${name}.md`), out.text, "utf-8");
       round2Results.push({ name, text: out.text });
       await appendEvent(projectDir, {
-        type: "expert.round2_completed",
+        type: "expert.round2_peer_review_completed",
         expert: name,
         cli: expertResolved.cli,
         model: expertResolved.model ?? null,
@@ -239,19 +247,28 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
     }),
   );
 
-  // coordinator aggregate
+  // coordinator final synthesize (peer-review aware)
   await appendEvent(projectDir, {
     type: "coordinator.aggregating",
     cli: coordResolved.cli,
     model: coordResolved.model ?? null,
   });
-  const aggregated = await coord.round2Aggregate({
+  const finalAgg = await coord.finalSynthesize({
+    projectId,
+    runId,
     candidatesMd: candidatesResult.text,
-    round2Bundle: bundle(round2Results),
+    peerReviewsBundle: bundle(round2Results),
     images: briefImages,
     addDirs,
   });
-  await writeFile(join(projectDir, candidatesPath), stripAgentPreamble(aggregated.text), "utf-8");
+  const finalCandidatesPath = "mission/candidates.final.md";
+  await writeFile(join(projectDir, finalCandidatesPath), stripAgentPreamble(finalAgg.text), "utf-8");
+  await appendEvent(projectDir, {
+    type: "coordinator.final_candidates_ready",
+    output_path: finalCandidatesPath,
+    cli: coordResolved.cli,
+    model: coordResolved.model ?? null,
+  });
 
   // done
   const final = await store.get(projectId);
@@ -259,7 +276,7 @@ export async function runMission(opts: RunMissionOpts): Promise<void> {
   const lastRun = runs[runs.length - 1];
   await store.update(projectId, {
     status: "awaiting_mission_pick",
-    mission: { ...final!.mission, candidates_path: candidatesPath },
+    mission: { ...final!.mission, candidates_path: finalCandidatesPath },
     runs: lastRun
       ? [...runs.slice(0, -1), { ...lastRun, status: "completed", ended_at: new Date().toISOString() }]
       : runs,
