@@ -229,7 +229,7 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
                 <div className="flex-1 p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="text-sm font-semibold text-[var(--heading)]">{label}</div>
-                    {hasOverride ? (
+                    {hasOverride && (
                       <button
                         type="button"
                         data-testid={`clear-override-${agentKey}`}
@@ -238,8 +238,6 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
                       >
                         恢复默认
                       </button>
-                    ) : (
-                      <span className="text-[10px] text-[var(--faint)]">使用默认</span>
                     )}
                   </div>
 
