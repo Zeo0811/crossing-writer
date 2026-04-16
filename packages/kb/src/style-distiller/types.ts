@@ -59,3 +59,29 @@ export interface DistillResult {
   sample_size_actual: number;
   steps_run: DistillStep[];
 }
+
+import type { ArticleType } from './panel-v2-schema.js';
+export type { LabeledArticle } from './article-labeler.js';
+
+export interface BucketV2 {
+  role: 'opening' | 'practice' | 'closing';
+  type: ArticleType;
+  sample_count: number;
+  snippets: Array<{
+    article_id: string;
+    title: string;
+    excerpt: string;
+    word_count: number;
+  }>;
+  quant: {
+    word_count_median: number;
+    word_count_p10: number;
+    word_count_p90: number;
+  };
+}
+
+export interface AggregatedV2 {
+  account: string;
+  buckets: BucketV2[];
+  banned_vocabulary_candidates: string[];
+}
