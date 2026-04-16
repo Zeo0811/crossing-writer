@@ -127,6 +127,28 @@ export async function uploadBriefAttachment(
   return res.json() as Promise<{ items: BriefAttachmentItem[] }>;
 }
 
+// Delete a brief attachment file (image or other) from disk.
+// `urlOrPath` is the relative path stored in markdown (e.g. "images/abc.png" or "files/doc.pdf")
+// OR an API URL like "/api/projects/.../brief/images/abc.png" — we normalize both.
+export async function deleteBriefAttachment(
+  projectId: string,
+  urlOrPath: string,
+): Promise<void> {
+  const rel = urlOrPath.replace(/^\/api\/projects\/[^/]+\/brief\//, "");
+  const m = rel.match(/^(images|files)\/(.+)$/);
+  if (!m) return; // unknown shape, skip silently
+  const kind = m[1]!;
+  const filename = m[2]!;
+  const res = await fetch(
+    `/api/projects/${encodeURIComponent(projectId)}/brief/${kind}/${encodeURIComponent(filename)}`,
+    { method: "DELETE" },
+  );
+  if (!res.ok && res.status !== 404) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`deleteBriefAttachment ${res.status}: ${text}`);
+  }
+}
+
 export function briefAttachmentMarkdown(
   item: BriefAttachmentItem,
   _projectId: string,

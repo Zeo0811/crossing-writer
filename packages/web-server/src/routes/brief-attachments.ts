@@ -6,6 +6,7 @@ import {
   writeFileSync,
   createReadStream,
   statSync,
+  unlinkSync,
 } from "node:fs";
 import { join, basename, extname } from "node:path";
 
@@ -240,6 +241,46 @@ export function registerBriefAttachmentsRoutes(
         `inline; filename="${encodeURIComponent(originalName)}"`,
       );
       return reply.send(createReadStream(abs));
+    },
+  );
+
+  app.delete<{ Params: { id: string; filename: string } }>(
+    "/api/projects/:id/brief/images/:filename",
+    async (req, reply) => {
+      const { id, filename } = req.params;
+      if (!IMAGE_FILENAME_RE.test(filename)) {
+        return reply.code(400).send({ error: "invalid filename" });
+      }
+      const safe = basename(filename);
+      if (safe !== filename) {
+        return reply.code(400).send({ error: "invalid filename" });
+      }
+      const abs = join(deps.projectsRoot, id, "brief", "images", safe);
+      if (!existsSync(abs)) {
+        return reply.code(404).send({ error: "not found" });
+      }
+      unlinkSync(abs);
+      return reply.send({ ok: true });
+    },
+  );
+
+  app.delete<{ Params: { id: string; filename: string } }>(
+    "/api/projects/:id/brief/files/:filename",
+    async (req, reply) => {
+      const { id, filename } = req.params;
+      if (!FILE_FILENAME_RE.test(filename)) {
+        return reply.code(400).send({ error: "invalid filename" });
+      }
+      const safe = basename(filename);
+      if (safe !== filename) {
+        return reply.code(400).send({ error: "invalid filename" });
+      }
+      const abs = join(deps.projectsRoot, id, "brief", "attachments", safe);
+      if (!existsSync(abs)) {
+        return reply.code(404).send({ error: "not found" });
+      }
+      unlinkSync(abs);
+      return reply.send({ ok: true });
     },
   );
 }

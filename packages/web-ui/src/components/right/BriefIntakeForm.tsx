@@ -3,6 +3,7 @@ import { api } from "../../api/client";
 import {
   uploadBriefAttachment,
   briefAttachmentMarkdown,
+  deleteBriefAttachment,
   type BriefAttachmentItem,
 } from "../../api/writer-client";
 import { useBriefPaste } from "../../hooks/useBriefPaste";
@@ -220,15 +221,24 @@ export function BriefIntakeForm({
                 data-testid="brief-textarea"
                 onInput={(e) => setText(htmlToMd(e.currentTarget))}
                 onMouseDown={(e) => {
-                  // Click on inline image's ✕ → remove the img-wrap span, re-serialize text
+                  // Click on inline image's ✕ → remove the img-wrap span, re-serialize text,
+                  // and delete the underlying file from the vault in real time.
                   const target = e.target as HTMLElement;
                   const delBtn = target.closest?.(".img-del") as HTMLElement | null;
                   if (!delBtn) return;
                   e.preventDefault();
                   const wrap = delBtn.closest(".img-wrap");
-                  if (wrap) {
-                    wrap.remove();
-                    if (editorRef.current) setText(htmlToMd(editorRef.current));
+                  if (!wrap) return;
+                  const img = wrap.querySelector("img");
+                  const mdAttr = img?.getAttribute("data-md") ?? "";
+                  const urlMatch = mdAttr.match(/\(([^)]+)\)/);
+                  const url = urlMatch ? urlMatch[1]! : (img?.getAttribute("src") ?? "");
+                  wrap.remove();
+                  if (editorRef.current) setText(htmlToMd(editorRef.current));
+                  if (url) {
+                    void deleteBriefAttachment(projectId, url).catch((err) => {
+                      setErr(`删除文件失败: ${String(err?.message ?? err)}`);
+                    });
                   }
                 }}
                 onPaste={async (e) => {
@@ -393,7 +403,12 @@ export function BriefIntakeForm({
                       loading="lazy"
                     />
                     <button
-                      onClick={() => setImageFiles((prev) => prev.filter((_, j) => j !== i))}
+                      onClick={() => {
+                        setImageFiles((prev) => prev.filter((_, j) => j !== i));
+                        void deleteBriefAttachment(projectId, f.url).catch((err) => {
+                          setErr(`删除文件失败: ${String(err?.message ?? err)}`);
+                        });
+                      }}
                       className="absolute top-1 right-1 w-5 h-5 rounded bg-[rgba(0,0,0,0.6)] text-white hover:bg-[var(--red)] opacity-0 group-hover:opacity-100 text-xs flex items-center justify-center"
                       title={f.filename}
                     >
