@@ -21,9 +21,9 @@ export const api = {
   listArchivedProjects: () =>
     request<{ items: Project[]; active_count: number }>("/api/projects?only_archived=1"),
   archiveProject: (id: string) =>
-    request<{ ok: true; id: string }>(`/api/projects/${id}/archive`, { method: "POST" }),
+    request<{ ok: true; id: string }>(`/api/projects/${id}/archive`, { method: "POST", body: "{}" }),
   restoreProject: (id: string) =>
-    request<{ ok: true; id: string }>(`/api/projects/${id}/restore`, { method: "POST" }),
+    request<{ ok: true; id: string }>(`/api/projects/${id}/restore`, { method: "POST", body: "{}" }),
   destroyProject: (id: string, confirm: string) =>
     request<{ ok: true; id: string }>(`/api/projects/${id}`, {
       method: "DELETE",
