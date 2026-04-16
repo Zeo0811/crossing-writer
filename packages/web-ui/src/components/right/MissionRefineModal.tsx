@@ -156,20 +156,22 @@ export function MissionRefineModal({
         className="w-full max-w-[720px] max-h-[90vh] overflow-y-auto flex flex-col rounded-lg border border-[var(--hair)] bg-[var(--bg-1)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="flex items-center justify-between gap-4 px-6 py-4 border-b border-[var(--hair)]">
-          <h2 className="text-base font-semibold text-[var(--heading)]">{title}</h2>
-          {mode === "review" && refines.length > 1 && (
-            <select
-              value={viewingIndex ?? ""}
-              onChange={(e) => setViewingIndex(Number(e.target.value))}
-              className="h-8 px-2 text-xs rounded border border-[var(--hair)] bg-[var(--bg-1)] text-[var(--body)]"
-            >
-              {refines.map((r) => (
-                <option key={r.index} value={r.index}>第 {r.index} 次改稿</option>
-              ))}
-            </select>
-          )}
-        </header>
+        {mode !== "refining" && (
+          <header className="flex items-center justify-between gap-4 px-6 py-4 border-b border-[var(--hair)]">
+            <h2 className="text-base font-semibold text-[var(--heading)]">{title}</h2>
+            {mode === "review" && refines.length > 1 && (
+              <select
+                value={viewingIndex ?? ""}
+                onChange={(e) => setViewingIndex(Number(e.target.value))}
+                className="h-8 px-2 text-xs rounded border border-[var(--hair)] bg-[var(--bg-1)] text-[var(--body)]"
+              >
+                {refines.map((r) => (
+                  <option key={r.index} value={r.index}>第 {r.index} 次改稿</option>
+                ))}
+              </select>
+            )}
+          </header>
+        )}
 
         <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
           {mode === "refining" ? (
