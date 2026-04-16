@@ -1,32 +1,124 @@
 import { useEffect, useState } from "react";
+import { parse as parseYaml } from "yaml";
 import { getCaseCandidates } from "../api/client";
+
+export interface CaseStep {
+  step: number;
+  action: string;
+  prep_required?: boolean;
+}
+
+export interface CasePrompt {
+  purpose: string;
+  text: string;
+}
+
+export interface CaseMedia {
+  kind: string;
+  spec?: Record<string, unknown>;
+}
+
+export interface CaseInspiredBy {
+  ref_path: string;
+  what_borrowed: string;
+}
 
 export interface ParsedCase {
   index: number;
   name: string;
-  proposed_by?: string;
-  creativity_score?: string;
-  why_it_matters?: string;
+  caseId?: string;
+  proposedBy: string[];
+  creativityScore?: number;
+  whyItMatters?: string;
+  supportsClaims: string[];
+  steps: CaseStep[];
+  prompts: CasePrompt[];
+  expectedMedia: CaseMedia[];
+  observationPoints: string[];
+  screenshotPoints: string[];
+  recordingPoints: string[];
+  risks: string[];
+  predictedOutcome?: string;
+  inspiredBy: CaseInspiredBy[];
+  /** Prose commentary that follows the yaml block (under "# 详细说明") */
+  narrative: string;
+  /** Whole raw block for debug / fallback */
   rawBlock: string;
 }
 
+function asArray<T>(x: unknown): T[] {
+  if (x == null) return [];
+  if (Array.isArray(x)) return x as T[];
+  return [x as T];
+}
+
+function asString(x: unknown): string {
+  if (x == null) return "";
+  return String(x).trim();
+}
+
 function parseCandidates(md: string): ParsedCase[] {
+  // Each case is: "# Case NN — name\n\n```yaml\n...\n```\n\n# 详细说明\n<prose>\n---"
+  // Use a greedy-but-bounded regex to capture the whole block until the next "# Case NN" or EOF.
   const re = /# Case (\d+)[^\n]*\n([\s\S]*?)(?=^# Case \d+|$)/gm;
   const out: ParsedCase[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(md))) {
     const idx = parseInt(m[1]!, 10);
     const block = m[0]!;
-    const nameMatch = block.match(/# Case \d+\s*—?\s*(.+)/);
-    const propMatch = block.match(/proposed_by:\s*(.+)/);
-    const creatMatch = block.match(/creativity_score:\s*(.+)/);
-    const whyMatch = block.match(/why_it_matters:\s*"?([^"\n]+)"?/);
+    const headerMatch = block.match(/^# Case \d+\s*—?\s*(.+)$/m);
+    const name = headerMatch?.[1]?.trim() ?? "";
+
+    // Extract the first ```yaml ... ``` block inside this case
+    const yamlMatch = block.match(/```yaml\s*\n([\s\S]*?)```/);
+    let yamlData: any = {};
+    if (yamlMatch) {
+      try {
+        const raw = yamlMatch[1]!;
+        // The yaml has its own outer "---" frontmatter markers; strip them
+        const cleaned = raw.replace(/^---\s*$/m, "").replace(/^---\s*$/gm, "").trim();
+        yamlData = parseYaml(cleaned) ?? {};
+      } catch { yamlData = {}; }
+    }
+
+    // Prose after the yaml block (everything after the closing ``` up to next case / EOF)
+    let narrative = "";
+    if (yamlMatch) {
+      const idxInBlock = block.indexOf(yamlMatch[0]!) + yamlMatch[0]!.length;
+      narrative = block.slice(idxInBlock).replace(/^\s*#[^\n]*\n/, "").trim();
+    }
+
     out.push({
       index: idx,
-      name: (nameMatch?.[1] ?? "").trim(),
-      proposed_by: propMatch?.[1]?.trim(),
-      creativity_score: creatMatch?.[1]?.trim(),
-      why_it_matters: whyMatch?.[1]?.trim(),
+      name,
+      caseId: asString(yamlData.case_id) || undefined,
+      proposedBy: asArray<string>(yamlData.proposed_by).map(asString).filter(Boolean),
+      creativityScore: typeof yamlData.creativity_score === "number" ? yamlData.creativity_score : undefined,
+      whyItMatters: yamlData.why_it_matters ? asString(yamlData.why_it_matters) : undefined,
+      supportsClaims: asArray<string>(yamlData.supports_claims).map(asString).filter(Boolean),
+      steps: asArray<any>(yamlData.steps).map((s) => ({
+        step: Number(s?.step ?? 0),
+        action: asString(s?.action),
+        prep_required: Boolean(s?.prep_required),
+      })).filter((s) => s.action),
+      prompts: asArray<any>(yamlData.prompts).map((p) => ({
+        purpose: asString(p?.purpose),
+        text: asString(p?.text),
+      })).filter((p) => p.text),
+      expectedMedia: asArray<any>(yamlData.expected_media).map((em) => ({
+        kind: asString(em?.kind),
+        spec: em?.spec ?? undefined,
+      })).filter((em) => em.kind),
+      observationPoints: asArray<string>(yamlData.observation_points).map(asString).filter(Boolean),
+      screenshotPoints: asArray<string>(yamlData.screenshot_points).map(asString).filter(Boolean),
+      recordingPoints: asArray<string>(yamlData.recording_points).map(asString).filter(Boolean),
+      risks: asArray<string>(yamlData.risks).map(asString).filter(Boolean),
+      predictedOutcome: yamlData.predicted_outcome ? asString(yamlData.predicted_outcome) : undefined,
+      inspiredBy: asArray<any>(yamlData.inspired_by).map((ib) => ({
+        ref_path: asString(ib?.ref_path),
+        what_borrowed: asString(ib?.what_borrowed),
+      })).filter((ib) => ib.ref_path || ib.what_borrowed),
+      narrative,
       rawBlock: block,
     });
   }
