@@ -106,8 +106,8 @@ export function ProjectList() {
               menuOpen={menuId === p.id}
               onMenuToggle={(e) => { e.stopPropagation(); setMenuId(menuId === p.id ? null : p.id); }}
               onOpen={() => nav(`/projects/${p.id}`)}
-              onArchive={async () => { setMenuId(null); try { await archive.mutateAsync(p.id); toast.success("已归档"); } catch { toast.error("归档失败"); } }}
-              onRestore={async () => { setMenuId(null); try { await restore.mutateAsync(p.id); toast.success("已恢复"); } catch { toast.error("恢复失败"); } }}
+              onArchive={async () => { setMenuId(null); try { await archive.mutateAsync(p.id); toast.success("已归档"); } catch (e) { toast.error(`归档失败：${e instanceof Error ? e.message : String(e)}`); } }}
+              onRestore={async () => { setMenuId(null); try { await restore.mutateAsync(p.id); toast.success("已恢复"); } catch (e) { toast.error(`恢复失败：${e instanceof Error ? e.message : String(e)}`); } }}
               onDelete={() => { setMenuId(null); setDeleteTarget(p); }}
             />
           ))}
@@ -120,7 +120,7 @@ export function ProjectList() {
           project={deleteTarget}
           onCancel={() => setDeleteTarget(null)}
           onConfirm={async () => {
-            await destroy.mutateAsync({ id: deleteTarget.id, confirm: deleteTarget.name });
+            await destroy.mutateAsync({ id: deleteTarget.id, confirm: deleteTarget.slug ?? deleteTarget.id });
             setDeleteTarget(null);
           }}
         />
@@ -299,7 +299,8 @@ function NewProjectModal({ busy, onClose, onCreate }: { busy?: boolean; onClose:
 
 function DeleteModal({ project, onCancel, onConfirm }: { project: Project; onCancel: () => void; onConfirm: () => void }) {
   const [typed, setTyped] = useState("");
-  const ok = typed.trim() === project.name;
+  const slug = project.slug ?? project.id;
+  const ok = typed.trim() === slug;
   return (
     <Dialog open onOpenChange={(o) => !o && onCancel()}>
       <DialogContent className="border-[var(--red)]">
@@ -308,12 +309,12 @@ function DeleteModal({ project, onCancel, onConfirm }: { project: Project; onCan
           <p className="text-sm text-[var(--body)]">
             这会<strong>永久删除</strong> <span className="text-[var(--red)] font-semibold">{project.name}</span> 及其所有数据。此操作不可恢复。
           </p>
-          <FormField label="输入项目名以确认">
+          <FormField label={`输入项目 slug「${slug}」以确认`}>
             <Input
               autoFocus
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
-              placeholder={project.name}
+              placeholder={slug}
               error
             />
           </FormField>
