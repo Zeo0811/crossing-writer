@@ -129,14 +129,18 @@ export async function uploadBriefAttachment(
 
 export function briefAttachmentMarkdown(
   item: BriefAttachmentItem,
-  projectId: string,
+  _projectId: string,
 ): string {
-  const base =
+  // Store RELATIVE path (e.g. images/abc.png) in markdown.
+  // The editor's mdToHtml prefixes /api/projects/.../brief/ for display,
+  // and brief-analyzer-service resolves relative paths against the project's brief/ dir
+  // so the Brief Analyst agent receives a real filesystem path for vision input.
+  const relPath =
     item.kind === "image"
-      ? `/api/projects/${encodeURIComponent(projectId)}/brief/${item.url}`
-      : `/api/projects/${encodeURIComponent(projectId)}/brief/${item.url.replace("attachments/", "files/")}`;
-  if (item.kind === "image") return `![${item.filename}](${base})`;
-  return `[📎 ${item.filename}](${base})`;
+      ? item.url
+      : item.url.replace("attachments/", "files/");
+  if (item.kind === "image") return `![${item.filename}](${relPath})`;
+  return `[📎 ${item.filename}](${relPath})`;
 }
 
 export async function startWriter(projectId: string, body: StartWriterBody): Promise<void> {

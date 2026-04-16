@@ -55,15 +55,20 @@ export async function analyzeBrief(opts: AnalyzeBriefOpts): Promise<void> {
     }
     const productInfo = JSON.stringify(project.product_info ?? {}, null, 2);
 
-    // Resolve relative image/attachment refs in brief.md to absolute paths.
+    // Resolve relative image/attachment refs in brief.md to absolute filesystem paths.
     // Brief.md lives under brief/, so refs like ![](images/xxx.png) resolve under brief/.
+    // Defensively strip /api/projects/<pid>/brief/ prefix in case older briefs (or a future
+    // regression in the UI serializer) stored API URLs instead of relative paths.
     const briefDir = join(projectDir, "brief");
+    const apiPrefixRe = /^\/api\/projects\/[^/]+\/brief\//;
     const imgPaths = new Set<string>();
     const imgRe = /!\[[^\]]*\]\(([^)]+)\)/g;
     let m: RegExpExecArray | null;
     while ((m = imgRe.exec(briefBody)) !== null) {
       const ref = m[1]!;
       if (ref.startsWith("http://") || ref.startsWith("https://")) continue;
+      const stripped = ref.replace(apiPrefixRe, "");
+      if (stripped !== ref) { imgPaths.add(join(briefDir, stripped)); continue; }
       if (ref.startsWith("/")) { imgPaths.add(ref); continue; }
       imgPaths.add(join(briefDir, ref));
     }

@@ -5,13 +5,15 @@ import { join } from "node:path";
 import { ProjectStore } from "../src/services/project-store.js";
 import { analyzeBrief } from "../src/services/brief-analyzer-service.js";
 
+const analyzeMock = vi.fn().mockReturnValue({
+  text: "---\ntype: brief_summary\nproject_id: p\n---\n# summary\n\nOK.",
+  meta: { cli: "codex", durationMs: 100 },
+});
+
 vi.mock("@crossing/agents", () => ({
   stripAgentPreamble: (s: string) => s,
   BriefAnalyst: vi.fn().mockImplementation(() => ({
-    analyze: vi.fn().mockReturnValue({
-      text: "---\ntype: brief_summary\nproject_id: p\n---\n# summary\n\nOK.",
-      meta: { cli: "codex", durationMs: 100 },
-    }),
+    analyze: analyzeMock,
   })),
   resolveAgent: (_cfg: any, _key: string) => ({ cli: _cfg.modelAdapter.defaultCli }),
 }));
@@ -77,5 +79,37 @@ describe("analyzeBrief", () => {
     await expect(
       analyzeBrief({ projectId: p.id, projectsDir, store, cli: "codex", agents: {}, defaultCli: "codex", fallbackCli: "claude" }),
     ).rejects.toThrow(/no brief/i);
+  });
+
+  it("strips /api/projects/<pid>/brief/ prefix from image refs and resolves to filesystem path", async () => {
+    analyzeMock.mockClear();
+    const vault = mkdtempSync(join(tmpdir(), "ana-"));
+    const projectsDir = join(vault, "07_projects");
+    const store = new ProjectStore(projectsDir);
+    const p = await store.create({ name: "PrefixTest" });
+    const projectDir = join(projectsDir, p.id);
+    mkdirSync(join(projectDir, "brief/images"), { recursive: true });
+    writeFileSync(
+      join(projectDir, "brief/brief.md"),
+      `![legacy](/api/projects/${p.id}/brief/images/legacy.png)\n![new](images/new.png)\n`,
+      "utf-8",
+    );
+    await store.update(p.id, {
+      status: "brief_uploaded",
+      brief: { source_type: "text", raw_path: "brief/raw/brief.txt", md_path: "brief/brief.md", summary_path: null, uploaded_at: "" },
+    });
+
+    await analyzeBrief({ projectId: p.id, projectsDir, store, cli: "codex", agents: {}, defaultCli: "codex", fallbackCli: "claude" });
+
+    expect(analyzeMock).toHaveBeenCalledTimes(1);
+    const args = analyzeMock.mock.calls[0]![0] as { images: string[] };
+    // Both should resolve to absolute paths under the project's brief/images dir,
+    // independent of whether the markdown stored a relative path or an API URL.
+    const expectedLegacy = join(projectDir, "brief/images/legacy.png");
+    const expectedNew = join(projectDir, "brief/images/new.png");
+    expect(args.images).toContain(expectedLegacy);
+    expect(args.images).toContain(expectedNew);
+    // No raw API-URL strings should leak into images[]
+    expect(args.images.some((p) => p.startsWith("/api/"))).toBe(false);
   });
 });

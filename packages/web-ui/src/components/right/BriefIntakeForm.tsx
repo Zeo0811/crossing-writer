@@ -59,6 +59,8 @@ export function BriefIntakeForm({
           parts.push(`![${alt}](${src})`);
           return;
         }
+        // Skip image-delete buttons so their ✕ label doesn't leak into markdown
+        if (el.tagName === "BUTTON") return;
         if (el.tagName === "BR") { parts.push("\n"); return; }
         if (el.tagName === "DIV" || el.tagName === "P") {
           if (parts.length > 0 && !parts[parts.length - 1]!.endsWith("\n")) parts.push("\n");
