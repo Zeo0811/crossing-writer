@@ -239,14 +239,19 @@ export function BriefIntakeForm({
               />
             </div>
             {imageFiles.length > 0 && (
-              <div className="border-t border-[var(--hair)] p-3 grid grid-cols-4 gap-2">
+              <div className="border-t border-[var(--hair)] p-3 grid grid-cols-6 md:grid-cols-8 gap-2">
                 {imageFiles.map((f, i) => (
-                  <div key={`${f.url}-${i}`} className="relative group rounded bg-[var(--bg-2)] aspect-square flex items-center justify-center text-[var(--faint)]">
-                    <span className="text-3xl">🖼</span>
-                    <span className="absolute bottom-1 left-1 right-1 text-[10px] text-[var(--meta)] truncate text-center">{f.filename}</span>
+                  <div key={`${f.url}-${i}`} className="relative group rounded bg-[var(--bg-2)] overflow-hidden aspect-square">
+                    <img
+                      src={f.url}
+                      alt={f.filename}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
                     <button
                       onClick={() => setImageFiles((prev) => prev.filter((_, j) => j !== i))}
-                      className="absolute top-1 right-1 w-5 h-5 rounded bg-[var(--bg-1)] text-[var(--meta)] hover:text-[var(--red)] opacity-0 group-hover:opacity-100 text-xs"
+                      className="absolute top-1 right-1 w-5 h-5 rounded bg-[rgba(0,0,0,0.6)] text-white hover:bg-[var(--red)] opacity-0 group-hover:opacity-100 text-xs flex items-center justify-center"
+                      title={f.filename}
                     >
                       ✕
                     </button>
