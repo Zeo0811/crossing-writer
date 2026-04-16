@@ -3,6 +3,7 @@ import { WikiPagePreview } from "../components/wiki/WikiPagePreview.js";
 import { IngestForm } from "../components/wiki/IngestForm.js";
 import { IngestProgressView } from "../components/wiki/IngestProgressView.js";
 import { Tabs, TabsList, TabsTrigger, TabsContent, Input, Button } from "../components/ui";
+import { formatBeijingShort } from "../utils/time";
 import {
   getPages,
   search as searchWikiApi,
@@ -23,6 +24,10 @@ const KIND_LABEL: Record<string, string> = {
   author: "作者 author",
   source: "来源 source",
   note: "笔记 note",
+  concept: "概念 concept",
+  case: "案例 case",
+  observation: "观察 observation",
+  person: "人物 person",
 };
 
 export function KnowledgePage() {
@@ -91,7 +96,7 @@ export function KnowledgePage() {
       <header className="flex items-center justify-between px-6 h-12 border-b border-[var(--hair)]">
         <h1 className="text-lg font-semibold text-[var(--heading)]">知识库</h1>
         <div className="text-xs text-[var(--meta)]" style={{ fontFamily: "var(--font-mono)" }}>
-          {status && `${status.total} 条 · 上次入库 ${status.last_ingest_at ?? "—"}`}
+          {status && `${status.total} 条 · 上次入库 ${formatBeijingShort(status.last_ingest_at)}`}
         </div>
       </header>
       <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
@@ -168,7 +173,7 @@ export function KnowledgePage() {
                   )}
                   <div className="flex items-center justify-between text-[10px] text-[var(--faint)]">
                     <span>{p.sources_count} 来源 · {p.backlinks_count} 反链</span>
-                    <span>{p.last_ingest?.slice(0, 10)}</span>
+                    <span>{formatBeijingShort(p.last_ingest)}</span>
                   </div>
                 </article>
               ))}

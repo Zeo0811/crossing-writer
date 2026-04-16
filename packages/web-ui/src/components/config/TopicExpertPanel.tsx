@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { formatBeijingShort } from "../../utils/time";
 import {
   listTopicExperts,
   setTopicExpert,
@@ -149,7 +150,7 @@ export function TopicExpertPanel({ api }: Props = {}) {
                   className="accent-[var(--accent)]"
                 />
               </div>
-              <div className="text-xs text-[var(--meta)] truncate">{e.distilled_at ?? "—"}</div>
+              <div className="text-xs text-[var(--meta)] truncate">{e.distilled_at ? formatBeijingShort(e.distilled_at) : "—"}</div>
               <div className="flex items-center gap-3 justify-end">
                 <button
                   onClick={() => onRedistill(e.name)}

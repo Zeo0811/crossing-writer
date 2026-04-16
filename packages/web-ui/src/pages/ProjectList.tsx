@@ -164,7 +164,7 @@ function ProjectCard({
         <div className="min-w-0 flex-1">
           <h3 className="text-[var(--heading)] font-semibold truncate mb-0.5">{p.name}</h3>
           <div className="text-xs text-[var(--meta)]">
-            {p.product_info?.name ?? "—"} · {timeAgo(updated)}
+            {p.product_info?.name ? `${p.product_info.name} · ` : ""}{timeAgo(updated)}
           </div>
         </div>
         <span
