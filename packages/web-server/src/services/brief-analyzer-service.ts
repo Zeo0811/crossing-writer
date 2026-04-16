@@ -80,7 +80,19 @@ export async function analyzeBrief(opts: AnalyzeBriefOpts): Promise<void> {
       productInfo,
       images: Array.from(imgPaths),
       addDirs: [briefDir],
+      runLogDir: join(projectDir, "runs"),
     });
+
+    if (result.meta.runDir) {
+      await appendEvent(projectDir, {
+        type: "agent.io_snapshot",
+        agent: "brief_analyst",
+        runDir: result.meta.runDir,
+        durationMs: result.meta.durationMs,
+        cli: result.meta.cli,
+        model: result.meta.model ?? null,
+      });
+    }
 
     const summaryPath = "brief/brief-summary.md";
     await writeFile(join(projectDir, summaryPath), stripAgentPreamble(result.text), "utf-8");

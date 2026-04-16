@@ -8,6 +8,7 @@ export interface BriefAnalyzeInput {
   productInfo: string;
   images?: string[];   // absolute paths; passed via @-ref to claude + added to --add-dir
   addDirs?: string[];  // absolute dirs to grant CLI access to
+  runLogDir?: string;  // if set, adapter writes prompt/response/meta to <runLogDir>/<runId>/
 }
 
 export class BriefAnalyst {
@@ -36,7 +37,7 @@ export class BriefAnalyst {
         brief_body: input.briefBody,
         product_info: input.productInfo,
       },
-      { images: input.images, addDirs: input.addDirs },
+      { images: input.images, addDirs: input.addDirs, runLogDir: input.runLogDir },
     );
   }
 }

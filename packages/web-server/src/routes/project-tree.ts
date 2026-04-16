@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
-import { readdir, stat } from "node:fs/promises";
-import { join, basename } from "node:path";
+import { readdir, stat, readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { join, basename, normalize } from "node:path";
 import { spawn } from "node:child_process";
 import type { ProjectStore } from "../services/project-store.js";
 
@@ -107,6 +108,36 @@ export function registerProjectTreeRoutes(app: FastifyInstance, deps: ProjectTre
         error: "agent stop not yet implemented",
         detail: "No central spawn registry wired up; manually Ctrl+C the CLI process or kill it.",
       });
+    },
+  );
+
+  // Serve agent run artifacts (prompt.txt / response.txt / stderr.txt / meta.json)
+  // Path format: /api/projects/:id/runs/:runId/:file
+  // runId is sanitized agent-key-timestamped (e.g. 2026-04-16T15-50-00Z-brief_analyst)
+  const ALLOWED_FILES = new Set(["prompt.txt", "response.txt", "stderr.txt", "meta.json"]);
+  const RUN_ID_RE = /^[\w.-]+$/;
+  app.get<{ Params: { id: string; runId: string; file: string } }>(
+    "/api/projects/:id/runs/:runId/:file",
+    async (req, reply) => {
+      const { id, runId, file } = req.params;
+      if (!RUN_ID_RE.test(runId)) return reply.code(400).send({ error: "invalid runId" });
+      if (!ALLOWED_FILES.has(file)) return reply.code(400).send({ error: "invalid file" });
+      const project = await deps.store.get(id);
+      if (!project) return reply.code(404).send({ error: "project not found" });
+      const projectDir = join(deps.projectsDir, id);
+      const abs = normalize(join(projectDir, "runs", runId, file));
+      // Ensure still under projectDir/runs
+      if (!abs.startsWith(join(projectDir, "runs") + "/") && abs !== join(projectDir, "runs", runId, file)) {
+        return reply.code(400).send({ error: "path escape" });
+      }
+      if (!existsSync(abs)) return reply.code(404).send({ error: "not found" });
+      const content = await readFile(abs, "utf-8");
+      if (file === "meta.json") {
+        reply.header("content-type", "application/json; charset=utf-8");
+      } else {
+        reply.header("content-type", "text/plain; charset=utf-8");
+      }
+      return content;
     },
   );
 }

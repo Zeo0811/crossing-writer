@@ -23,7 +23,7 @@ export class AgentBase {
   async run(
     userMessage: string,
     extraVars?: Record<string, string>,
-    extra?: { images?: string[]; addDirs?: string[] },
+    extra?: { images?: string[]; addDirs?: string[]; runLogDir?: string },
   ): Promise<AgentResult> {
     const vars = { ...this.opts.vars, ...extraVars };
     const systemPrompt = this.interpolate(this.opts.systemPromptTemplate, vars);
@@ -36,6 +36,7 @@ export class AgentBase {
       timeout: this.opts.timeout,
       images: extra?.images,
       addDirs: extra?.addDirs,
+      runLogDir: extra?.runLogDir,
     });
   }
 }

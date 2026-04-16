@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, unlinkSync } from "node:fs";
+import { mkdtempSync, readFileSync, unlinkSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -12,11 +12,62 @@ export interface InvokeOptions {
   timeout?: number;
   images?: string[];
   addDirs?: string[];
+  /** If set, write prompt / response / meta.json into <runLogDir>/<runId>/ */
+  runLogDir?: string;
+}
+
+export interface AgentRunMeta {
+  agentKey: string;
+  cli: string;
+  model?: string;
+  startedAt: string;   // ISO
+  durationMs: number;
+  exit: number | null;
+  promptBytes: number;
+  responseBytes: number;
+  stderrBytes: number;
+  images?: string[];
+  addDirs?: string[];
 }
 
 export interface AgentResult {
   text: string;
-  meta: { cli: string; model?: string; durationMs: number };
+  meta: {
+    cli: string;
+    model?: string;
+    durationMs: number;
+    /** Relative run directory (e.g. "runs/2026-04-16T15-50-00Z-brief_analyst"), if runLogDir was set */
+    runDir?: string;
+  };
+}
+
+function sanitizeAgentKey(key: string): string {
+  return key.replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
+function makeRunId(agentKey: string): string {
+  const ts = new Date().toISOString().replace(/[:.]/g, "-").replace(/Z$/, "Z");
+  return `${ts}-${sanitizeAgentKey(agentKey)}`;
+}
+
+function writeRunArtifacts(
+  runLogDir: string,
+  runId: string,
+  fullPrompt: string,
+  responseText: string,
+  stderr: string,
+  meta: AgentRunMeta,
+): void {
+  try {
+    const runDir = join(runLogDir, runId);
+    mkdirSync(runDir, { recursive: true });
+    writeFileSync(join(runDir, "prompt.txt"), fullPrompt, "utf-8");
+    writeFileSync(join(runDir, "response.txt"), responseText, "utf-8");
+    if (stderr) writeFileSync(join(runDir, "stderr.txt"), stderr, "utf-8");
+    writeFileSync(join(runDir, "meta.json"), JSON.stringify(meta, null, 2), "utf-8");
+  } catch {
+    /* best-effort logging; don't fail the invocation */
+  }
 }
 
 /**
@@ -73,11 +124,38 @@ function runChildProcess(
 }
 
 export async function invokeAgent(opts: InvokeOptions): Promise<AgentResult> {
-  const started = Date.now();
+  const startedMs = Date.now();
+  const startedIso = new Date(startedMs).toISOString();
   const timeout = opts.timeout ?? 600_000;
   const fullPrompt = opts.systemPrompt
     ? `${opts.systemPrompt}\n\n---\n\n${opts.userMessage}`
     : opts.userMessage;
+  const runId = opts.runLogDir ? makeRunId(opts.agentKey) : undefined;
+  const runDirRel = runId ? `runs/${runId}` : undefined;
+
+  const persistRun = (
+    cli: "claude" | "codex",
+    effectivePrompt: string,
+    responseText: string,
+    stderrText: string,
+    exit: number | null,
+  ) => {
+    if (!opts.runLogDir || !runId) return;
+    const meta: AgentRunMeta = {
+      agentKey: opts.agentKey,
+      cli,
+      model: opts.model,
+      startedAt: startedIso,
+      durationMs: Date.now() - startedMs,
+      exit,
+      promptBytes: Buffer.byteLength(effectivePrompt, "utf-8"),
+      responseBytes: Buffer.byteLength(responseText, "utf-8"),
+      stderrBytes: Buffer.byteLength(stderrText, "utf-8"),
+      images: opts.images,
+      addDirs: opts.addDirs,
+    };
+    writeRunArtifacts(opts.runLogDir, runId, effectivePrompt, responseText, stderrText, meta);
+  };
 
   if (opts.cli === "codex") {
     const outPath = join(mkdtempSync(join(tmpdir(), "agent-")), "out.txt");
@@ -96,14 +174,16 @@ export async function invokeAgent(opts: InvokeOptions): Promise<AgentResult> {
     const proc = await runChildProcess("codex", args, { timeout, input: "" });
     if (proc.status !== 0) {
       const detail = (proc.stderr || proc.stdout).trim();
+      persistRun("codex", fullPrompt, proc.stdout, proc.stderr, proc.status);
       try { unlinkSync(outPath); } catch {}
       throw new Error(`codex exit=${proc.status}: ${detail.slice(0, 800) || "(no output)"}`);
     }
     const text = readFileSync(outPath, "utf-8");
     try { unlinkSync(outPath); } catch {}
+    persistRun("codex", fullPrompt, text, proc.stderr, proc.status);
     return {
       text,
-      meta: { cli: "codex", model: opts.model, durationMs: Date.now() - started },
+      meta: { cli: "codex", model: opts.model, durationMs: Date.now() - startedMs, runDir: runDirRel },
     };
   }
 
@@ -131,19 +211,23 @@ export async function invokeAgent(opts: InvokeOptions): Promise<AgentResult> {
   });
   if (proc.status !== 0) {
     const detail = (proc.stderr || proc.stdout).trim();
+    persistRun("claude", claudePrompt, proc.stdout, proc.stderr, proc.status);
     throw new Error(`claude exit=${proc.status}: ${detail.slice(0, 800) || "(no output)"}`);
   }
   if (/^API Error:/m.test(proc.stdout)) {
+    persistRun("claude", claudePrompt, proc.stdout, proc.stderr, proc.status);
     throw new Error(`claude API error: ${proc.stdout.trim().slice(0, 800)}`);
   }
   if (!proc.stdout || proc.stdout.trim().length === 0) {
     // Silent empty output — treat as failure so downstream doesn't write a 0-byte summary.
     const stderrHint = proc.stderr.trim().slice(0, 400);
+    persistRun("claude", claudePrompt, proc.stdout, proc.stderr, proc.status);
     throw new Error(`claude returned empty stdout${stderrHint ? ` · stderr: ${stderrHint}` : ""}`);
   }
+  persistRun("claude", claudePrompt, proc.stdout, proc.stderr, proc.status);
   return {
     text: proc.stdout,
-    meta: { cli: "claude", model: opts.model, durationMs: Date.now() - started },
+    meta: { cli: "claude", model: opts.model, durationMs: Date.now() - startedMs, runDir: runDirRel },
   };
 }
 
