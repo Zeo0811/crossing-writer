@@ -250,7 +250,11 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
                       value={modelValue}
                       onChange={(e) => handleModelChange(agentKey, e.target.value)}
                       className="appearance-none w-full bg-[var(--bg-1)] border border-[var(--hair)] rounded h-9 pl-3 pr-8 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)] bg-no-repeat"
-                      style={{ backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%237e8e7f' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>\")", backgroundPosition: "right 10px center" }}
+                      style={{
+                        fontFamily: "var(--font-sans)",
+                        backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%237e8e7f' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>\")",
+                        backgroundPosition: "right 10px center",
+                      }}
                     >
                       <option value="">默认 · {modelLabel(defaultCfg.model)}</option>
                       {MODEL_CHOICES.filter((m) => modelKey(m) !== modelKey(defaultCfg.model)).map((m) => (
@@ -266,7 +270,11 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
                       value={styleValue}
                       onChange={(e) => handleStyleChange(agentKey, e.target.value)}
                       className="appearance-none w-full bg-[var(--bg-1)] border border-[var(--hair)] rounded h-9 pl-3 pr-8 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)] bg-no-repeat"
-                      style={{ backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%237e8e7f' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>\")", backgroundPosition: "right 10px center" }}
+                      style={{
+                        fontFamily: "var(--font-sans)",
+                        backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%237e8e7f' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>\")",
+                        backgroundPosition: "right 10px center",
+                      }}
                     >
                       <option value="">
                         默认 · {defaultCfg.styleBinding ? styleLabel(defaultCfg.styleBinding) : "(未绑定)"}
