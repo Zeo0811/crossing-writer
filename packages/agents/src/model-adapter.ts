@@ -117,6 +117,8 @@ export async function invokeAgent(opts: InvokeOptions): Promise<AgentResult> {
   if (envVault) allDirs.add(envVault);
   for (const d of opts.addDirs ?? []) if (d) allDirs.add(d);
   const addDirArgs = Array.from(allDirs).flatMap((d) => ["--add-dir", d]);
+  // Read tool required for @path refs to trigger real vision input in Claude CLI;
+  // keep it off otherwise so the agent stays sandboxed.
   const args = [
     "-p", "-",
     "--tools", images.length > 0 ? "Read" : "",
