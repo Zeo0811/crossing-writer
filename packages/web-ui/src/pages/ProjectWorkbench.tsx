@@ -104,14 +104,23 @@ function RunningView({ label, desc, children }: { label: string; desc?: string; 
 function BriefReadyView({ projectId, project, refetch }: { projectId: string; project: any; refetch: () => void }) {
   const [editing, setEditing] = useState(false);
   const [initialText, setInitialText] = useState<string | null>(null);
+  const [freshBrief, setFreshBrief] = useState<{ source_type?: string; raw_path?: string } | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
 
   const openEditor = async () => {
     setLoadErr(null);
     try {
-      const res = await fetch(`/api/projects/${projectId}/brief/markdown`);
-      if (!res.ok) throw new Error(`${res.status} ${await res.text().catch(() => "")}`);
-      setInitialText(await res.text());
+      // Fetch fresh project snapshot + brief.md in parallel so tab selection uses the
+      // latest source_type / raw_path, not a possibly-stale prop.
+      const [projRes, mdRes] = await Promise.all([
+        fetch(`/api/projects/${projectId}`),
+        fetch(`/api/projects/${projectId}/brief/markdown`),
+      ]);
+      if (!mdRes.ok) throw new Error(`${mdRes.status} ${await mdRes.text().catch(() => "")}`);
+      const mdText = await mdRes.text();
+      const projJson = projRes.ok ? await projRes.json() : null;
+      setFreshBrief(projJson?.brief ?? null);
+      setInitialText(mdText);
       setEditing(true);
     } catch (e: any) {
       setLoadErr(String(e?.message ?? e));
@@ -120,8 +129,9 @@ function BriefReadyView({ projectId, project, refetch }: { projectId: string; pr
 
   // Editing mode: hide expert-selection panel since the brief is being rewritten
   if (editing && initialText !== null) {
-    const src = project?.brief?.source_type as string | undefined;
-    const rawPath = project?.brief?.raw_path as string | undefined;
+    // Prefer the freshly-fetched brief snapshot; fall back to the cached project prop.
+    const src = (freshBrief?.source_type ?? project?.brief?.source_type) as string | undefined;
+    const rawPath = (freshBrief?.raw_path ?? project?.brief?.raw_path) as string | undefined;
     const initialRawFile = (src && src !== "text" && rawPath)
       ? { filename: rawPath.split("/").pop() ?? rawPath, sourceType: src, rawPath }
       : undefined;
