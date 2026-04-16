@@ -174,6 +174,15 @@ export function BriefIntakeForm({
                 className="brief-editor w-full h-full min-h-[200px] bg-transparent p-3 text-sm text-[var(--body)] outline-none overflow-auto whitespace-pre-wrap"
                 data-testid="brief-textarea"
                 onInput={(e) => setText(htmlToMd(e.currentTarget))}
+                onClick={(e) => {
+                  const t = e.target as HTMLElement;
+                  if (t.tagName === "IMG") {
+                    if (window.confirm("删除这张图片？")) {
+                      t.remove();
+                      if (editorRef.current) setText(htmlToMd(editorRef.current));
+                    }
+                  }
+                }}
                 onPaste={async (e) => {
                   const cd = e.clipboardData;
                   if (!cd) return;
@@ -216,7 +225,8 @@ export function BriefIntakeForm({
               />
               <style>{`
                 .brief-editor:empty::before { content: attr(data-placeholder); color: var(--faint); pointer-events: none; }
-                .brief-editor img { user-select: none; }
+                .brief-editor img { user-select: none; cursor: pointer; transition: box-shadow 0.15s; }
+                .brief-editor img:hover { box-shadow: 0 0 0 2px var(--red); }
               `}</style>
               {drop.isDragging && (
                 <div
