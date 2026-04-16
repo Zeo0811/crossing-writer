@@ -24,7 +24,11 @@ interface TextBody {
   productDocsUrl?: string | null;
   productTrialUrl?: string | null;
   notes?: string | null;
+  articleType?: string | null;
 }
+
+const VALID_ARTICLE_TYPES = ['实测', '访谈', '评论'] as const;
+type ArticleType = typeof VALID_ARTICLE_TYPES[number];
 
 export function registerBriefRoutes(app: FastifyInstance, deps: BriefDeps) {
   app.post<{ Params: { id: string }; Body: TextBody }>(
@@ -64,6 +68,7 @@ export function registerBriefRoutes(app: FastifyInstance, deps: BriefDeps) {
           productDocsUrl: data.fields?.productDocsUrl?.value ?? null,
           productTrialUrl: data.fields?.productTrialUrl?.value ?? null,
           notes: data.fields?.notes?.value ?? null,
+          articleType: data.fields?.articleType?.value ?? null,
         };
       } else {
         const body = (req.body ?? {}) as TextBody;
@@ -80,10 +85,21 @@ export function registerBriefRoutes(app: FastifyInstance, deps: BriefDeps) {
       const mdRel = "brief/brief.md";
       await writeFile(join(projectDir, mdRel), markdown, "utf-8");
 
+      // Validate article_type
+      const rawType = extra.articleType ?? null;
+      let articleType: ArticleType | null = null;
+      if (rawType) {
+        if (!VALID_ARTICLE_TYPES.includes(rawType as ArticleType)) {
+          return reply.code(400).send({ error: `invalid article_type: ${rawType}` });
+        }
+        articleType = rawType as ArticleType;
+      }
+
       const now = new Date().toISOString();
       const fromStatus = project.status;
       await deps.store.update(id, {
         status: "brief_uploaded",
+        article_type: articleType,
         brief: {
           source_type: sourceType,
           raw_path: rawPath,

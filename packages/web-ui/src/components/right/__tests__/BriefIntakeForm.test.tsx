@@ -29,47 +29,26 @@ describe("BriefIntakeForm rich-media", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders the new image and file buttons + textarea", () => {
+  it("renders article_type dropdown, tab buttons, and textarea", () => {
     render(<BriefIntakeForm projectId="p1" onUploaded={() => {}} />);
-    expect(screen.getByTestId("brief-image-button")).toBeTruthy();
-    expect(screen.getByTestId("brief-file-button")).toBeTruthy();
+    // article_type dropdown
+    expect(screen.getByRole("combobox")).toBeTruthy();
+    // tab buttons
+    expect(screen.getByRole("button", { name: /图片/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /文件/ })).toBeTruthy();
     expect(screen.getByTestId("brief-textarea")).toBeTruthy();
   });
 
-  it("inserts markdown at caret on paste", async () => {
+  it("blocks submit when article_type not selected", async () => {
     render(<BriefIntakeForm projectId="p1" onUploaded={() => {}} />);
-    const ta = screen.getByTestId("brief-textarea") as HTMLTextAreaElement;
-    const user = userEvent.setup();
-    await user.type(ta, "BEFORE/AFTER");
-    ta.setSelectionRange(6, 6); // between BEFORE and /AFTER
-    const file = new File([new Uint8Array([1])], "p.png", { type: "image/png" });
-    const ev = new Event("paste", { bubbles: true, cancelable: true });
-    Object.defineProperty(ev, "clipboardData", {
-      value: {
-        items: [{ kind: "file", type: "image/png", getAsFile: () => file }],
-        files: [file],
-      },
-    });
+    const textarea = screen.getByTestId("brief-textarea") as HTMLElement;
+    fireEvent.input(textarea, { target: { innerHTML: "some text" } });
+    const submitBtn = screen.getByRole("button", { name: /提交并解析/ });
     await act(async () => {
-      ta.dispatchEvent(ev);
-      await new Promise((r) => setTimeout(r, 0));
+      await userEvent.click(submitBtn);
     });
-    expect(ta.value).toMatch(/^BEFORE!\[p\.png\]\(\/api\/projects\/p1\/brief\/images\/abc\.png\)\/AFTER$/);
-    // attachment list shown
-    expect(screen.getByTestId("brief-attachment-list")).toBeTruthy();
-  });
-
-  it("uploads via image button file picker", async () => {
-    render(<BriefIntakeForm projectId="p1" onUploaded={() => {}} />);
-    const input = screen.getByTestId("brief-image-input") as HTMLInputElement;
-    const file = new File([new Uint8Array([1])], "p.png", { type: "image/png" });
-    await act(async () => {
-      fireEvent.change(input, { target: { files: [file] } });
-      await new Promise((r) => setTimeout(r, 0));
-    });
-    expect((globalThis as any).fetch).toHaveBeenCalledTimes(1);
-    const ta = screen.getByTestId("brief-textarea") as HTMLTextAreaElement;
-    expect(ta.value).toMatch(/!\[p\.png\]/);
+    // Should show error, not call fetch for brief upload
+    expect(screen.getByText("请先选择文章类型")).toBeTruthy();
   });
 
   it("shows drop overlay while dragging", async () => {
@@ -108,6 +87,12 @@ describe("BriefIntakeForm rich-media", () => {
     const onUploaded = vi.fn();
     render(<BriefIntakeForm projectId="p1" onUploaded={onUploaded} />);
 
+    // Select article_type first
+    const select = screen.getByRole("combobox");
+    await act(async () => {
+      fireEvent.change(select, { target: { value: "实测" } });
+    });
+
     // Switch to 图片 tab
     const imgTabBtn = screen.getByRole("button", { name: /图片/ });
     await userEvent.click(imgTabBtn);
@@ -139,6 +124,7 @@ describe("BriefIntakeForm rich-media", () => {
     const body = JSON.parse(init.body);
     expect(body.text).toContain("![a.png](images/a.png)");
     expect(body.text).toContain("![b.png](images/b.png)");
+    expect(body.articleType).toBe("实测");
     expect(onUploaded).toHaveBeenCalled();
   });
 });

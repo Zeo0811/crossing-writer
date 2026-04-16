@@ -9,7 +9,7 @@ export interface Project {
   slug: string;
   status: ProjectStatus;
   stage: ProjectStage;
-  article_type: string | null;
+  article_type: '实测' | '访谈' | '评论' | null;
   expected_word_count: number | null;
   deadline: string | null;
   priority: "low" | "normal" | "high";

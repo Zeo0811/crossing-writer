@@ -42,6 +42,7 @@ export const api = {
       productName?: string;
       productUrl?: string;
       notes?: string;
+      articleType?: string;
     },
   ) =>
     request<{ ok: true }>(`/api/projects/${id}/brief`, {
@@ -51,7 +52,7 @@ export const api = {
   uploadBriefFile: (
     id: string,
     file: File,
-    extra: { productName?: string; productUrl?: string; notes?: string },
+    extra: { productName?: string; productUrl?: string; notes?: string; articleType?: string },
   ) => {
     const fd = new FormData();
     fd.append("file", file);

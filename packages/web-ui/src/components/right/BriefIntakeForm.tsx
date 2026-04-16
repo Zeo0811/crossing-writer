@@ -61,6 +61,7 @@ export function BriefIntakeForm({
   onCancel?: () => void;
 }) {
   const initial = useMemo(() => parseInitialBrief(initialText, initialRawFile), [initialText, initialRawFile]);
+  const [articleType, setArticleType] = useState<'实测' | '访谈' | '评论' | ''>('');
   const [mode, setMode] = useState<"text" | "file" | "image">(initial.mode);
   const [text, setText] = useState(initial.text);
   const [files, setFiles] = useState<File[]>([]);
@@ -187,23 +188,24 @@ export function BriefIntakeForm({
   }
 
   async function submit() {
+    if (!articleType) { setErr('请先选择文章类型'); return; }
     setBusy(true);
     setErr(null);
     try {
       if (mode === "text") {
         if (!text.trim()) throw new Error("简报文本不能为空");
-        await api.uploadBriefText(projectId, { text });
+        await api.uploadBriefText(projectId, { text, articleType });
       } else if (mode === "image") {
         if (imageFiles.length === 0) throw new Error("请选择图片");
         const md = imageFiles
           .map((it) => `![${it.filename}](${it.url})`)
           .join("\n\n");
-        await api.uploadBriefText(projectId, { text: md });
+        await api.uploadBriefText(projectId, { text: md, articleType });
       } else {
         if (files.length > 0) {
           // User picked (possibly new) files — upload them, which replaces the brief
           for (const f of files) {
-            await api.uploadBriefFile(projectId, f, {});
+            await api.uploadBriefFile(projectId, f, { articleType });
           }
         } else if (effectiveInitialRawFile) {
           // No new files, but there's an existing raw file — just re-analyze it
@@ -220,6 +222,21 @@ export function BriefIntakeForm({
 
   return (
     <div className="space-y-5">
+      <label className="block mb-3">
+        <span className="text-xs text-[var(--meta)] block mb-1">
+          文章类型 <span className="text-[var(--red)]">*</span>
+        </span>
+        <select
+          value={articleType}
+          onChange={(e) => setArticleType(e.target.value as '实测' | '访谈' | '评论' | '')}
+          className="w-48 h-9 px-3 rounded border border-[var(--hair)] bg-[var(--bg-1)] text-sm text-[var(--body)]"
+        >
+          <option value="">请选择</option>
+          <option value="实测">🧪 实测</option>
+          <option value="访谈">🎤 访谈</option>
+          <option value="评论">💬 评论</option>
+        </select>
+      </label>
       <div className="flex items-center gap-1 border-b border-[var(--hair)]">
         {(["text", "file", "image"] as const).map((k) => (
           <button
