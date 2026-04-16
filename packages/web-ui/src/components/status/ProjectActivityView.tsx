@@ -124,7 +124,15 @@ function ProjectTree({ projectId }: { projectId: string }) {
   );
 }
 
-function TerminalLog({ events }: { events: StreamEvent[] }) {
+function TerminalLog({
+  events,
+  projectId,
+  onOpenRun,
+}: {
+  events: StreamEvent[];
+  projectId: string;
+  onOpenRun: (runDir: string, agent?: string) => void;
+}) {
   // Show most recent 300 events to avoid DOM bloat
   const recent = events.slice(-300);
   return (
@@ -139,6 +147,29 @@ function TerminalLog({ events }: { events: StreamEvent[] }) {
         const rawTs = typeof ev.ts === "number" ? new Date(ev.ts) : ev.ts;
         const ts = formatBeijingTime(rawTs as string | Date | null | undefined);
         const src = logSource(ev);
+        // Special row for agent.io_snapshot — clickable to open prompt/response drawer
+        if (ev.type === "agent.io_snapshot") {
+          const d = (ev.data ?? ev.payload ?? {}) as any;
+          const runDir = String(d.runDir ?? "");
+          const dur = typeof d.durationMs === "number" ? `${Math.round(d.durationMs / 1000)}s` : "";
+          const agent = d.agent ?? ev.agent ?? "";
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onOpenRun(runDir, agent)}
+              className="w-full flex items-start gap-2 whitespace-pre text-left px-1 -mx-1 rounded hover:bg-[var(--bg-2)] cursor-pointer"
+              data-testid={`log-row-iosnapshot-${i}`}
+            >
+              <span className="text-[var(--faint)] shrink-0">[{ts}]</span>
+              <span className="text-[var(--amber)] shrink-0 w-20 truncate">io</span>
+              <span className="text-[var(--faint)] shrink-0">›</span>
+              <span className="text-[var(--body)] break-all">
+                {agent} run {dur && `· ${dur}`} <span className="text-[var(--accent)] underline underline-offset-2">查看 prompt / response</span>
+              </span>
+            </button>
+          );
+        }
         const msg = eventLabel(ev);
         return (
           <div key={i} className="flex items-start gap-2 whitespace-pre">
@@ -149,6 +180,107 @@ function TerminalLog({ events }: { events: StreamEvent[] }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+type RunDrawerTab = "prompt" | "response" | "meta" | "stderr";
+function RunDrawer({
+  projectId,
+  runDir,
+  agent,
+  onClose,
+}: {
+  projectId: string;
+  runDir: string;
+  agent?: string;
+  onClose: () => void;
+}) {
+  const [tab, setTab] = useState<RunDrawerTab>("prompt");
+  const [content, setContent] = useState<string>("");
+  const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // runDir is like "runs/2026-04-16T08-00-22-530Z-brief_analyst"
+  const runId = runDir.replace(/^runs\//, "");
+
+  useEffect(() => {
+    let cancelled = false;
+    const fileName =
+      tab === "prompt" ? "prompt.txt" :
+      tab === "response" ? "response.txt" :
+      tab === "stderr" ? "stderr.txt" :
+      "meta.json";
+    setLoading(true);
+    setErr(null);
+    setContent("");
+    fetch(`/api/projects/${encodeURIComponent(projectId)}/runs/${encodeURIComponent(runId)}/${fileName}`)
+      .then(async (r) => {
+        if (!r.ok) {
+          if (r.status === 404) return "(空)";
+          throw new Error(`${r.status}`);
+        }
+        return r.text();
+      })
+      .then((t) => { if (!cancelled) setContent(t); })
+      .catch((e: any) => { if (!cancelled) setErr(String(e?.message ?? e)); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [projectId, runId, tab]);
+
+  const tabs: Array<{ key: RunDrawerTab; label: string }> = [
+    { key: "prompt", label: "Prompt" },
+    { key: "response", label: "Response" },
+    { key: "meta", label: "Meta" },
+    { key: "stderr", label: "Stderr" },
+  ];
+
+  return (
+    <div
+      role="dialog"
+      aria-label="运行详情"
+      className="fixed inset-0 z-[60] flex items-stretch justify-end bg-[rgba(0,0,0,0.45)] backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="h-full w-[720px] max-w-[95vw] flex flex-col bg-[var(--bg-0)] border-l border-[var(--hair)] shadow-2xl"
+      >
+        <header className="flex items-start justify-between gap-4 px-5 py-3 border-b border-[var(--hair)] bg-[var(--bg-1)]">
+          <div>
+            <div className="text-sm font-semibold text-[var(--heading)]">{agent ?? "Agent"} · 运行详情</div>
+            <div className="text-[10px] text-[var(--faint)] font-mono-term mt-0.5 truncate max-w-[520px]" title={runDir}>{runDir}</div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"
+            aria-label="关闭"
+          >✕</button>
+        </header>
+        <div className="flex items-center gap-1 px-4 border-b border-[var(--hair)] bg-[var(--bg-1)]">
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`px-3 py-2 text-xs border-b-2 -mb-px transition-colors ${
+                tab === t.key ? "border-[var(--accent)] text-[var(--heading)] font-semibold" : "border-transparent text-[var(--meta)] hover:text-[var(--heading)]"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex-1 min-h-0 overflow-auto p-4 bg-[var(--bg-0)]">
+          {loading && <div className="text-xs text-[var(--faint)]">加载中…</div>}
+          {err && <div className="text-xs text-[var(--red)]">读取失败：{err}</div>}
+          {!loading && !err && (
+            <pre className="font-mono-term text-[11px] leading-[1.7] text-[var(--body)] whitespace-pre-wrap break-words">
+              {content || "(空)"}
+            </pre>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -185,6 +317,7 @@ export function ProjectActivityView({
   onClose: () => void;
 }) {
   const [nowTick, setNowTick] = useState(() => Date.now());
+  const [runDrawer, setRunDrawer] = useState<{ runDir: string; agent?: string } | null>(null);
   useEffect(() => {
     const id = setInterval(() => setNowTick(Date.now()), 1000);
     return () => clearInterval(id);
@@ -299,7 +432,11 @@ export function ProjectActivityView({
 
           {/* Terminal log */}
           <div className="flex-1 min-h-0">
-            <TerminalLog events={events} />
+            <TerminalLog
+              events={events}
+              projectId={projectId}
+              onOpenRun={(runDir, agent) => setRunDrawer({ runDir, agent })}
+            />
           </div>
 
           {/* Footer */}
@@ -332,6 +469,15 @@ export function ProjectActivityView({
           </footer>
         </main>
       </div>
+
+      {runDrawer && (
+        <RunDrawer
+          projectId={projectId}
+          runDir={runDrawer.runDir}
+          agent={runDrawer.agent}
+          onClose={() => setRunDrawer(null)}
+        />
+      )}
     </div>
   );
 }
