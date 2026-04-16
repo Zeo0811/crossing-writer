@@ -155,7 +155,7 @@ function TerminalLog({
   const recent = events.slice(-300);
   return (
     <div
-      className="font-mono-term text-[11px] leading-[1.7] text-[var(--body)] bg-[var(--bg-1)] border border-[var(--hair)] rounded p-3 overflow-y-auto h-full"
+      className="font-mono-term text-[11px] leading-[1.7] text-[var(--body)] bg-[var(--bg-1)] border border-[var(--hair)] rounded p-3 overflow-y-auto overflow-x-hidden h-full"
       data-testid="activity-terminal-log"
     >
       {recent.length === 0 && (
@@ -176,13 +176,13 @@ function TerminalLog({
               key={i}
               type="button"
               onClick={() => onOpenRun(runDir, agent)}
-              className="w-full flex items-start gap-2 whitespace-pre text-left px-1 -mx-1 rounded hover:bg-[var(--bg-2)] cursor-pointer"
+              className="w-full flex items-start gap-2 text-left px-1 -mx-1 rounded hover:bg-[var(--bg-2)] cursor-pointer"
               data-testid={`log-row-iosnapshot-${i}`}
             >
-              <span className="text-[var(--faint)] shrink-0">[{ts}]</span>
+              <span className="text-[var(--faint)] shrink-0 tabular-nums">[{ts}]</span>
               <span className="text-[var(--amber)] shrink-0 w-20 truncate">io</span>
               <span className="text-[var(--faint)] shrink-0">›</span>
-              <span className="text-[var(--body)] break-all">
+              <span className="text-[var(--body)] break-all min-w-0 flex-1">
                 {agent} run {dur && `· ${dur}`} <span className="text-[var(--accent)] underline underline-offset-2">查看 prompt / response</span>
               </span>
             </button>
@@ -193,11 +193,11 @@ function TerminalLog({
             ? describeToolEvent(ev)
             : eventLabel(ev);
         return (
-          <div key={i} className="flex items-start gap-2 whitespace-pre">
-            <span className="text-[var(--faint)] shrink-0">[{ts}]</span>
+          <div key={i} className="flex items-start gap-2">
+            <span className="text-[var(--faint)] shrink-0 tabular-nums">[{ts}]</span>
             <span className={`${toneClass(src.tone)} shrink-0 w-20 truncate`}>{src.label}</span>
             <span className="text-[var(--faint)] shrink-0">›</span>
-            <span className="text-[var(--body)] break-all">{msg}</span>
+            <span className="text-[var(--body)] break-all min-w-0 flex-1">{msg}</span>
           </div>
         );
       })}
@@ -430,7 +430,7 @@ export function ProjectActivityView({
           <ProjectTree projectId={projectId} />
         </aside>
 
-        <main className="flex flex-col min-h-0 p-4 gap-3">
+        <main className="flex flex-col min-h-0 min-w-0 p-4 gap-3">
           {/* Run header: agent name + streaming badge */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm text-[var(--heading)] font-semibold truncate">
