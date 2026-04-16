@@ -6,7 +6,6 @@ import { BriefIntakeForm } from "../components/right/BriefIntakeForm";
 import { ExpertSelector } from "../components/right/ExpertSelector";
 import { AgentTimeline } from "../components/status/AgentTimeline";
 import { BriefSummaryCard } from "../components/left/BriefSummaryCard";
-import { TopicExpertSummonButton } from "../components/project/TopicExpertSummonButton";
 import { MissionCandidatesPanel } from "../components/left/MissionCandidateCard";
 import { SelectedMissionView } from "../components/left/SelectedMissionView";
 import { ProductOverviewCard } from "../components/left/ProductOverviewCard";
@@ -137,26 +136,33 @@ function BriefReadyPanel({ projectId, project, refetch }: { projectId: string; p
       {loadErr && (
         <div className="mt-2 text-xs text-[var(--red)]">读取 brief 失败：{loadErr}</div>
       )}
-      <div className="mt-3 flex items-center gap-3">
+      <div className="mt-4 flex items-center gap-2">
         <button
           type="button"
           data-testid="brief-edit-button"
-          className="text-xs text-[var(--accent)] hover:underline"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded border border-[var(--accent-soft)] bg-[var(--accent-fill)] text-sm text-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-on)] transition-colors"
           onClick={() => { void openEditor(); }}
         >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
           修改简报
         </button>
         <button
           type="button"
-          className="text-xs text-[var(--meta)] hover:text-[var(--heading)] hover:underline"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded border border-[var(--hair)] bg-[var(--bg-1)] text-sm text-[var(--body)] hover:border-[var(--hair-strong)] hover:bg-[var(--bg-2)] transition-colors"
           onClick={async () => {
             const res = await fetch(`/api/projects/${projectId}/brief/reanalyze`, { method: "POST" });
             if (res.ok) refetch();
           }}
         >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M23 4v6h-6" />
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+          </svg>
           重新解析
         </button>
-        <TopicExpertSummonButton projectId={projectId} briefSummary={project?.brief?.summary ?? undefined} />
       </div>
     </>
   );
