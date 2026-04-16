@@ -135,6 +135,15 @@ function CaseCard({
           )}
 
           <div className="flex items-center gap-4 text-[11px] text-[var(--faint)]">
+            <button
+              type="button"
+              onClick={onToggleExpand}
+              className="inline-flex items-center gap-1 text-[var(--accent)] hover:underline"
+              data-testid={`case-expand-${c.index}`}
+            >
+              {expanded ? "收起" : "展开详情"} {expanded ? "▴" : "▾"}
+            </button>
+            <span className="text-[var(--faint)]">·</span>
             <span>{c.steps.length} 步</span>
             <span>·</span>
             <span>{c.prompts.length} 条 prompt</span>
@@ -142,14 +151,6 @@ function CaseCard({
             <span>{c.expectedMedia.length} 项素材</span>
             <span>·</span>
             <span>{c.risks.length} 项风险</span>
-            <button
-              type="button"
-              onClick={onToggleExpand}
-              className="ml-auto inline-flex items-center gap-1 text-[var(--accent)] hover:underline"
-              data-testid={`case-expand-${c.index}`}
-            >
-              {expanded ? "收起" : "展开详情"} {expanded ? "▴" : "▾"}
-            </button>
           </div>
         </div>
       </div>
