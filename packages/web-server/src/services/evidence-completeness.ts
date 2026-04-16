@@ -45,14 +45,13 @@ export function computeCompleteness(caseDir: string): CompletenessResult {
   const has_recording = dirHasFiles(join(caseDir, "recordings"));
   const has_notes = notesHasContent(join(caseDir, "notes.md"));
 
-  // Loose rule: a case is "complete" when the user has (a) at least ONE piece
-  // of evidence (screenshot / generated / recording) AND (b) some notes.
-  // Previously required all three material types, which pushed users to
-  // pad empty uploads just to clear the gate.
-  const has_any_material = has_screenshot || has_generated || has_recording;
+  // Loosest rule: a case counts as "complete" when the user has provided ANY
+  // evidence at all — one screenshot, one recording, one generated artifact,
+  // or written notes. Evidence stage is user-driven; the system shouldn't
+  // gate-keep what "enough" means per case.
+  const has_any = has_screenshot || has_generated || has_recording || has_notes;
   const missing: CompletenessResult["missing"] = [];
-  if (!has_any_material) missing.push("material");
-  if (!has_notes) missing.push("notes");
+  if (!has_any) missing.push("material");
 
   return {
     complete: missing.length === 0,

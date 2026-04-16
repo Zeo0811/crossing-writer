@@ -133,7 +133,7 @@ export function EvidenceSection({
       <div className="flex items-center justify-between gap-4 pt-3 border-t border-[var(--hair)]">
         <div className="flex-1">
           <div className="flex items-center gap-2 text-xs text-[var(--meta)] mb-1">
-            <span>进度：{completeCount} / {total} 完整（每条需笔记 + 至少一份素材）</span>
+            <span>进度：{completeCount} / {total} 完整（每条只要有任一素材或笔记即可）</span>
             <span className="font-mono-term text-[var(--accent)]">{progress}%</span>
           </div>
           <div className="h-1.5 rounded-full bg-[var(--bg-2)] overflow-hidden">
