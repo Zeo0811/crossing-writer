@@ -29,3 +29,5 @@ export type {
   SkillContext,
 } from "./skills/types.js";
 export { dispatchSkill, parseSkillArgs } from "./skills/dispatcher.js";
+export { parsePanelV2, extractTypeSection } from './style-distiller/panel-parser-v2.js';
+export type { PanelV2, PanelFrontmatterV2, ArticleType, Role } from './style-distiller/panel-v2-schema.js';
