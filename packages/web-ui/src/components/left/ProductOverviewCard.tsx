@@ -1,7 +1,18 @@
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { useOverview } from "../../hooks/useOverview";
 import { approveOverview } from "../../api/client";
 import { ActionButton } from "../ui/ActionButton";
+import { stripFrontmatter } from "../../utils/markdown";
+
+const OVERVIEW_CHIP_KEYS = [
+  "product",
+  "brand",
+  "category",
+  "stage",
+  "target_user",
+  "model_used",
+];
 
 export function ProductOverviewCard({
   projectId, status,
@@ -17,6 +28,8 @@ export function ProductOverviewCard({
     await save(draft);
     setEditing(false);
   }
+
+  const { frontmatter, body } = stripFrontmatter(markdown);
 
   return (
     <div className="space-y-3">
@@ -42,12 +55,30 @@ export function ProductOverviewCard({
         </>
       ) : (
         <>
-          <pre
-            className="whitespace-pre-wrap text-sm text-[var(--body)] rounded bg-[var(--bg-1)] p-3 border border-[var(--hair)] max-h-[420px] overflow-auto"
-            style={{ fontFamily: "var(--font-mono)" }}
+          <article
+            className="bg-[var(--bg-1)] p-6 rounded border max-h-[480px] overflow-auto"
+            style={{ borderColor: "var(--hair)" }}
           >
-            {markdown}
-          </pre>
+            {Object.keys(frontmatter).length > 0 && (
+              <dl className="flex flex-wrap gap-2 text-xs mb-4">
+                {OVERVIEW_CHIP_KEYS
+                  .filter((k) => frontmatter[k] && frontmatter[k] !== "null")
+                  .map((k) => (
+                    <span
+                      key={k}
+                      className="px-2 py-0.5 rounded border bg-[var(--bg-2)]"
+                      style={{ borderColor: "var(--hair)" }}
+                    >
+                      <span className="text-[var(--meta)] mr-1">{k}:</span>
+                      <span className="font-medium">{frontmatter[k]}</span>
+                    </span>
+                  ))}
+              </dl>
+            )}
+            <div className="prose prose-sm max-w-none text-[var(--body)]">
+              <ReactMarkdown>{body}</ReactMarkdown>
+            </div>
+          </article>
           <div className="flex items-center justify-end gap-2">
             <button
               onClick={() => { setDraft(markdown); setEditing(true); }}

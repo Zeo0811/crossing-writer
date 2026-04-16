@@ -307,10 +307,7 @@ function renderPhaseView(props: PhaseViewProps): React.ReactNode {
 
     case "overview_ready":
       return (
-        <div className="space-y-4">
-          <PhasePanel label="产品概览"><ProductOverviewCard projectId={projectId} status={status} /></PhasePanel>
-          <PhasePanel label="补充材料（可选）"><OverviewIntakeForm projectId={projectId} /></PhasePanel>
-        </div>
+        <PhasePanel label="产品概览"><ProductOverviewCard projectId={projectId} status={status} /></PhasePanel>
       );
 
     case "awaiting_case_expert_selection":
