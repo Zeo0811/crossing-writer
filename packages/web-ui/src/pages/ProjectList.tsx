@@ -48,8 +48,8 @@ export function ProjectList() {
 
   const activeItems: Project[] = activeData?.items ?? [];
   const archivedItems: Project[] = archivedData?.items ?? [];
-  const activeCount = archivedData?.active_count ?? activeItems.length;
-  const archivedCount = activeData?.archived_count ?? archivedItems.length;
+  const activeCount = activeItems.length;
+  const archivedCount = activeData?.archived_count ?? 0;
 
   const source = tab === "active" ? activeItems : archivedItems;
   const visible = useMemo(
@@ -120,7 +120,12 @@ export function ProjectList() {
           project={deleteTarget}
           onCancel={() => setDeleteTarget(null)}
           onConfirm={async () => {
-            await destroy.mutateAsync({ id: deleteTarget.id, confirm: deleteTarget.slug ?? deleteTarget.id });
+            try {
+              await destroy.mutateAsync({ id: deleteTarget.id, confirm: deleteTarget.slug ?? deleteTarget.id });
+              toast.success("已删除");
+            } catch (e) {
+              toast.error(`删除失败：${e instanceof Error ? e.message : String(e)}`);
+            }
             setDeleteTarget(null);
           }}
         />
@@ -298,32 +303,18 @@ function NewProjectModal({ busy, onClose, onCreate }: { busy?: boolean; onClose:
 }
 
 function DeleteModal({ project, onCancel, onConfirm }: { project: Project; onCancel: () => void; onConfirm: () => void }) {
-  const [typed, setTyped] = useState("");
-  const slug = project.slug ?? project.id;
-  const ok = typed.trim() === slug;
   return (
     <Dialog open onOpenChange={(o) => !o && onCancel()}>
-      <DialogContent className="border-[var(--red)]">
-        <DialogHeader title="永久删除项目？" onClose={onCancel} />
-        <DialogBody className="space-y-3">
+      <DialogContent width={380}>
+        <DialogHeader title="删除项目" onClose={onCancel} />
+        <DialogBody>
           <p className="text-sm text-[var(--body)]">
-            这会<strong>永久删除</strong> <span className="text-[var(--red)] font-semibold">{project.name}</span> 及其所有数据。此操作不可恢复。
+            确定永久删除 <span className="text-[var(--red)] font-semibold">{project.name}</span>？此操作不可恢复。
           </p>
-          <FormField label={`输入项目 slug「${slug}」以确认`}>
-            <Input
-              autoFocus
-              value={typed}
-              onChange={(e) => setTyped(e.target.value)}
-              placeholder={slug}
-              error
-            />
-          </FormField>
         </DialogBody>
         <DialogFooter>
           <Button variant="ghost" size="sm" onClick={onCancel}>取消</Button>
-          <Button variant="danger" size="sm" disabled={!ok} onClick={onConfirm}>
-            永久删除
-          </Button>
+          <Button variant="danger" size="sm" onClick={onConfirm}>删除</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
