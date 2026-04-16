@@ -45,9 +45,11 @@ export function WriterProgressPanel({ projectId, sectionsPlanned, status }: Writ
       if (ev.type === "writer.section_started") {
         card.state = "running";
         card.agent = data.agent; card.cli = data.cli; card.model = data.model;
+        delete card.error;
       } else if (ev.type === "writer.section_completed") {
         card.state = "completed";
         card.agent = data.agent; card.durationMs = data.duration_ms;
+        delete card.error;
       } else if (ev.type === "writer.section_failed") {
         card.state = "failed"; card.agent = data.agent; card.error = data.error;
       }
