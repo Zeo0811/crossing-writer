@@ -195,16 +195,12 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
           <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]">✕</button>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-3">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {error && (
             <div className="rounded border border-[var(--red)] bg-[rgba(255,107,107,0.05)] px-3 py-2 text-sm text-[var(--red)]">
               {error}
             </div>
           )}
-
-          <p className="text-xs text-[var(--meta)] mb-2">
-            覆盖默认 agent 配置。只覆盖本项目，不改全局。
-          </p>
 
           {WRITER_AGENTS.map((agentKey) => {
             const defaultCfg = defaults[agentKey];
@@ -216,60 +212,62 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
             const hasOverride = Boolean(ov.model || ov.styleBinding || ov.tools || ov.promptVersion);
             const roleChoices = role ? (stylePanelsByRole.get(role) ?? []) : [];
             const label =
-              agentKey === "writer.opening" ? "开篇 writer" :
-              agentKey === "writer.practice" ? "Case 正文 writer" :
-              agentKey === "writer.closing" ? "收束 writer" : agentKey;
+              agentKey === "writer.opening" ? "开篇" :
+              agentKey === "writer.practice" ? "Case 正文" :
+              agentKey === "writer.closing" ? "收束" : agentKey;
+            const accentColor =
+              agentKey === "writer.opening" ? "var(--accent)" :
+              agentKey === "writer.practice" ? "var(--amber)" :
+              "var(--pink)";
 
             return (
               <div
                 key={agentKey}
-                className="rounded bg-[var(--bg-2)] p-4"
+                className="rounded bg-[var(--bg-2)] overflow-hidden flex"
               >
-                <div className="flex items-center justify-between mb-3">
-                  <div>
+                <div className="w-1 shrink-0" style={{ background: accentColor }} />
+                <div className="flex-1 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
                     <div className="text-sm font-semibold text-[var(--heading)]">{label}</div>
-                    <div className="text-[10px] text-[var(--faint)]" style={{ fontFamily: "var(--font-mono)" }}>{agentKey}</div>
+                    {hasOverride ? (
+                      <button
+                        type="button"
+                        data-testid={`clear-override-${agentKey}`}
+                        onClick={() => { void handleClear(agentKey); }}
+                        className="text-[10px] text-[var(--accent)] hover:underline"
+                      >
+                        恢复默认
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-[var(--faint)]">使用默认</span>
+                    )}
                   </div>
-                  {hasOverride && (
-                    <button
-                      type="button"
-                      data-testid={`clear-override-${agentKey}`}
-                      onClick={() => { void handleClear(agentKey); }}
-                      className="text-xs text-[var(--accent)] hover:underline"
-                    >
-                      恢复默认
-                    </button>
-                  )}
-                </div>
 
-                <div className="space-y-2">
-                  <label className="block">
-                    <span className="text-xs text-[var(--meta)] block mb-1">模型</span>
+                  <div className="grid grid-cols-[40px_1fr] gap-x-3 gap-y-1.5 items-center">
+                    <span className="text-xs text-[var(--meta)]">模型</span>
                     <select
                       data-testid={`override-model-${agentKey}`}
                       value={modelValue}
                       onChange={(e) => handleModelChange(agentKey, e.target.value)}
-                      className="w-full bg-[var(--bg-1)] border border-[var(--hair)] rounded px-3 py-2 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
+                      className="w-full bg-[var(--bg-1)] border border-[var(--hair)] rounded px-2.5 py-1.5 text-xs text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
                     >
-                      <option value="">默认：{modelLabel(defaultCfg.model)}</option>
+                      <option value="">默认 · {modelLabel(defaultCfg.model)}</option>
                       {MODEL_CHOICES.filter((m) => modelKey(m) !== modelKey(defaultCfg.model)).map((m) => (
                         <option key={modelKey(m)} value={modelKey(m)}>
                           {modelLabel(m)}
                         </option>
                       ))}
                     </select>
-                  </label>
 
-                  <label className="block">
-                    <span className="text-xs text-[var(--meta)] block mb-1">风格</span>
+                    <span className="text-xs text-[var(--meta)]">风格</span>
                     <select
                       data-testid={`override-style-${agentKey}`}
                       value={styleValue}
                       onChange={(e) => handleStyleChange(agentKey, e.target.value)}
-                      className="w-full bg-[var(--bg-1)] border border-[var(--hair)] rounded px-3 py-2 text-sm text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
+                      className="w-full bg-[var(--bg-1)] border border-[var(--hair)] rounded px-2.5 py-1.5 text-xs text-[var(--body)] outline-none focus:border-[var(--accent-soft)]"
                     >
                       <option value="">
-                        默认：{defaultCfg.styleBinding ? styleLabel(defaultCfg.styleBinding) : "(未绑定)"}
+                        默认 · {defaultCfg.styleBinding ? styleLabel(defaultCfg.styleBinding) : "(未绑定)"}
                       </option>
                       {roleChoices
                         .filter((p) => {
@@ -285,7 +283,7 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
                           </option>
                         ))}
                     </select>
-                  </label>
+                  </div>
                 </div>
               </div>
             );

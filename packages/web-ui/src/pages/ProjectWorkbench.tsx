@@ -410,11 +410,11 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
         <button
           type="button"
           onClick={() => setOverrideOpen(true)}
-          className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded border border-[var(--hair)] text-xs text-[var(--meta)] hover:text-[var(--heading)] hover:border-[var(--accent-soft)]"
-          title="覆盖本项目 agent 配置（模型 / 风格 / 工具）"
+          className="w-7 h-7 flex items-center justify-center rounded text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"
+          title="本项目配置（覆盖 agent 模型 / 风格 / 工具）"
+          aria-label="本项目配置"
         >
-          <span aria-hidden>⚙</span>
-          <span>本项目配置</span>
+          ⚙
         </button>
       </header>
 
