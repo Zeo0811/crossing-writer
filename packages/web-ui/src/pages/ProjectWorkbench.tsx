@@ -554,6 +554,9 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
               ))}
             </ul>
             <div className="flex gap-2">
+              <Link to="/style-panels" className="text-xs px-3 py-1.5 border border-[var(--accent-soft)] bg-[var(--accent)] text-[var(--accent-on)] font-semibold rounded no-underline hover:shadow-[0_0_12px_var(--accent-dim)]">
+                去风格库蒸馏 →
+              </Link>
               <button type="button" onClick={() => setOverrideOpen(true)} className="px-3 py-1.5 text-xs rounded border border-[var(--hair-strong)] text-[var(--meta)] hover:text-[var(--heading)]">
                 本项目专属配置
               </button>
