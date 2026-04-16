@@ -35,8 +35,29 @@ export async function composePanel(
     userMessage,
     model: 'claude-opus-4-6',
   });
-  validateOutput(resp.text);
-  return resp.text;
+  const cleaned = stripOuterFences(resp.text);
+  validateOutput(cleaned);
+  return cleaned;
+}
+
+/**
+ * Opus occasionally wraps the whole panel in ```markdown ... ``` or prepends a
+ * "Here's the panel:" preamble. Be lenient: strip a single outer markdown fence
+ * and any leading whitespace / preamble lines up to the first `---`.
+ */
+function stripOuterFences(text: string): string {
+  let t = text;
+  // Drop outer code fences if present
+  const fence = /^\s*```(?:markdown|md|yaml)?\s*\n([\s\S]*?)\n```\s*$/;
+  const m = t.match(fence);
+  if (m) t = m[1]!;
+  // Trim leading whitespace/blank lines, then if there's text before the first `---`, drop it
+  t = t.replace(/^\s+/, '');
+  if (!t.startsWith('---')) {
+    const idx = t.indexOf('\n---\n');
+    if (idx >= 0) t = t.slice(idx + 1);
+  }
+  return t;
 }
 
 export function buildUserMessage(

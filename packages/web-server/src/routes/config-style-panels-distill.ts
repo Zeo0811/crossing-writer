@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { join } from "node:path";
 import type { StylePanelStore } from "../services/style-panel-store.js";
 import {
   runRoleDistill as defaultRunRoleDistill,
@@ -189,6 +190,10 @@ export function registerConfigStylePanelsDistillRoutes(
       const runStore = deps.distillRunStore;
       const runId = `rdall-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+      // Persist prompt / response artifacts for each opus call so we can
+      // diagnose panel-shape or prompt-compliance failures after the fact.
+      const runLogDir = join(deps.vaultPath, "08_experts/style-panel/_runs", runId, "artifacts");
+
       const invokeLabeler = async (o: { systemPrompt: string; userMessage: string; model?: string }) => {
         const r = await invokeAgent({
           agentKey: "style_distiller.labeler",
@@ -196,6 +201,7 @@ export function registerConfigStylePanelsDistillRoutes(
           model: o.model ?? "claude-opus-4-6",
           systemPrompt: o.systemPrompt,
           userMessage: o.userMessage,
+          runLogDir,
         });
         return { text: r.text, meta: { cli: r.meta.cli, durationMs: r.meta.durationMs } };
       };
@@ -206,6 +212,7 @@ export function registerConfigStylePanelsDistillRoutes(
           model: o.model ?? "claude-opus-4-6",
           systemPrompt: o.systemPrompt,
           userMessage: o.userMessage,
+          runLogDir,
         });
         return { text: r.text, meta: { cli: r.meta.cli, durationMs: r.meta.durationMs } };
       };
