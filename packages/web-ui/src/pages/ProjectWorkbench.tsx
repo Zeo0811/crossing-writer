@@ -28,6 +28,38 @@ interface FailureInfo {
   error?: string;
 }
 
+interface BlockedInfo {
+  reason: string;
+  projectId?: string;
+  missingBindings?: Array<{
+    agentKey: string;
+    account?: string;
+    role?: string;
+    reason: string;
+    found_version?: number;
+    article_type?: string;
+    available_types?: string[];
+  }>;
+}
+
+function findLastBlocked(events: any[]): BlockedInfo | null {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e: any = events[i];
+    if (e?.type === 'run.blocked') {
+      return {
+        reason: e.reason ?? e.data?.reason,
+        projectId: e.projectId ?? e.data?.projectId,
+        missingBindings: e.missingBindings ?? e.data?.missingBindings,
+      };
+    }
+    // stop walking back once we hit a state_changed FROM writing_* (outside the run)
+    if (e?.type === 'state_changed' && typeof e.data?.from === 'string' && !e.data.from.startsWith('writing_')) {
+      break;
+    }
+  }
+  return null;
+}
+
 function findLastFailure(events: any[]): FailureInfo | null {
   for (let i = events.length - 1; i >= 0; i--) {
     const e: any = events[i];
@@ -67,6 +99,116 @@ function FailureCard({ title, fail, onRetry }: { title: string; fail: FailureInf
       )}
     </div>
   );
+}
+
+function BlockedBanner({
+  blocked,
+  onNavigateBrief,
+  onNavigateStylePanels,
+}: {
+  blocked: BlockedInfo;
+  onNavigateBrief: () => void;
+  onNavigateStylePanels: () => void;
+}) {
+  const wrap = (title: string, body: React.ReactNode, actions: React.ReactNode) => (
+    <div className="rounded border border-[var(--red)] bg-[rgba(255,107,107,0.05)] p-5 space-y-3">
+      <div className="flex items-start gap-3">
+        <span className="text-xl text-[var(--red)]">⚠</span>
+        <div className="flex-1">
+          <h3 className="font-semibold text-[var(--red)]">{title}</h3>
+          <div className="text-sm text-[var(--body)] mt-1.5">{body}</div>
+        </div>
+      </div>
+      {actions && <div className="flex gap-2 justify-end">{actions}</div>}
+    </div>
+  );
+
+  if (blocked.reason === 'missing_article_type') {
+    return wrap(
+      '请回 Brief 阶段选择文章类型',
+      <p>写作需要知道本文是实测 / 访谈 / 评论，才能选择对应风格。</p>,
+      <button
+        onClick={onNavigateBrief}
+        className="px-4 py-1.5 rounded bg-[var(--accent)] text-[var(--accent-on)] text-sm font-semibold"
+      >
+        返回 Brief
+      </button>
+    );
+  }
+
+  // binding-level blocks
+  const mb = blocked.missingBindings ?? [];
+  const hasVersionOld = mb.some((m) => m.reason === 'panel_version_too_old');
+  const hasTypeMissing = mb.some((m) => m.reason === 'type_not_in_panel');
+  const hasNotBound = mb.some((m) => ['missing', 'deleted_only', 'legacy_only', 'style_not_bound'].includes(m.reason));
+
+  if (hasVersionOld) {
+    const accounts = [...new Set(mb.filter((m) => m.reason === 'panel_version_too_old').map((m) => m.account))];
+    return wrap(
+      '风格面板需要升级到 v2',
+      <>
+        <p>账号 {accounts.join(' / ')} 的风格面板是旧版本（v1），不能用于新版写作。</p>
+        <p className="text-xs text-[var(--meta)] mt-1">请到风格库重新蒸馏。</p>
+      </>,
+      <button
+        onClick={onNavigateStylePanels}
+        className="px-4 py-1.5 rounded bg-[var(--accent)] text-[var(--accent-on)] text-sm font-semibold"
+      >
+        去风格库
+      </button>
+    );
+  }
+
+  if (hasTypeMissing) {
+    const items = mb.filter((m) => m.reason === 'type_not_in_panel');
+    return wrap(
+      '当前风格面板缺少所选文章类型',
+      <ul className="space-y-1 text-xs list-disc pl-5">
+        {items.map((m, i) => (
+          <li key={i}>
+            {m.account}/{m.role}：缺少「{m.article_type}」类型
+            {m.available_types?.length ? <>（仅有 {m.available_types.join(' / ')}）</> : null}
+          </li>
+        ))}
+      </ul>,
+      <>
+        <button
+          onClick={onNavigateBrief}
+          className="px-3 py-1.5 rounded text-sm text-[var(--meta)] hover:text-[var(--heading)]"
+        >
+          改文章类型
+        </button>
+        <button
+          onClick={onNavigateStylePanels}
+          className="px-4 py-1.5 rounded bg-[var(--accent)] text-[var(--accent-on)] text-sm font-semibold"
+        >
+          去风格库
+        </button>
+      </>
+    );
+  }
+
+  if (hasNotBound) {
+    const items = mb.filter((m) => ['missing', 'deleted_only', 'legacy_only', 'style_not_bound'].includes(m.reason));
+    return wrap(
+      '风格绑定未解析',
+      <ul className="space-y-1 text-xs list-disc pl-5">
+        {items.map((m, i) => (
+          <li key={i}>
+            {m.account ?? '(unknown)'}/{m.role ?? '(unknown)'}：{m.reason}
+          </li>
+        ))}
+      </ul>,
+      <button
+        onClick={onNavigateStylePanels}
+        className="px-4 py-1.5 rounded bg-[var(--accent)] text-[var(--accent-on)] text-sm font-semibold"
+      >
+        去风格库
+      </button>
+    );
+  }
+
+  return wrap('写作被阻塞', <p>原因：{blocked.reason}</p>, null);
 }
 
 function PhasePanel({ children, label }: { children: React.ReactNode; label?: string }) {
@@ -371,8 +513,25 @@ function renderPhaseView(props: PhaseViewProps): React.ReactNode {
     case "writing_editing":
       return <ArticleEditor projectId={projectId} />;
 
-    case "writing_failed":
-      return <FailureCard title="写作失败" fail={findLastFailure(events)} onRetry={refetch} />;
+    case "writing_failed": {
+      const blocked = findLastBlocked(events);
+      if (blocked) {
+        return (
+          <BlockedBanner
+            blocked={blocked}
+            onNavigateBrief={() => {
+              window.location.href = `/projects/${projectId}`;
+            }}
+            onNavigateStylePanels={() => {
+              window.location.href = '/style-panels';
+            }}
+          />
+        );
+      }
+      return (
+        <FailureCard title="写作失败" fail={findLastFailure(events)} onRetry={refetch} />
+      );
+    }
 
     default:
       return <div className="text-[var(--meta)]">未知状态: {status}</div>;
