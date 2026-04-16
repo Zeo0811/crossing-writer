@@ -76,7 +76,7 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
       listConfigStylePanels(),
     ]);
     setDefaults(cfgs.agents);
-    setOverride(ov ?? { agents: {} });
+    setOverride({ agents: (ov as any)?.agents ?? {} });
     setPanels(pl.panels);
   }, [projectId]);
 
