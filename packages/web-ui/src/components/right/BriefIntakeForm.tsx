@@ -180,23 +180,45 @@ export function BriefIntakeForm({
               )}
             </div>
             {uploadedItems.length > 0 && (
-              <ul className="border-t border-[var(--hair)] p-2 space-y-1" data-testid="brief-attachment-list">
-                {uploadedItems.map((it, i) => (
-                  <li key={`${it.url}-${i}`} className="flex items-center gap-2 text-xs px-2 py-1.5 rounded bg-[var(--bg-2)]">
-                    <span>{it.kind === "image" ? "🖼" : "📎"}</span>
-                    <span className="flex-1 truncate text-[var(--body)]">{it.filename}</span>
-                    <span className="text-[var(--faint)]">{Math.round(it.size / 1024)} KB</span>
-                    <button
-                      type="button"
-                      onClick={() => removeUploaded(i)}
-                      className="text-[var(--meta)] hover:text-[var(--red)]"
-                      aria-label={`删除 ${it.filename}`}
-                    >
-                      ✕
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <div className="border-t border-[var(--hair)] p-2" data-testid="brief-attachment-list">
+                <div className="flex flex-wrap gap-2">
+                  {uploadedItems.map((it, i) => {
+                    const url = it.kind === "image"
+                      ? `/api/projects/${encodeURIComponent(projectId)}/brief/${it.url}`
+                      : `/api/projects/${encodeURIComponent(projectId)}/brief/${it.url.replace("attachments/", "files/")}`;
+                    if (it.kind === "image") {
+                      return (
+                        <div key={`${it.url}-${i}`} className="relative group rounded overflow-hidden bg-[var(--bg-2)] w-20 h-20" title={it.filename}>
+                          <img src={url} alt={it.filename} className="w-full h-full object-cover" loading="lazy" />
+                          <button
+                            type="button"
+                            onClick={() => removeUploaded(i)}
+                            className="absolute top-0.5 right-0.5 w-4 h-4 rounded bg-[rgba(0,0,0,0.6)] text-white hover:bg-[var(--red)] opacity-0 group-hover:opacity-100 text-[10px] flex items-center justify-center"
+                            aria-label={`删除 ${it.filename}`}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={`${it.url}-${i}`} className="flex items-center gap-2 text-xs px-2.5 h-7 rounded bg-[var(--bg-2)]">
+                        <span>📎</span>
+                        <span className="truncate max-w-[160px] text-[var(--body)]">{it.filename}</span>
+                        <span className="text-[var(--faint)]">{Math.round(it.size / 1024)}KB</span>
+                        <button
+                          type="button"
+                          onClick={() => removeUploaded(i)}
+                          className="text-[var(--meta)] hover:text-[var(--red)]"
+                          aria-label={`删除 ${it.filename}`}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             )}
             <div className="px-3 py-2 border-t border-[var(--hair)] text-xs text-[var(--faint)]">
               {text.length} 字
