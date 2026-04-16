@@ -38,6 +38,7 @@ import { registerTopicExpertConsultRoutes } from "./routes/topic-expert-consult.
 import { invokeTopicExpert } from "@crossing/agents";
 import { ContextBundleService } from "./services/context-bundle-service.js";
 import { registerContextRoutes } from "./routes/context.js";
+import { registerProjectTreeRoutes } from "./routes/project-tree.js";
 
 const configPath = process.env.CROSSING_CONFIG
   ?? resolve(process.cwd(), "../../config.json");
@@ -64,6 +65,11 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
     agents: cfg.agents,
     defaultCli: cfg.defaultCli,
     fallbackCli: cfg.fallbackCli,
+  });
+
+  registerProjectTreeRoutes(app, {
+    store,
+    projectsDir: cfg.projectsDir,
   });
 
   const registry = new ExpertRegistry(cfg.expertsDir);

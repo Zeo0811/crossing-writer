@@ -4,7 +4,7 @@ import { getProject } from "../api/client";
 import { useProjectStream } from "../hooks/useProjectStream";
 import { BriefIntakeForm } from "../components/right/BriefIntakeForm";
 import { ExpertSelector } from "../components/right/ExpertSelector";
-import { AgentTimeline } from "../components/status/AgentTimeline";
+import { ProjectActivityView } from "../components/status/ProjectActivityView";
 import { BriefSummaryCard } from "../components/left/BriefSummaryCard";
 import { MissionCandidatesPanel } from "../components/left/MissionCandidateCard";
 import { SelectedMissionView } from "../components/left/SelectedMissionView";
@@ -339,26 +339,38 @@ function renderPhaseView(props: PhaseViewProps): React.ReactNode {
   }
 }
 
-function ActivityDrawer({ events, connectionState, lastEventTs }: { events: any[]; connectionState: any; lastEventTs: any }) {
+function ActivityDrawer({ projectId, events, connectionState, lastEventTs }: { projectId: string; events: any[]; connectionState: any; lastEventTs: any }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border-t border-[var(--hair)]">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-6 py-2.5 text-xs text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"
-      >
-        <span className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
-          Agent 活动（{events.length}）
-        </span>
-        <span>{open ? "收起 ▴" : "展开 ▾"}</span>
-      </button>
+    <>
+      <div className="border-t border-[var(--hair)]">
+        <button
+          onClick={() => setOpen(true)}
+          className="w-full flex items-center justify-between px-6 py-2.5 text-xs text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"
+        >
+          <span className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
+            Agent 活动（{events.length}）
+          </span>
+          <span>展开 ▾</span>
+        </button>
+      </div>
       {open && (
-        <div className="px-6 py-4 bg-[var(--bg-0)] max-h-[320px] overflow-auto">
-          <AgentTimeline events={events} connectionState={connectionState} lastEventTs={lastEventTs} />
+        <div
+          role="dialog"
+          aria-label="Agent 活动"
+          className="fixed inset-0 z-50 flex flex-col bg-[var(--bg-0)]"
+        >
+          <ProjectActivityView
+            projectId={projectId}
+            events={events}
+            connectionState={connectionState}
+            lastEventTs={lastEventTs}
+            onClose={() => setOpen(false)}
+          />
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -496,7 +508,7 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
         {renderPhaseView({ project, projectId, events, refetch, selectedEvidenceCase, setSelectedEvidenceCase, missingBindings })}
       </main>
 
-      <ActivityDrawer events={events} connectionState={connectionState} lastEventTs={lastEventTs} />
+      <ActivityDrawer projectId={projectId} events={events} connectionState={connectionState} lastEventTs={lastEventTs} />
 
       {overrideOpen && (
         <ProjectOverridePanel projectId={projectId} onClose={() => setOverrideOpen(false)} />
