@@ -17,7 +17,7 @@ export function BriefIntakeForm({
 }) {
   const [mode, setMode] = useState<"text" | "file" | "image">("text");
   const [text, setText] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [imageFiles, setImageFiles] = useState<BriefAttachmentItem[]>([]);
   const imageTabInputRef = useRef<HTMLInputElement | null>(null);
   const [productName, setProductName] = useState("");
@@ -95,12 +95,14 @@ export function BriefIntakeForm({
           notes: notes || undefined,
         });
       } else {
-        if (!file) throw new Error("请选择文件");
-        await api.uploadBriefFile(projectId, file, {
-          productName: productName || undefined,
-          productUrl: productUrl || undefined,
-          notes: notes || undefined,
-        });
+        if (files.length === 0) throw new Error("请选择文件");
+        for (const f of files) {
+          await api.uploadBriefFile(projectId, f, {
+            productName: productName || undefined,
+            productUrl: productUrl || undefined,
+            notes: notes || undefined,
+          });
+        }
       }
       onUploaded();
     } catch (e: any) { setErr(String(e.message ?? e)); }
@@ -126,9 +128,6 @@ export function BriefIntakeForm({
       <div className="rounded border border-[var(--hair)] bg-[var(--bg-1)] min-h-[260px] flex flex-col">
         {mode === "text" ? (
           <>
-            <div className="flex items-center justify-end px-3 py-2 border-b border-[var(--hair)]">
-              <span className="text-xs text-[var(--faint)]">支持 Cmd+V 粘贴图片 / 拖拽上传</span>
-            </div>
             <div className="relative flex-1">
               <textarea
                 ref={taRef}
@@ -162,7 +161,7 @@ export function BriefIntakeForm({
                 }}
                 rows={10}
                 className="w-full h-full min-h-[200px] bg-transparent p-3 text-sm text-[var(--body)] outline-none resize-none"
-                placeholder="把甲方简报粘贴进来…（支持 Cmd+V 粘贴图片）"
+                placeholder="把甲方简报粘贴进来…（支持 Cmd+V 粘贴图片 / 拖拽上传）"
                 data-testid="brief-textarea"
               />
               {drop.isDragging && (
@@ -225,18 +224,42 @@ export function BriefIntakeForm({
             </div>
           </>
         ) : mode === "file" ? (
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            className="flex-1 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-[var(--bg-2)] min-h-[200px]"
-          >
-            <span className="text-3xl text-[var(--accent)]">⇣</span>
-            <span className="text-sm text-[var(--body)]">{file ? file.name : "拖入 .pdf / .docx / .md / .txt，或点击选择"}</span>
-            {!file && <span className="text-xs text-[var(--faint)]">支持拖拽 · 点击选择</span>}
-            <input
-              ref={fileInputRef}
-              type="file" accept=".docx,.pdf,.md,.txt" hidden
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            />
+          <div className="flex-1 flex flex-col">
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-[var(--bg-2)] py-12 min-h-[200px]"
+            >
+              <span className="text-3xl text-[var(--accent)]">⇣</span>
+              <span className="text-sm text-[var(--body)]">拖入 .pdf / .docx / .md / .txt，可批量</span>
+              <span className="text-xs text-[var(--faint)]">支持拖拽 · 点击选择</span>
+              <input
+                ref={fileInputRef}
+                type="file" accept=".docx,.pdf,.md,.txt" multiple hidden
+                onChange={(e) => {
+                  if (!e.target.files?.length) return;
+                  setFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+              />
+            </div>
+            {files.length > 0 && (
+              <div className="border-t border-[var(--hair)] p-3 space-y-1.5">
+                {files.map((f, i) => (
+                  <div key={`${f.name}-${i}`} className="flex items-center gap-3 px-3 py-2 rounded bg-[var(--bg-2)] text-sm">
+                    <span className="text-[var(--accent)]">📄</span>
+                    <span className="flex-1 truncate text-[var(--body)]">{f.name}</span>
+                    <span className="text-xs text-[var(--faint)]">{(f.size / 1024).toFixed(1)} KB</span>
+                    <button
+                      onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}
+                      className="text-[var(--meta)] hover:text-[var(--red)]"
+                      aria-label={`删除 ${f.name}`}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex-1 flex flex-col">
