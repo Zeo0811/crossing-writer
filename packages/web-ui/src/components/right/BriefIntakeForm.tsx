@@ -142,6 +142,12 @@ export function BriefIntakeForm({
       if (mode === "text") {
         if (!text.trim()) throw new Error("简报文本不能为空");
         await api.uploadBriefText(projectId, { text });
+      } else if (mode === "image") {
+        if (imageFiles.length === 0) throw new Error("请选择图片");
+        const md = imageFiles
+          .map((it) => `![${it.filename}](${it.url})`)
+          .join("\n\n");
+        await api.uploadBriefText(projectId, { text: md });
       } else {
         if (files.length === 0) throw new Error("请选择文件");
         for (const f of files) {
