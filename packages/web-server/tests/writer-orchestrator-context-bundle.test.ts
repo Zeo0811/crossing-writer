@@ -3,23 +3,21 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const captured: { key: string; userMessage: string }[] = [];
+// For bookend (opening/closing), context is passed as projectContextBlock.
+// For practice/critic, context is prepended into userMessage.
+const captured: { key: string; userMessage: string; projectContextBlock?: string }[] = [];
 
 vi.mock("@crossing/agents", async () => {
   const actual = await vi.importActual<any>("@crossing/agents");
   return {
     ...actual,
-    runWriterOpening: vi.fn(async (opts: any) => {
-      captured.push({ key: "opening", userMessage: opts.userMessage });
-      return { finalText: "O", toolsUsed: [], rounds: 1, meta: { cli: "claude", durationMs: 1 } };
+    runWriterBookend: vi.fn(async (opts: any) => {
+      captured.push({ key: opts.role, userMessage: opts.userMessage, projectContextBlock: opts.projectContextBlock });
+      return { finalText: opts.role === 'opening' ? "O" : "C", toolsUsed: [], rounds: 1, meta: { cli: "claude", durationMs: 1 } };
     }),
     runWriterPractice: vi.fn(async (opts: any) => {
       captured.push({ key: "practice", userMessage: opts.userMessage });
       return { finalText: "P", toolsUsed: [], rounds: 1, meta: { cli: "claude", durationMs: 1 } };
-    }),
-    runWriterClosing: vi.fn(async (opts: any) => {
-      captured.push({ key: "closing", userMessage: opts.userMessage });
-      return { finalText: "C", toolsUsed: [], rounds: 1, meta: { cli: "claude", durationMs: 1 } };
     }),
     runStyleCritic: vi.fn(async (opts: any) => {
       captured.push({ key: "critic", userMessage: opts.userMessage });
@@ -88,9 +86,13 @@ describe("writer-orchestrator SP-19 ContextBundle integration", () => {
     });
     expect(captured.length).toBeGreaterThan(0);
     for (const c of captured) {
-      expect(c.userMessage).toContain("[Project Context]");
-      expect(c.userMessage).toContain("BRIEF-SNAPSHOT-TOKEN-xyz123");
-      expect(c.userMessage).toContain("[/Project Context]");
+      // opening/closing: context is in projectContextBlock; practice/critic: prepended in userMessage
+      const contextSource = (c.key === 'opening' || c.key === 'closing')
+        ? c.projectContextBlock ?? ''
+        : c.userMessage;
+      expect(contextSource).toContain("[Project Context]");
+      expect(contextSource).toContain("BRIEF-SNAPSHOT-TOKEN-xyz123");
+      expect(contextSource).toContain("[/Project Context]");
     }
   });
 
@@ -106,7 +108,10 @@ describe("writer-orchestrator SP-19 ContextBundle integration", () => {
       writerConfig: { cli_model_per_agent: {}, reference_accounts_per_agent: {} },
     });
     for (const c of captured) {
-      expect(c.userMessage).not.toContain("[Project Context]");
+      const contextSource = (c.key === 'opening' || c.key === 'closing')
+        ? c.projectContextBlock ?? ''
+        : c.userMessage;
+      expect(contextSource).not.toContain("[Project Context]");
     }
   });
 });

@@ -5,8 +5,8 @@ import { join } from "node:path";
 
 vi.mock("@crossing/agents", async () => {
   const actual = await vi.importActual<any>("@crossing/agents");
-  const runWriterOpening = vi.fn(async (opts: any) => ({
-    finalText: "OPENING",
+  const runWriterBookend = vi.fn(async (opts: any) => ({
+    finalText: opts.role === 'opening' ? "OPENING" : "CLOSING",
     toolsUsed: [],
     rounds: 1,
     meta: { cli: "claude", model: "opus", durationMs: 1, total_duration_ms: 1 },
@@ -14,12 +14,6 @@ vi.mock("@crossing/agents", async () => {
   }));
   const runWriterPractice = vi.fn(async () => ({
     finalText: "PRACTICE",
-    toolsUsed: [],
-    rounds: 1,
-    meta: { cli: "claude", model: "opus", durationMs: 1, total_duration_ms: 1 },
-  }));
-  const runWriterClosing = vi.fn(async () => ({
-    finalText: "CLOSING",
     toolsUsed: [],
     rounds: 1,
     meta: { cli: "claude", model: "opus", durationMs: 1, total_duration_ms: 1 },
@@ -32,9 +26,8 @@ vi.mock("@crossing/agents", async () => {
   }));
   return {
     ...actual,
-    runWriterOpening,
+    runWriterBookend,
     runWriterPractice,
-    runWriterClosing,
     runStyleCritic,
     PracticeStitcherAgent: vi.fn().mockImplementation(() => ({
       stitch: vi.fn(async () => ({ transitions: {}, meta: { cli: "claude", durationMs: 1 } })),
@@ -125,7 +118,8 @@ describe("writer-orchestrator sp10 style binding integration", () => {
     expect(result).toBeUndefined();
 
     const agents = await import("@crossing/agents");
-    const openingCall = (agents.runWriterOpening as any).mock.calls[0][0];
+    const bookendCalls = (agents.runWriterBookend as any).mock.calls;
+    const openingCall = bookendCalls.find((c: any[]) => c[0].role === 'opening')?.[0];
     expect(openingCall.pinnedContext).toContain("Style Reference — acctA/opening v2");
     expect(openingCall.pinnedContext).toContain("OPENING_STYLE_BODY");
 
@@ -133,7 +127,7 @@ describe("writer-orchestrator sp10 style binding integration", () => {
     expect(practiceCall.pinnedContext).toContain("Style Reference — acctA/practice v1");
     expect(practiceCall.pinnedContext).toContain("PRACTICE_STYLE_BODY");
 
-    const closingCall = (agents.runWriterClosing as any).mock.calls[0][0];
+    const closingCall = bookendCalls.find((c: any[]) => c[0].role === 'closing')?.[0];
     expect(closingCall.pinnedContext).toContain("Style Reference — acctA/closing v1");
     expect(closingCall.pinnedContext).toContain("CLOSING_STYLE_BODY");
   });
@@ -186,9 +180,8 @@ describe("writer-orchestrator sp10 style binding integration", () => {
     expect(blockedEv.missingBindings[0].agentKey).toBe("writer.closing");
 
     const agents = await import("@crossing/agents");
-    expect((agents.runWriterOpening as any)).not.toHaveBeenCalled();
+    expect((agents.runWriterBookend as any)).not.toHaveBeenCalled();
     expect((agents.runWriterPractice as any)).not.toHaveBeenCalled();
-    expect((agents.runWriterClosing as any)).not.toHaveBeenCalled();
   });
 
   it("runs successfully when resolver returns a binding (simulating project override providing one)", async () => {
@@ -225,7 +218,8 @@ describe("writer-orchestrator sp10 style binding integration", () => {
 
     expect(result).toBeUndefined();
     const agents = await import("@crossing/agents");
-    const closingCall = (agents.runWriterClosing as any).mock.calls[0][0];
+    const bookendCalls = (agents.runWriterBookend as any).mock.calls;
+    const closingCall = bookendCalls.find((c: any[]) => c[0].role === 'closing')?.[0];
     expect(closingCall.pinnedContext).toContain("Style Reference — overrideB/closing v3");
     expect(closingCall.pinnedContext).toContain("OC");
   });

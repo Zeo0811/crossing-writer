@@ -16,12 +16,18 @@ vi.mock("@crossing/agents", async () => {
   }];
   return {
     ...actual,
-    runWriterOpening: vi.fn(async (opts: any) => {
-      opts.onEvent?.({ type: "tool_called", agent: "writer.opening", tool: "search_wiki", args: { query: "q" }, round: 1, section_key: opts.sectionKey });
-      opts.onEvent?.({ type: "tool_returned", agent: "writer.opening", tool: "search_wiki", round: 1, hits_count: 2, duration_ms: 5, section_key: opts.sectionKey });
+    runWriterBookend: vi.fn(async (opts: any) => {
+      if (opts.role === 'opening') {
+        opts.onEvent?.({ type: "tool_called", agent: "writer.opening", tool: "search_wiki", args: { query: "q" }, round: 1, section_key: opts.sectionKey });
+        opts.onEvent?.({ type: "tool_returned", agent: "writer.opening", tool: "search_wiki", round: 1, hits_count: 2, duration_ms: 5, section_key: opts.sectionKey });
+        return {
+          finalText: "OPEN_W_TOOLS", toolsUsed: fakeToolsUsed, rounds: 2,
+          meta: { cli: "claude", model: "opus", durationMs: 10, total_duration_ms: 10 },
+        };
+      }
       return {
-        finalText: "OPEN_W_TOOLS", toolsUsed: fakeToolsUsed, rounds: 2,
-        meta: { cli: "claude", model: "opus", durationMs: 10, total_duration_ms: 10 },
+        finalText: "CLOSE", toolsUsed: [], rounds: 1,
+        meta: { cli: "claude", model: "opus", durationMs: 30, total_duration_ms: 30 },
       };
     }),
     runWriterPractice: vi.fn(async (opts: any) => {
@@ -32,10 +38,6 @@ vi.mock("@crossing/agents", async () => {
         meta: { cli: "claude", model: "sonnet", durationMs: 20, total_duration_ms: 20 },
       };
     }),
-    runWriterClosing: vi.fn(async () => ({
-      finalText: "CLOSE", toolsUsed: [], rounds: 1,
-      meta: { cli: "claude", model: "opus", durationMs: 30, total_duration_ms: 30 },
-    })),
     runStyleCritic: vi.fn(async () => ({
       finalText: "NO_CHANGES", toolsUsed: [], rounds: 1,
       meta: { cli: "claude", model: "opus", durationMs: 40, total_duration_ms: 40 },

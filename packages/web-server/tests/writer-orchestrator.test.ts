@@ -7,9 +7,10 @@ vi.mock("@crossing/agents", async () => {
   const actual = await vi.importActual<any>("@crossing/agents");
   return {
     ...actual,
-    runWriterOpening: vi.fn(async () => ({
-      finalText: "OPENING_TEXT", toolsUsed: [], rounds: 1,
-      meta: { cli: "claude", model: "opus", durationMs: 10, total_duration_ms: 10 },
+    runWriterBookend: vi.fn(async (opts: any) => ({
+      finalText: opts.role === 'opening' ? "OPENING_TEXT" : "CLOSING_TEXT",
+      toolsUsed: [], rounds: 1,
+      meta: { cli: "claude", model: "opus", durationMs: opts.role === 'opening' ? 10 : 30, total_duration_ms: opts.role === 'opening' ? 10 : 30 },
     })),
     runWriterPractice: vi.fn(async (opts: any) => {
       const match = /Case 编号：(case-\d+)/.exec(opts.userMessage);
@@ -19,10 +20,6 @@ vi.mock("@crossing/agents", async () => {
         meta: { cli: "claude", model: "sonnet", durationMs: 20, total_duration_ms: 20 },
       };
     }),
-    runWriterClosing: vi.fn(async () => ({
-      finalText: "CLOSING_TEXT", toolsUsed: [], rounds: 1,
-      meta: { cli: "claude", model: "opus", durationMs: 30, total_duration_ms: 30 },
-    })),
     runStyleCritic: vi.fn(async () => ({
       finalText: "NO_CHANGES", toolsUsed: [], rounds: 1,
       meta: { cli: "claude", model: "opus", durationMs: 40, total_duration_ms: 40 },
@@ -94,7 +91,7 @@ describe("writer-orchestrator", () => {
 
   it("sets writing_failed + writer_failed_sections when opening agent throws", async () => {
     const agentsMod = await import("@crossing/agents");
-    (agentsMod.runWriterOpening as any).mockImplementationOnce(async () => { throw new Error("opening boom"); });
+    (agentsMod.runWriterBookend as any).mockImplementationOnce(async () => { throw new Error("opening boom"); });
     const { vault, projectsDir, store } = setupProject();
     const pid = await seedProject(store, projectsDir, 1);
     await expect(runWriter({
@@ -180,7 +177,7 @@ describe("writer-orchestrator retry + override", () => {
     const { vault, projectsDir, store } = setupProject();
     const pid = await seedProject(store, projectsDir, 1);
     const agentsMod = await import("@crossing/agents");
-    (agentsMod.runWriterOpening as any).mockClear();
+    (agentsMod.runWriterBookend as any).mockClear();
 
     await runWriter({
       projectId: pid, projectsDir, store,
@@ -190,10 +187,11 @@ describe("writer-orchestrator retry + override", () => {
         reference_accounts_per_agent: { "writer.opening": ["赛博禅心"] },
       },
     });
-    const callArgs = (agentsMod.runWriterOpening as any).mock.calls[0]![0];
+    // runWriterBookend is called for both opening (call 0) and closing (call 1)
+    const openingCallArgs = (agentsMod.runWriterBookend as any).mock.calls.find((c: any[]) => c[0].role === 'opening')?.[0];
     // invokeAgent is the wrapper — we can't directly inspect cli/model but can
     // check that a function is passed + dispatchTool is wired.
-    expect(typeof callArgs.invokeAgent).toBe("function");
-    expect(typeof callArgs.dispatchTool).toBe("function");
+    expect(typeof openingCallArgs.invokeAgent).toBe("function");
+    expect(typeof openingCallArgs.dispatchTool).toBe("function");
   });
 });

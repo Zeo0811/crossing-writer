@@ -2,7 +2,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import {
-  runWriterOpening, runWriterPractice, runWriterClosing, runStyleCritic,
+  runWriterBookend, runWriterPractice, runStyleCritic,
   PracticeStitcherAgent,
   invokeAgent,
   type ReferenceAccountKb,
@@ -395,21 +395,25 @@ export async function runWriter(
         });
         const refs = await loadReferenceAccountKb(opts.vaultPath, openingResolved.referenceAccounts);
         const t0 = Date.now();
-        const openingStyle = resolvedStyles["writer.opening"];
-        const result: WriterRunResult = await runWriterOpening({
+        const openingStyle = resolvedStyles["writer.opening"] ?? null;
+        const result: WriterRunResult = await runWriterBookend({
+          role: 'opening',
+          sectionKey: 'opening',
+          account: openingStyle?.panel.frontmatter.account ?? '',
+          articleType: project.article_type! as any,
+          typeSection: openingStyle?.typeSection ?? '',
+          panelFrontmatter: (openingStyle?.panel.frontmatter ?? {}) as any,
+          hardRulesBlock: openingStyle?.hardRulesBlock ?? '',
+          projectContextBlock: ctxBundle ? renderContextBlock(ctxBundle) : '',
+          product_name: project.product_info?.name ?? undefined,
           invokeAgent: invokerFor("writer.opening", openingResolved.cli, openingResolved.model),
-          userMessage: prependContextBlock(
-            buildOpeningUserMessage(briefSummary, missionSummary, productOverview, refs),
-            ctxBundle,
-          ),
+          userMessage: buildOpeningUserMessage(briefSummary, missionSummary, productOverview, refs),
           images: projectImages,
           addDirs: projectAddDirs,
+          ...(openingStyle ? { pinnedContext: formatStyleReference(openingStyle) } : {}),
           dispatchTool,
           onEvent: toolEventBridge("opening"),
-          sectionKey: "opening",
-          ...(openingStyle
-            ? { pinnedContext: formatStyleReference(openingStyle) }
-            : {}),
+          maxRounds: 5,
         });
         await articleStore.writeSection("opening", {
           key: "opening",
@@ -594,21 +598,25 @@ export async function runWriter(
       });
       const refs = await loadReferenceAccountKb(opts.vaultPath, closingResolved.referenceAccounts);
       const t0 = Date.now();
-      const closingStyle = resolvedStyles["writer.closing"];
-      const result: WriterRunResult = await runWriterClosing({
+      const closingStyle = resolvedStyles["writer.closing"] ?? null;
+      const result: WriterRunResult = await runWriterBookend({
+        role: 'closing',
+        sectionKey: 'closing',
+        account: closingStyle?.panel.frontmatter.account ?? '',
+        articleType: project.article_type! as any,
+        typeSection: closingStyle?.typeSection ?? '',
+        panelFrontmatter: (closingStyle?.panel.frontmatter ?? {}) as any,
+        hardRulesBlock: closingStyle?.hardRulesBlock ?? '',
+        projectContextBlock: ctxBundle ? renderContextBlock(ctxBundle) : '',
+        product_name: project.product_info?.name ?? undefined,
         invokeAgent: invokerFor("writer.closing", closingResolved.cli, closingResolved.model),
-        userMessage: prependContextBlock(
-          buildClosingUserMessage(openingBody, stitchedPractice, refs),
-          ctxBundle,
-        ),
+        userMessage: buildClosingUserMessage(openingBody, stitchedPractice, refs),
         images: projectImages,
         addDirs: projectAddDirs,
+        ...(closingStyle ? { pinnedContext: formatStyleReference(closingStyle) } : {}),
         dispatchTool,
         onEvent: toolEventBridge("closing"),
-        sectionKey: "closing",
-        ...(closingStyle
-          ? { pinnedContext: formatStyleReference(closingStyle) }
-          : {}),
+        maxRounds: 5,
       });
       await articleStore.writeSection("closing", {
         key: "closing",
