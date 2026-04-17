@@ -126,13 +126,19 @@ export function parseBatchResponse(
     }
     const roleMap = new Map<string, Role>();
     const labeled = entry.paragraphs ?? {};
+    // Sonnet occasionally drops a handful of paragraph keys when the batch is
+    // large (~150+ paragraphs across 5 articles). Default missing labels to
+    // 'other' rather than failing the whole batch — those paragraphs are
+    // typically images/decorators/trailing noise anyway. Invalid values still
+    // throw because they indicate a real parse / prompt issue.
     for (let i = 0; i < paragraphs.length; i++) {
       const key = `P${i + 1}`;
       const role = labeled[key];
+      if (role === undefined) {
+        roleMap.set(key, 'other');
+        continue;
+      }
       if (!VALID_ROLES.includes(role)) {
-        if (role === undefined) {
-          throw new Error(`article-labeler: ${sample.id} missing label for ${key}`);
-        }
         throw new Error(`article-labeler: ${sample.id} invalid label "${role}" for ${key}`);
       }
       roleMap.set(key, role as Role);

@@ -98,14 +98,28 @@ describe('labelArticlesBatch', () => {
     ).rejects.toThrow(/article_type/);
   });
 
-  it('throws on missing paragraph label', async () => {
+  it('defaults missing paragraph labels to other (sonnet-tolerant)', async () => {
     const mockInvoke = vi.fn().mockResolvedValue({
       text: `articles:\n  a1:\n    article_type: 实测\n    paragraphs:\n      P1: opening`,
       meta: { cli: 'claude', durationMs: 10 },
     });
+    const out = await labelArticlesBatch(
+      [{ sample: mkSample('a1'), paragraphs: ['P1', 'P2', 'P3'] }],
+      mockInvoke,
+    );
+    expect(out[0]!.paragraphRoles.get('P1')).toBe('opening');
+    expect(out[0]!.paragraphRoles.get('P2')).toBe('other');
+    expect(out[0]!.paragraphRoles.get('P3')).toBe('other');
+  });
+
+  it('still throws on invalid paragraph label value', async () => {
+    const mockInvoke = vi.fn().mockResolvedValue({
+      text: `articles:\n  a1:\n    article_type: 实测\n    paragraphs:\n      P1: garbage`,
+      meta: { cli: 'claude', durationMs: 10 },
+    });
     await expect(
-      labelArticlesBatch([{ sample: mkSample('a1'), paragraphs: ['P1', 'P2'] }], mockInvoke),
-    ).rejects.toThrow(/missing label for P2/);
+      labelArticlesBatch([{ sample: mkSample('a1'), paragraphs: ['P1'] }], mockInvoke),
+    ).rejects.toThrow(/invalid label/);
   });
 });
 
