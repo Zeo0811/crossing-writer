@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { IngestProgressView } from "./IngestProgressView";
+import { IngestRunsHistory } from "./IngestRunsHistory";
 import type { IngestStreamEvent } from "../../api/wiki-client";
 
 function ConsoleTerminalIcon() {
@@ -26,10 +27,14 @@ export interface IngestConsoleFabProps {
   status: "idle" | "running" | "done" | "error";
   error: string | null;
   onDismiss: () => void;
+  onOpenPage?: (path: string) => void;
 }
 
-export function IngestConsoleFab({ events, status, error, onDismiss }: IngestConsoleFabProps) {
+export function IngestConsoleFab({ events, status, error, onDismiss, onOpenPage }: IngestConsoleFabProps) {
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<"current" | "history">(
+    status === "idle" && events.length === 0 ? "history" : "current",
+  );
 
   const running = status === "running";
   const failed = status === "error";
@@ -63,9 +68,35 @@ export function IngestConsoleFab({ events, status, error, onDismiss }: IngestCon
           className="fixed inset-0 z-50 flex flex-col bg-[var(--bg-0)]"
         >
           <header className="flex items-center justify-between px-6 h-12 border-b border-[var(--hair)] bg-[var(--bg-1)]">
-            <h1 className="text-sm font-semibold text-[var(--heading)]">入库控制台</h1>
+            <div className="flex items-center gap-4">
+              <h1 className="text-sm font-semibold text-[var(--heading)]">入库控制台</h1>
+              <div className="inline-flex items-center gap-0.5 p-0.5 rounded border border-[var(--hair)]">
+                <button
+                  type="button"
+                  onClick={() => setTab("current")}
+                  className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                    tab === "current"
+                      ? "bg-[var(--accent-fill)] text-[var(--accent)] font-semibold"
+                      : "text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"
+                  }`}
+                >
+                  本次事件{events.length > 0 ? ` · ${events.length}` : ""}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTab("history")}
+                  className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                    tab === "history"
+                      ? "bg-[var(--accent-fill)] text-[var(--accent)] font-semibold"
+                      : "text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"
+                  }`}
+                >
+                  历史记录
+                </button>
+              </div>
+            </div>
             <div className="flex items-center gap-2">
-              {status === "done" && (
+              {status === "done" && tab === "current" && (
                 <button
                   type="button"
                   onClick={() => { onDismiss(); setOpen(false); }}
@@ -84,8 +115,17 @@ export function IngestConsoleFab({ events, status, error, onDismiss }: IngestCon
               </button>
             </div>
           </header>
-          <div className="flex-1 overflow-auto p-6">
-            <IngestProgressView events={events} status={status} error={error} />
+          <div className="flex-1 overflow-hidden p-6">
+            {tab === "current" ? (
+              <IngestProgressView events={events} status={status} error={error} />
+            ) : (
+              <IngestRunsHistory
+                onOpenPage={(p) => {
+                  setOpen(false);
+                  onOpenPage?.(p);
+                }}
+              />
+            )}
           </div>
         </div>
       )}

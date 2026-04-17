@@ -44,6 +44,8 @@ export interface IngestStreamEvent {
   sources_appended?: number;
   images_appended?: number;
   notes?: string[];
+  // client-side: timestamp when event was received (ISO string)
+  receivedAt?: string;
 }
 
 export async function getPages(kind?: WikiKind): Promise<WikiPageMeta[]> {
@@ -72,6 +74,57 @@ export async function status(): Promise<WikiStatus> {
   const r = await fetch("/api/kb/wiki/status");
   if (!r.ok) throw new Error(`status ${r.status}`);
   return (await r.json()) as WikiStatus;
+}
+
+export type IngestRunStatus = "running" | "done" | "error" | "cancelled";
+
+export interface IngestRunSummary {
+  id: string;
+  started_at: string;
+  finished_at: string | null;
+  status: IngestRunStatus;
+  accounts: string[];
+  article_ids: string[];
+  mode: string;
+  model: string;
+  pages_created: number;
+  pages_updated: number;
+  sources_appended: number;
+  images_appended: number;
+  conflict_count: number;
+  skipped_count: number;
+  error: string | null;
+}
+
+export interface IngestRunOp {
+  run_id: string;
+  seq: number;
+  op: string;
+  path: string | null;
+  article_id: string | null;
+  created_page: number;
+  conflict: number;
+  error: string | null;
+}
+
+export interface IngestRunDetail extends IngestRunSummary {
+  ops: IngestRunOp[];
+}
+
+export async function listIngestRuns(input?: { limit?: number; status?: IngestRunStatus }): Promise<IngestRunSummary[]> {
+  const params = new URLSearchParams();
+  if (input?.limit) params.set("limit", String(input.limit));
+  if (input?.status) params.set("status", input.status);
+  const url = `/api/kb/wiki/runs${params.toString() ? `?${params.toString()}` : ""}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`listIngestRuns ${r.status}`);
+  return (await r.json()) as IngestRunSummary[];
+}
+
+export async function getIngestRun(runId: string): Promise<IngestRunDetail> {
+  const r = await fetch(`/api/kb/wiki/runs/${encodeURIComponent(runId)}`);
+  if (!r.ok) throw new Error(`getIngestRun ${r.status}`);
+  return (await r.json()) as IngestRunDetail;
 }
 
 export interface IngestStartArgs {
