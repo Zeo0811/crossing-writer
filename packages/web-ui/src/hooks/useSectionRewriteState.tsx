@@ -18,6 +18,7 @@ export interface UseSectionRewriteStateOpts {
   projectId: string;
   sectionKey: string;
   initialBody: string;
+  label?: string;
 }
 
 export interface SectionRewriteState {
@@ -63,7 +64,7 @@ function streamEventToTimeline(ev: RewriteStreamEvent, ts: number): TimelineEven
 }
 
 export function useSectionRewriteState(opts: UseSectionRewriteStateOpts): SectionRewriteState {
-  const { projectId, sectionKey, initialBody } = opts;
+  const { projectId, sectionKey, initialBody, label } = opts;
   const mutex = useRewriteMutex();
 
   const [mode, setMode] = useState<SectionMode>('view');
@@ -99,6 +100,7 @@ export function useSectionRewriteState(opts: UseSectionRewriteStateOpts): Sectio
     if (!mutex.acquire(sectionKey)) return;
     setMode('rewrite_streaming');
     setTimeline([]);
+    mutex.startRun(sectionKey, label ?? sectionKey);
     let accumulated = '';
     try {
       await rewriteSectionStream(
@@ -114,22 +116,30 @@ export function useSectionRewriteState(opts: UseSectionRewriteStateOpts): Sectio
             setDraftBody(accumulated);
           } else {
             const te = streamEventToTimeline(ev, Date.now());
-            if (te) setTimeline((prev) => [...prev, te]);
+            if (te) {
+              setTimeline((prev) => [...prev, te]);
+              mutex.appendTimeline(sectionKey, te);
+            }
           }
         },
       );
       setDraftBody(accumulated);
       setMode('rewrite_done');
+      mutex.finishRun(sectionKey, 'done');
     } catch (err) {
-      setTimeline((prev) => [
-        ...prev,
-        { kind: 'validation_failed', violations: [{ error: (err as Error).message }], ts: Date.now() } satisfies TimelineEvent,
-      ]);
+      const errEvent: TimelineEvent = {
+        kind: 'validation_failed',
+        violations: [{ error: (err as Error).message }],
+        ts: Date.now(),
+      };
+      setTimeline((prev) => [...prev, errEvent]);
+      mutex.appendTimeline(sectionKey, errEvent);
+      mutex.finishRun(sectionKey, 'error');
       setMode('rewrite_idle');
     } finally {
       mutex.release(sectionKey);
     }
-  }, [projectId, sectionKey, hint, selectedText, mutex]);
+  }, [projectId, sectionKey, hint, selectedText, label, mutex]);
 
   const accept = useCallback(async (): Promise<void> => {
     if (draftBody === null) return;

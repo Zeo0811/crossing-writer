@@ -165,12 +165,9 @@ export function RewriteModal(props: RewriteModalProps) {
             </div>
           )}
 
-          {timeline.length > 0 && (
-            <div>
-              <div className="text-xs text-[var(--meta)] mb-2 font-semibold">活动日志</div>
-              <div className="rounded bg-[var(--bg-2)] p-3 max-h-[200px] overflow-y-auto">
-                <ToolTimeline events={timeline} />
-              </div>
+          {mode === 'rewrite_streaming' && (
+            <div className="text-xs text-[var(--meta)] italic">
+              正在调用工具与生成 · 活动详情在右下角「改写控制台」浮标
             </div>
           )}
         </div>

@@ -64,7 +64,7 @@ const mdComponents: Components = {
 };
 
 export function SectionCard({ projectId, sectionKey, label, initialBody }: SectionCardProps) {
-  const state = useSectionRewriteState({ projectId, sectionKey, initialBody });
+  const state = useSectionRewriteState({ projectId, sectionKey, initialBody, label });
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const selection = useTextSelection(bodyRef);
   const mutex = useRewriteMutex();
