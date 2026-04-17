@@ -82,8 +82,8 @@ export function IngestTab({ model, cart }: IngestTabProps) {
   const showGrid = activeAccount === null;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="sticky top-0 z-10 bg-[var(--bg-1)] pt-1 pb-2 -mx-6 px-6">
+    <div className="flex flex-col gap-4 h-full min-h-0">
+      <div className="shrink-0">
         <IngestCartBar
           entries={cart.entries}
           maxArticles={MAX_ARTICLES}
@@ -92,20 +92,24 @@ export function IngestTab({ model, cart }: IngestTabProps) {
         />
       </div>
       {showGrid ? (
-        <AccountGrid
-          accounts={accounts}
-          cartPerAccount={cart.perAccountCount}
-          onSelect={setActiveAccount}
-        />
-      ) : (
-        <div className="flex gap-4">
-          <AccountSidebar
+        <div className="flex-1 overflow-y-auto">
+          <AccountGrid
             accounts={accounts}
-            active={activeAccount}
             cartPerAccount={cart.perAccountCount}
             onSelect={setActiveAccount}
           />
-          <main className="flex-1 min-w-0 space-y-4">
+        </div>
+      ) : (
+        <div className="flex gap-4 flex-1 min-h-0">
+          <div className="w-[220px] shrink-0 overflow-y-auto">
+            <AccountSidebar
+              accounts={accounts}
+              active={activeAccount}
+              cartPerAccount={cart.perAccountCount}
+              onSelect={setActiveAccount}
+            />
+          </div>
+          <main className="flex-1 min-w-0 overflow-y-auto space-y-4">
             <div className="rounded bg-[var(--bg-2)] p-4">
               <div className="flex items-center gap-3 mb-3">
                 <h2 className="text-sm font-semibold text-[var(--heading)]">{activeAccount}</h2>

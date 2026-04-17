@@ -226,7 +226,7 @@ export function KnowledgePage() {
           )}
         </div>
       ) : (
-        <div className="p-6">
+        <div className="p-6 h-[calc(100vh-56px)] overflow-hidden">
           <IngestTab model={model} cart={cart} />
         </div>
       )}
