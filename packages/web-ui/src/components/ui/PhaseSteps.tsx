@@ -78,22 +78,22 @@ export function PhaseSteps({ status }: { status: ProjectStatus }) {
   const cur = phaseIndexOf(status);
   const isFailed = typeof status === "string" && status.endsWith("_failed");
   return (
-    <div className="flex items-center gap-1.5 flex-wrap">
+    <div className="flex items-stretch gap-1.5 w-full">
       {PHASES.map((p, i) => {
         const state: "done" | "current" | "todo" =
           i < cur ? "done" : i === cur ? "current" : "todo";
         const isCurrent = state === "current";
         let cls =
-          "inline-flex items-center gap-1.5 px-3 h-8 rounded text-xs leading-none border ";
+          "flex-1 inline-flex items-center justify-center gap-1.5 px-3 h-8 rounded text-xs leading-none border min-w-0 ";
         if (state === "done") cls += "border-[var(--accent-soft)] bg-[var(--accent-fill)] text-[var(--accent)]";
         else if (isCurrent && isFailed) cls += "border-[var(--red)] bg-[rgba(255,107,107,0.08)] text-[var(--red)]";
         else if (isCurrent) cls += "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-on)] font-semibold shadow-[0_0_10px_var(--accent-dim)]";
         else cls += "border-[var(--hair)] bg-transparent text-[var(--faint)]";
         return (
-          <div key={p.id} className="flex items-center gap-1.5">
+          <div key={p.id} className="flex items-center gap-1.5 flex-1 min-w-0">
             <div className={`relative ${cls}`}>
               <span className="tabular-nums opacity-80">{String(i + 1).padStart(2, "0")}</span>
-              <span>{p.label}</span>
+              <span className="truncate">{p.label}</span>
               {state === "done" && <span className="text-[10px]">✓</span>}
               {isCurrent && !isFailed && <span className="w-1 h-1 rounded-full bg-[var(--accent-on)] animate-pulse" />}
               {isCurrent && (
@@ -109,7 +109,7 @@ export function PhaseSteps({ status }: { status: ProjectStatus }) {
               )}
             </div>
             {i < PHASES.length - 1 && (
-              <span className={`text-[var(--faint)] text-xs ${i < cur ? "text-[var(--accent-soft)]" : ""}`}>›</span>
+              <span className={`text-[var(--faint)] text-xs flex-none ${i < cur ? "text-[var(--accent-soft)]" : ""}`}>›</span>
             )}
           </div>
         );
