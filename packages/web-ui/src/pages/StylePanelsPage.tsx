@@ -3,7 +3,7 @@ import { getAccounts, listActiveDistillRuns, cleanupLegacyPanels, type AccountRo
 import { listConfigStylePanels, deleteStylePanel, type StylePanel } from "../api/writer-client";
 import { DistillForm } from "../components/style-panels/DistillForm.js";
 import { ProgressView } from "../components/style-panels/ProgressView.js";
-import { Button } from "../components/ui";
+import { Button, PixelLoader } from "../components/ui";
 import { useToast } from "../components/ui/ToastProvider";
 import { formatBeijingShort } from "../utils/time";
 
@@ -79,9 +79,7 @@ export function StylePanelsPage() {
           </div>
         )}
       </header>
-      {loading && (
-        <div className="p-12 text-center text-[var(--meta)]">加载中…</div>
-      )}
+      {loading && <PixelLoader label="风格库载入中" />}
 
       {loading ? null : mode.kind === "form" ? (
         <div className="p-6">

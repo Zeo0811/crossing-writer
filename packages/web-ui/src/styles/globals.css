@@ -49,6 +49,22 @@ body {
 .phase-trail-4 { animation-delay: 0.45s; }
 .phase-trail-5 { animation-delay: 0.6s; }
 
+/* 像素风加载器：方块沿对角波纹依次亮起 */
+@keyframes pixelLoaderPulse {
+  0%, 100% { background: var(--bg-2); transform: scale(0.7); }
+  35%      { background: var(--accent); transform: scale(1.15); }
+  70%      { background: var(--accent-soft); transform: scale(0.95); }
+}
+.pixel-loader-cell {
+  display: block;
+  width: 10px;
+  height: 10px;
+  background: var(--bg-2);
+  border-radius: 1px;
+  animation: pixelLoaderPulse 1.8s ease-in-out infinite;
+  transform-origin: center;
+}
+
 /* Markdown 渲染补齐：frontmatter 块通常会被 react-markdown 当 thematic break，单独处理下 */
 .prose :where(h1):not(:where([class~="not-prose"] *)) {
   color: var(--accent);

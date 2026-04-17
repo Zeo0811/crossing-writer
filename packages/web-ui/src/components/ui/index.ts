@@ -18,4 +18,5 @@ export { Tooltip, TooltipProvider } from "./Tooltip";
 export { EmptyState, type EmptyStateProps } from "./EmptyState";
 export { SectionTitle, type SectionTitleProps } from "./SectionTitle";
 export { PhaseSteps, PHASES, phaseIndexOf, statusBadge, type Phase } from "./PhaseSteps";
+export { PixelLoader, type PixelLoaderProps } from "./PixelLoader";
 export { cn } from "./cn";
