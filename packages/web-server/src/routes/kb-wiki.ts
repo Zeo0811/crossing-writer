@@ -154,4 +154,33 @@ export function registerKbWikiRoutes(app: FastifyInstance, deps: KbWikiDeps) {
     }
     return reply.send({ total: pages.length, by_kind, last_ingest_at: last });
   });
+
+  app.post<{ Body: { article_ids?: string[] } }>("/api/kb/wiki/check-duplicates", async (req, reply) => {
+    const ids = req.body?.article_ids;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return reply.code(400).send({ error: "article_ids required" });
+    }
+    if (!existsSync(deps.sqlitePath)) {
+      return reply.send({ already_ingested: [], fresh: ids });
+    }
+    const { listMarks } = await import("@crossing/kb");
+    const db = new Database(deps.sqlitePath, { readonly: true, fileMustExist: true });
+    try {
+      const hasTable = db.prepare(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='wiki_ingest_marks'`,
+      ).get();
+      if (!hasTable) return reply.send({ already_ingested: [], fresh: ids });
+      const marks = listMarks(db, ids);
+      const markedSet = new Set(marks.map((m) => m.article_id));
+      return reply.send({
+        already_ingested: marks.map((m) => ({
+          article_id: m.article_id,
+          first_ingested_at: m.first_ingested_at,
+          last_ingested_at: m.last_ingested_at,
+          last_run_id: m.last_run_id,
+        })),
+        fresh: ids.filter((id) => !markedSet.has(id)),
+      });
+    } finally { db.close(); }
+  });
 }
