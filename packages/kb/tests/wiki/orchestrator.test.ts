@@ -101,6 +101,110 @@ describe("runIngest full mode", () => {
   });
 });
 
+describe("runIngest forceReingest + mark filtering", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("skips articles already in wiki_ingest_marks when forceReingest=false (default)", async () => {
+    const { sqlitePath } = seedSqlite();
+    const vault = mkdtempSync(join(tmpdir(), "oc-m-"));
+
+    // Pre-populate marks for A0 and A1 using ensureSchema + upsertMark
+    const { ensureSchema } = await import("../../src/wiki/migrations.js");
+    const { upsertMark } = await import("../../src/wiki/ingest-marks-repo.js");
+    const db = new Database(sqlitePath);
+    ensureSchema(db);
+    upsertMark(db, { articleId: "A0", runId: "prev", now: "2026-01-01T00:00:00Z" });
+    upsertMark(db, { articleId: "A1", runId: "prev", now: "2026-01-01T00:00:00Z" });
+    db.close();
+
+    const events: Array<{ type: string; articleId?: string }> = [];
+    const res = await runIngest({
+      accounts: [],
+      perAccountLimit: 50,
+      batchSize: 2,
+      mode: "selected",
+      articleIds: ["A0", "A1", "A2", "A3"],
+      onEvent: (ev) => events.push({ type: ev.type, articleId: ev.articleId }),
+    }, { vaultPath: vault, sqlitePath });
+
+    expect(res.skipped_count).toBe(2);
+    const skipped = events.filter((e) => e.type === "article_skipped").map((e) => e.articleId).sort();
+    expect(skipped).toEqual(["A0", "A1"]);
+  });
+
+  it("processes all articles when forceReingest=true even if marked", async () => {
+    const { sqlitePath } = seedSqlite();
+    const vault = mkdtempSync(join(tmpdir(), "oc-m-"));
+
+    const { ensureSchema } = await import("../../src/wiki/migrations.js");
+    const { upsertMark } = await import("../../src/wiki/ingest-marks-repo.js");
+    const db = new Database(sqlitePath);
+    ensureSchema(db);
+    upsertMark(db, { articleId: "A0", runId: "prev", now: "2026-01-01T00:00:00Z" });
+    db.close();
+
+    const events: string[] = [];
+    const res = await runIngest({
+      accounts: [],
+      perAccountLimit: 50,
+      batchSize: 2,
+      mode: "selected",
+      articleIds: ["A0", "A1"],
+      forceReingest: true,
+      onEvent: (ev) => events.push(ev.type),
+    }, { vaultPath: vault, sqlitePath });
+
+    expect(res.skipped_count).toBe(0);
+    expect(events.filter((t) => t === "article_skipped")).toHaveLength(0);
+    // Both articles should have been processed through the agent mock
+    expect(res.pages_created).toBeGreaterThanOrEqual(2);
+  });
+
+  it("writes marks after successful apply (placeholder run_id)", async () => {
+    const { sqlitePath } = seedSqlite();
+    const vault = mkdtempSync(join(tmpdir(), "oc-m-"));
+
+    const { ensureSchema } = await import("../../src/wiki/migrations.js");
+    const { listMarks } = await import("../../src/wiki/ingest-marks-repo.js");
+    const db = new Database(sqlitePath);
+    ensureSchema(db);
+    db.close();
+
+    await runIngest({
+      accounts: [],
+      perAccountLimit: 50,
+      batchSize: 2,
+      mode: "selected",
+      articleIds: ["A0", "A1"],
+    }, { vaultPath: vault, sqlitePath });
+
+    const db2 = new Database(sqlitePath);
+    const marks = listMarks(db2, ["A0", "A1"]);
+    db2.close();
+    expect(marks.map((m) => m.article_id).sort()).toEqual(["A0", "A1"]);
+  });
+
+  it("IngestResult includes skipped_count field (zero when none skipped)", async () => {
+    const { sqlitePath } = seedSqlite();
+    const vault = mkdtempSync(join(tmpdir(), "oc-m-"));
+
+    const { ensureSchema } = await import("../../src/wiki/migrations.js");
+    const db = new Database(sqlitePath);
+    ensureSchema(db);
+    db.close();
+
+    const res = await runIngest({
+      accounts: [],
+      perAccountLimit: 50,
+      batchSize: 2,
+      mode: "selected",
+      articleIds: ["A0"],
+    }, { vaultPath: vault, sqlitePath });
+
+    expect(res.skipped_count).toBe(0);
+  });
+});
+
 describe("runIngest mode=selected + maxArticles validation", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 

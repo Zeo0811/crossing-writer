@@ -217,7 +217,7 @@ export async function runIngest(opts: IngestOptions, ctx: Ctx): Promise<IngestRe
   rebuildIndex(ctx.vaultPath);
   emit(opts.onEvent, { type: "all_completed", stats: { accounts_done: accountsDone.length, pages_created: pagesCreated, pages_updated: pagesUpdated } });
 
-  return { accounts_done: accountsDone, pages_created: pagesCreated, pages_updated: pagesUpdated, sources_appended: sourcesAppended, images_appended: imagesAppended, notes };
+  return { accounts_done: accountsDone, pages_created: pagesCreated, pages_updated: pagesUpdated, sources_appended: sourcesAppended, images_appended: imagesAppended, notes, skipped_count: 0 };
 }
 
 function loadArticlesByIds(sqlitePath: string, articleIds: string[]): IngestArticle[] {
@@ -253,11 +253,35 @@ async function runSelectedIngest(opts: IngestOptions, ctx: Ctx): Promise<IngestR
 
   const articles = loadArticlesByIds(ctx.sqlitePath, opts.articleIds!);
 
+  // Mark filtering
+  let filteredArticles = articles;
+  let skippedCount = 0;
+  if (!opts.forceReingest) {
+    const { filterAlreadyIngested } = await import("./ingest-marks-repo.js");
+    const sqliteReadDb = new Database(ctx.sqlitePath, { readonly: true, fileMustExist: true });
+    try {
+      const hasTable = sqliteReadDb.prepare(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='wiki_ingest_marks'`,
+      ).get();
+      if (hasTable) {
+        const { alreadyIngested } = filterAlreadyIngested(sqliteReadDb, articles.map((a) => a.id));
+        if (alreadyIngested.length > 0) {
+          for (const id of alreadyIngested) {
+            emit(opts.onEvent, { type: "article_skipped", account: "selected", articleId: id });
+          }
+          const skipSet = new Set(alreadyIngested);
+          filteredArticles = articles.filter((a) => !skipSet.has(a.id));
+          skippedCount = alreadyIngested.length;
+        }
+      }
+    } finally { sqliteReadDb.close(); }
+  }
+
   let pagesCreated = 0, pagesUpdated = 0, sourcesAppended = 0, imagesAppended = 0;
   const notes: string[] = [];
 
   const batches: IngestArticle[][] = [];
-  for (let i = 0; i < articles.length; i += opts.batchSize) batches.push(articles.slice(i, i + opts.batchSize));
+  for (let i = 0; i < filteredArticles.length; i += opts.batchSize) batches.push(filteredArticles.slice(i, i + opts.batchSize));
 
   for (let bi = 0; bi < batches.length; bi += 1) {
     const batch = batches[bi]!;
@@ -291,7 +315,29 @@ async function runSelectedIngest(opts: IngestOptions, ctx: Ctx): Promise<IngestR
     }
   }
 
+  // Write marks for successfully processed articles (placeholder run_id; T6 will replace)
+  if (filteredArticles.length > 0) {
+    const { upsertMark } = await import("./ingest-marks-repo.js");
+    const { ensureSchema } = await import("./migrations.js");
+    const nowIso = new Date().toISOString();
+    const markDb = new Database(ctx.sqlitePath, { fileMustExist: true });
+    try {
+      ensureSchema(markDb);  // idempotent, ensures table exists
+      for (const a of filteredArticles) {
+        upsertMark(markDb, { articleId: a.id, runId: "pending-run-id", now: nowIso });
+      }
+    } finally { markDb.close(); }
+  }
+
   rebuildIndex(ctx.vaultPath);
   emit(opts.onEvent, { type: "all_completed", stats: { pages_created: pagesCreated, pages_updated: pagesUpdated } });
-  return { accounts_done: ["selected"], pages_created: pagesCreated, pages_updated: pagesUpdated, sources_appended: sourcesAppended, images_appended: imagesAppended, notes };
+  return {
+    accounts_done: ["selected"],
+    pages_created: pagesCreated,
+    pages_updated: pagesUpdated,
+    sources_appended: sourcesAppended,
+    images_appended: imagesAppended,
+    notes,
+    skipped_count: skippedCount,
+  };
 }
