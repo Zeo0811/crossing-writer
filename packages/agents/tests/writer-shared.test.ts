@@ -4,6 +4,7 @@ import {
   renderHardRulesBlock,
   renderBookendPrompt,
   parseWordCountRange,
+  resolveWordConstraint,
   type WritingHardRules,
   type PanelFrontmatterLike,
 } from '../src/roles/writer-shared.js';
@@ -249,5 +250,69 @@ describe('parseWordCountRange', () => {
 
   it('detects full-width parens 单段', () => {
     expect(parseWordCountRange('10 – 110 字（单段）')).toEqual({ min: 10, max: 110, perPara: true });
+  });
+});
+
+describe('resolveWordConstraint', () => {
+  it('override takes precedence over panel per-para', () => {
+    const out = resolveWordConstraint(
+      'opening',
+      '10 – 110 字(单段)',
+      [200, 400],
+    );
+    expect(out.totalText).toContain('200');
+    expect(out.totalText).toContain('400');
+    expect(out.totalMax).toBe(400);
+    // perParaText still shows panel guidance so the writer knows the unit
+    expect(out.perParaText).toContain('10');
+    expect(out.perParaText).toContain('110');
+  });
+
+  it('panel per-para without override: computes total via default paragraph count', () => {
+    const out = resolveWordConstraint(
+      'opening',
+      '10 – 110 字(单段)',
+      undefined,
+    );
+    // opening default paragraph count = 5
+    expect(out.totalMax).toBe(550);
+    expect(out.totalText).toContain('50');
+    expect(out.totalText).toContain('550');
+    expect(out.perParaText).toContain('10');
+    expect(out.perParaText).toContain('110');
+  });
+
+  it('closing default paragraph count = 7', () => {
+    const out = resolveWordConstraint(
+      'closing',
+      '10 – 110 字(单段)',
+      undefined,
+    );
+    expect(out.totalMax).toBe(770);
+  });
+
+  it('panel total-range (no 单段) without override passes through as total', () => {
+    const out = resolveWordConstraint(
+      'opening',
+      '150-260 字',
+      undefined,
+    );
+    expect(out.totalMax).toBe(260);
+    expect(out.totalText).toContain('150');
+    expect(out.perParaText).toBe('—');
+  });
+
+  it('empty panel + override: uses override only', () => {
+    const out = resolveWordConstraint('closing', '', [200, 350]);
+    expect(out.totalMax).toBe(350);
+    expect(out.totalText).toContain('200');
+    expect(out.totalText).toContain('350');
+    expect(out.perParaText).toBe('—');
+  });
+
+  it('empty panel + no override: returns safe defaults', () => {
+    const out = resolveWordConstraint('closing', '', undefined);
+    expect(out.totalMax).toBeGreaterThan(0);
+    expect(out.totalText.length).toBeGreaterThan(0);
   });
 });

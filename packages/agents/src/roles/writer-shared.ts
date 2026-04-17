@@ -115,6 +115,83 @@ export function parseWordCountRange(
 }
 
 // ============================================================================
+// resolveWordConstraint
+// ============================================================================
+
+export interface WordConstraint {
+  /** Per-paragraph range text, e.g. "每段 10 – 110 字", or "—" if unknown */
+  perParaText: string;
+  /** Total-range text shown to the writer, e.g. "200 – 400 字（硬规则指定）" */
+  totalText: string;
+  /** Numeric upper bound, used by self-review checklist template */
+  totalMax: number;
+}
+
+/** Default paragraph count per role — used to extrapolate total bound when
+ *  panel only gives per-paragraph range and no override is provided. */
+const DEFAULT_PARA_COUNT = { opening: 5, closing: 7 } as const;
+
+/** Absolute safe default when neither panel nor override is set. */
+const ABSOLUTE_DEFAULT_TOTAL: Record<'opening' | 'closing', [number, number]> = {
+  opening: [150, 400],
+  closing: [150, 350],
+};
+
+/**
+ * Merge panel 字数范围 subsection, optional yaml override, and fallback into a
+ * single word constraint for the writer prompt.
+ *
+ * Priority (highest first):
+ *   1. override [min, max] — yaml hard rule, trumps all
+ *   2. panel parsed as total range — pass through
+ *   3. panel parsed as per-paragraph range — multiply by DEFAULT_PARA_COUNT[role]
+ *   4. nothing parseable — ABSOLUTE_DEFAULT_TOTAL[role]
+ */
+export function resolveWordConstraint(
+  role: 'opening' | 'closing',
+  panelSubsText: string,
+  override?: [number, number],
+): WordConstraint {
+  const parsed = parseWordCountRange(panelSubsText);
+  const perParaText = parsed?.perPara
+    ? `每段 ${parsed.min} – ${parsed.max} 字`
+    : '—';
+
+  if (override) {
+    const [min, max] = override;
+    return {
+      perParaText,
+      totalText: `${min} – ${max} 字（硬规则指定）`,
+      totalMax: max,
+    };
+  }
+
+  if (parsed && parsed.perPara) {
+    const n = DEFAULT_PARA_COUNT[role];
+    return {
+      perParaText,
+      totalText: `${parsed.min * n} – ${parsed.max * n} 字（单段 × ${n} 段推算）`,
+      totalMax: parsed.max * n,
+    };
+  }
+
+  if (parsed && !parsed.perPara) {
+    return {
+      perParaText: '—',
+      totalText: `${parsed.min} – ${parsed.max} 字`,
+      totalMax: parsed.max,
+    };
+  }
+
+  const [min, max] = ABSOLUTE_DEFAULT_TOTAL[role];
+  return {
+    perParaText: '—',
+    totalText: `${min} – ${max} 字（默认兜底，建议在硬规则里覆盖）`,
+    totalMax: max,
+  };
+}
+
+// ============================================================================
 // renderHardRulesBlock
 // ============================================================================
 
