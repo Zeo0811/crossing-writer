@@ -17,6 +17,7 @@ import { createConfigStore } from "./services/config-store.js";
 import { registerEvidenceRoutes } from "./routes/evidence.js";
 import { registerKbStylePanelsRoutes } from "./routes/kb-style-panels.js";
 import { registerKbAccountsRoutes } from "./routes/kb-accounts.js";
+import { registerKbRawArticlesRoutes } from "./routes/kb-raw-articles.js";
 import { registerKbWikiRoutes } from "./routes/kb-wiki.js";
 import { registerWriterRoutes } from "./routes/writer.js";
 import { registerWriterRewriteSelectionRoutes } from "./routes/writer-rewrite-selection.js";
@@ -121,6 +122,7 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
   });
 
   registerKbAccountsRoutes(app, { sqlitePath: configStore.current.sqlitePath });
+  registerKbRawArticlesRoutes(app, { sqlitePath: configStore.current.sqlitePath });
 
   registerKbWikiRoutes(app, {
     vaultPath: configStore.current.vaultPath,
