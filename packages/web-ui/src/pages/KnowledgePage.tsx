@@ -129,7 +129,7 @@ export function KnowledgePage() {
       {mode === "browse" ? (
         <div className="p-6 space-y-4">
           <div className="flex items-center gap-3">
-            <div className="flex-1 flex items-center justify-between p-1 h-10 rounded border border-[var(--hair)]">
+            <div className="inline-flex items-center gap-0.5 p-1 h-10 rounded border border-[var(--hair)]">
               {kinds.map((k) => (
                 <button
                   key={k}
@@ -140,7 +140,7 @@ export function KnowledgePage() {
                 </button>
               ))}
             </div>
-            <div className="w-72 shrink-0">
+            <div className="flex-1">
               <Input
                 value={q}
                 onChange={(e) => runSearch(e.target.value)}
