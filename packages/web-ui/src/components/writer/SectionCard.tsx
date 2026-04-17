@@ -165,7 +165,7 @@ export function SectionCard({ projectId, sectionKey, label, initialBody }: Secti
   return (
     <article
       data-testid={`card-${sectionKey}`}
-      className="rounded border border-[var(--hair)] bg-[var(--bg-1)] overflow-hidden"
+      className="rounded border border-[var(--hair)] bg-[var(--bg-1)]"
     >
       <header className="flex items-center justify-between px-4 h-10 border-b border-[var(--hair)] text-xs">
         <div className="flex items-center gap-3">
