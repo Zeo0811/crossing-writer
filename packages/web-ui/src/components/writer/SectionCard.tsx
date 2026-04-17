@@ -1,13 +1,11 @@
-import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useSectionRewriteState } from '../../hooks/useSectionRewriteState.js';
 import { useRewriteMutex } from '../../hooks/useRewriteMutex.js';
 import { useTextSelection } from '../../hooks/useTextSelection.js';
-import { ToolTimeline } from './ToolTimeline.js';
-import { SectionDiff } from './SectionDiff.js';
 import { SelectionBubble } from './SelectionBubble.js';
-import { MentionDropdown, SKILL_ITEMS, type MentionSkillItem } from './MentionDropdown.js';
+import { RewriteModal } from './RewriteModal.js';
 import { putSection } from '../../api/writer-client.js';
 
 export interface SectionCardProps {
@@ -74,73 +72,11 @@ export function SectionCard({ projectId, sectionKey, label, initialBody }: Secti
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedBodyRef = useRef<string>(initialBody);
 
-  const [mention, setMention] = useState<{ active: boolean; start: number; activeIndex: number }>({
-    active: false,
-    start: -1,
-    activeIndex: 0,
-  });
-  const hintTaRef = useRef<HTMLTextAreaElement | null>(null);
-
-  const closeMention = () => setMention({ active: false, start: -1, activeIndex: 0 });
-
-  function onHintChange(e: ChangeEvent<HTMLTextAreaElement>) {
-    const next = e.target.value;
-    state.setHint(next);
-    const caret = e.target.selectionStart ?? next.length;
-    const before = next.slice(0, caret);
-    const at = before.lastIndexOf('@');
-    if (at >= 0) {
-      const frag = before.slice(at + 1);
-      if (!/\s/.test(frag) && frag.length <= 40) {
-        setMention({ active: true, start: at, activeIndex: 0 });
-        return;
-      }
-    }
-    closeMention();
-  }
-
-  function insertSkill(item: MentionSkillItem) {
-    const ta = hintTaRef.current;
-    const caret = ta?.selectionStart ?? state.hint.length;
-    const start = mention.start >= 0 ? mention.start : caret;
-    const before = state.hint.slice(0, start);
-    const after = state.hint.slice(caret);
-    const nextVal = before + item.insertText + after;
-    state.setHint(nextVal);
-    closeMention();
-    queueMicrotask(() => {
-      const pos = before.length + item.insertText.length;
-      ta?.setSelectionRange(pos, pos);
-      ta?.focus();
-    });
-  }
-
-  function onHintKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
-    if (mention.active) {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setMention((m) => ({ ...m, activeIndex: Math.min(SKILL_ITEMS.length - 1, m.activeIndex + 1) }));
-        return;
-      }
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setMention((m) => ({ ...m, activeIndex: Math.max(0, m.activeIndex - 1) }));
-        return;
-      }
-      if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        insertSkill(SKILL_ITEMS[mention.activeIndex]!);
-        return;
-      }
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        closeMention();
-        return;
-      }
-    }
-  }
-
   const canRewrite = mutex.activeKey === null || mutex.activeKey === sectionKey;
+  const isRewriting =
+    state.mode === 'rewrite_idle' ||
+    state.mode === 'rewrite_streaming' ||
+    state.mode === 'rewrite_done';
 
   // Auto-save in edit mode
   useEffect(() => {
@@ -200,15 +136,10 @@ export function SectionCard({ projectId, sectionKey, label, initialBody }: Secti
               完成
             </button>
           )}
-          {(state.mode === 'rewrite_idle' || state.mode === 'rewrite_done') && (
-            <button className="px-2.5 py-1 rounded border border-[var(--hair)]" onClick={() => state.cancelRewrite()}>
-              取消
-            </button>
-          )}
         </div>
       </header>
 
-      {state.mode === 'view' && (
+      {(state.mode === 'view' || isRewriting) && (
         <div ref={bodyRef} className="px-4 py-4 text-[var(--body)] leading-relaxed">
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
             {state.body}
@@ -233,91 +164,22 @@ export function SectionCard({ projectId, sectionKey, label, initialBody }: Secti
         />
       )}
 
-      {(state.mode === 'rewrite_idle' || state.mode === 'rewrite_streaming') && (
-        <div className="p-4 space-y-3">
-          {state.selectedText && (
-            <div className="border-l-2 border-[var(--accent)] pl-3 text-xs text-[var(--meta)]">
-              <div className="mb-1 text-[var(--faint)]">只改写所选片段：</div>
-              <div className="italic">{state.selectedText}</div>
-            </div>
-          )}
-          <div className="relative">
-            <textarea
-              ref={hintTaRef}
-              value={state.hint}
-              onChange={onHintChange}
-              onKeyDown={onHintKeyDown}
-              placeholder="改写提示（多行可，@ 触发 skill 补全）：更口语 / @search_wiki 查一下 / 加一个数据点 ..."
-              className="w-full min-h-[80px] bg-[var(--bg-2)] p-3 text-sm outline-none border border-[var(--hair)] rounded"
-              disabled={state.mode === 'rewrite_streaming'}
-            />
-            {mention.active && (
-              <div className="absolute left-0 top-full mt-1">
-                <MentionDropdown
-                  items={SKILL_ITEMS}
-                  activeIndex={mention.activeIndex}
-                  onSelect={insertSkill}
-                  onHover={(i) => setMention((m) => ({ ...m, activeIndex: i }))}
-                />
-              </div>
-            )}
-          </div>
-          <div className={state.timeline.length > 0 ? "grid grid-cols-[1fr_280px] gap-4" : ""}>
-            <div>
-              {state.mode === 'rewrite_idle' ? (
-                <button
-                  onClick={() => void state.triggerRewrite()}
-                  className="px-3 py-1.5 rounded bg-[var(--accent)] text-[var(--accent-on)] text-sm"
-                >
-                  改写
-                </button>
-              ) : (
-                <div className="text-sm text-[var(--meta)]">正在改写，请稍候…</div>
-              )}
-            </div>
-            {state.timeline.length > 0 && (
-              <div className="rounded bg-[var(--bg-2)] p-3">
-                <div className="text-xs text-[var(--meta)] mb-2">活动日志</div>
-                <ToolTimeline events={state.timeline} />
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {state.mode === 'rewrite_done' && state.draftBody !== null && (
-        <div className="p-4 space-y-3">
-          <div className="text-xs text-[var(--meta)]">改写完成 · 对比前后：</div>
-          <div className="rounded bg-[var(--bg-2)] p-3 max-h-[400px] overflow-y-auto">
-            <SectionDiff oldText={state.body} newText={state.draftBody} />
-          </div>
-          {state.timeline.length > 0 && (
-            <div className="rounded bg-[var(--bg-2)] p-3">
-              <div className="text-xs text-[var(--meta)] mb-2">活动日志</div>
-              <ToolTimeline events={state.timeline} />
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => void state.accept()}
-              className="px-3 py-1.5 rounded bg-[var(--accent)] text-[var(--accent-on)] text-sm"
-            >
-              接受改写
-            </button>
-            <button
-              onClick={() => state.reject()}
-              className="px-3 py-1.5 rounded border border-[var(--hair)] text-sm"
-            >
-              驳回
-            </button>
-            <button
-              onClick={() => void state.triggerRewrite()}
-              className="px-3 py-1.5 rounded border border-[var(--hair)] text-sm"
-            >
-              再改一次
-            </button>
-          </div>
-        </div>
+      {isRewriting && (
+        <RewriteModal
+          label={label}
+          mode={state.mode}
+          hint={state.hint}
+          setHint={state.setHint}
+          selectedText={state.selectedText}
+          timeline={state.timeline}
+          oldBody={state.body}
+          draftBody={state.draftBody}
+          onTrigger={() => void state.triggerRewrite()}
+          onAccept={() => void state.accept()}
+          onReject={() => state.reject()}
+          onRetry={() => void state.triggerRewrite()}
+          onClose={() => state.cancelRewrite()}
+        />
       )}
     </article>
   );
