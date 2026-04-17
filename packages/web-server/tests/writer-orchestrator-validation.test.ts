@@ -41,7 +41,7 @@ describe('runBookendWithValidation', () => {
     expect(runCalls).toBe(1);
     expect(out.finalText).toBe(goodText());
     expect(events.map((e) => e.type)).toEqual(['writer.validation_passed']);
-    expect(events[0]).toMatchObject({ attempt: 1, chars: 300 });
+    expect(events[0]).toMatchObject({ attempt: 1, chars: 300, agent: 'writer.closing' });
   });
 
   it('first bad → retry → second good: validation_retry then validation_passed attempt=2', async () => {
@@ -66,7 +66,13 @@ describe('runBookendWithValidation', () => {
       'writer.validation_retry',
       'writer.validation_passed',
     ]);
-    expect(events[1]).toMatchObject({ attempt: 2 });
+    expect(events[0]).toMatchObject({
+      agent: 'writer.closing',
+      attempt: 1,
+      chars: expect.any(Number),
+      violations: expect.any(Array),
+    });
+    expect(events[1]).toMatchObject({ attempt: 2, agent: 'writer.closing' });
     // retry arg passed to second runBookend call
     expect(textsSeenByRun[0]).toBeUndefined();
     expect(textsSeenByRun[1]).toMatchObject({
@@ -92,6 +98,7 @@ describe('runBookendWithValidation', () => {
       'writer.validation_retry',
       'writer.validation_failed',
     ]);
+    expect(events[1]).toMatchObject({ agent: 'writer.closing', violations: expect.any(Array) });
   });
 
   it('null hardRules → skip validation entirely', async () => {

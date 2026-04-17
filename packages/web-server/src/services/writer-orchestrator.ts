@@ -276,7 +276,10 @@ function formatStyleReference(resolved: ResolvedStyle): string {
  * - Else: validate. If ok → publish validation_passed, return.
  * - If not ok → publish validation_retry, runBookend(retry). Validate again.
  *   Publish validation_passed (if now ok) or validation_failed.
- * - In both paths, the last result is always returned (no throw).
+ * - Returns the last attempt (second if retried, first otherwise). The caller
+ *   owns the outer try/catch — this function does NOT catch errors from
+ *   runBookend, publishEvent, or validateBookend. If validator regex / rules
+ *   are malformed, the error propagates up.
  */
 export async function runBookendWithValidation(params: {
   role: 'opening' | 'closing';
@@ -300,13 +303,19 @@ export async function runBookendWithValidation(params: {
 
   if (v1.ok) {
     await params.publishEvent('writer.validation_passed', {
-      section_key: params.sectionKey, attempt: 1, chars: v1.chars,
+      section_key: params.sectionKey,
+      agent: `writer.${params.role}`,
+      attempt: 1,
+      chars: v1.chars,
     });
     return first;
   }
 
   await params.publishEvent('writer.validation_retry', {
     section_key: params.sectionKey,
+    agent: `writer.${params.role}`,
+    attempt: 1,
+    chars: v1.chars,
     violations: v1.violations,
   });
 
@@ -324,11 +333,15 @@ export async function runBookendWithValidation(params: {
 
   if (v2.ok) {
     await params.publishEvent('writer.validation_passed', {
-      section_key: params.sectionKey, attempt: 2, chars: v2.chars,
+      section_key: params.sectionKey,
+      agent: `writer.${params.role}`,
+      attempt: 2,
+      chars: v2.chars,
     });
   } else {
     await params.publishEvent('writer.validation_failed', {
       section_key: params.sectionKey,
+      agent: `writer.${params.role}`,
       violations: v2.violations,
     });
   }
