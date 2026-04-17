@@ -295,3 +295,15 @@ Mock invokeAgent：
 - Style critic 和 validator 的协同（现在 validator 在 critic 之前，不冲突但也未打通）
 - UI 上展示 validation violations
 - 字数 tolerance 的项目级 override
+
+---
+
+## Validation log
+
+- **2026-04-17**: Trae project rewrite API run passed B.3 acceptance (via `POST /api/projects/:id/writer/sections/:key/rewrite`).
+  - Opening rewrite: `writer.validation_passed` attempt=1, chars=384 ∈ [160, 480] tolerance band for [200, 400] override ✓
+  - Closing rewrite: `writer.validation_passed` attempt=1, chars=367 ∈ [160, 420] tolerance band for [200, 350] override (367 is 17 chars over max but within 20% tolerance — exactly the edge case the tolerance was designed for) ✓
+  - Both events persisted to `<vault>/07_projects/trae/events.jsonl` with `agent`, `attempt`, `chars` fields ✓
+  - Final opening + closing texts: zero banned phrases (`不是…而是`, `—`), zero banned vocabulary (`笔者`, `本人`), short paragraphs with blank-line separation ✓
+  - Plan-gap fix: Task 8 initially wired only `runWriter` orchestrator call sites. Added follow-up (commit `c5000e7`) to also wire `/writer/sections/:key/rewrite` route — the common UI-edit path — through `runBookendWithValidation`. Both paths now validate consistently.
+  - Not exercised: validation_retry / validation_failed branches (output was compliant on first attempt). Those paths are unit-tested in `writer-orchestrator-validation.test.ts` (4/4 pass). Real-run exercise of retry depends on the LLM producing a banned phrase, which didn't happen here — acceptable since the plan treats retry as the safety-net path.
