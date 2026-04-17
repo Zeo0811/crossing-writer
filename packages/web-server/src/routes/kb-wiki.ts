@@ -118,6 +118,19 @@ export function registerKbWikiRoutes(app: FastifyInstance, deps: KbWikiDeps) {
     },
   );
 
+  app.get("/api/kb/wiki/index.json", async (_req, reply) => {
+    const { WikiStore } = await import("@crossing/kb");
+    const store = new WikiStore(deps.vaultPath);
+    const pages = store.listPages();
+    const out = pages.map((p) => ({
+      path: p.path,
+      title: p.frontmatter.title ?? "",
+      aliases: p.frontmatter.aliases ?? [],
+    }));
+    reply.header("Cache-Control", "public, max-age=60");
+    return reply.send(out);
+  });
+
   app.get<{ Querystring: { q?: string; kind?: string; limit?: string } }>("/api/kb/wiki/search", async (req, reply) => {
     const q = (req.query.q ?? "").trim();
     if (!q) return reply.code(400).send({ error: "q required" });
