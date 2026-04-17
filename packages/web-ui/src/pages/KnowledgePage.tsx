@@ -3,7 +3,7 @@ import { WikiPagePreview } from "../components/wiki/WikiPagePreview.js";
 import { RawArticleDrawer } from "../components/wiki/RawArticleDrawer.js";
 import { IngestTab } from "../components/wiki/IngestTab.js";
 import { ModelSelector } from "../components/wiki/ModelSelector.js";
-import { IngestProgressView } from "../components/wiki/IngestProgressView.js";
+import { IngestConsoleFab } from "../components/wiki/IngestConsoleFab.js";
 import { Tabs, TabsList, TabsTrigger, TabsContent, Input } from "../components/ui";
 import { formatBeijingShort } from "../utils/time";
 import { useIngestState } from "../hooks/useIngestState";
@@ -38,7 +38,6 @@ export function KnowledgePage() {
   const [q, setQ] = useState("");
   const [kindFilter, setKindFilter] = useState<string>("全部");
   const [statusInfo, setStatusInfo] = useState<WikiStatus | null>(null);
-  const [logOpen, setLogOpen] = useState(false);
   const [drawerSource, setDrawerSource] = useState<{ account: string; articleId: string } | null>(null);
   const [model, setModel] = useState<{ cli: "claude" | "codex"; model: string }>({ cli: "claude", model: "sonnet" });
 
@@ -207,23 +206,12 @@ export function KnowledgePage() {
       </Tabs>
 
       {(ingest.status !== "idle" || ingest.events.length > 0) && (
-        <div className="border-t border-[var(--hair)]">
-          <button
-            onClick={() => setLogOpen((o) => !o)}
-            className="w-full flex items-center justify-between px-6 py-2.5 text-xs text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"
-          >
-            <span className="flex items-center gap-2">
-              {ingest.status === "running" && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />}
-              入库日志（{ingest.events.length}）
-            </span>
-            <span>{logOpen ? "收起 ▴" : "展开 ▾"}</span>
-          </button>
-          {logOpen && (
-            <div className="px-6 pb-4">
-              <IngestProgressView events={ingest.events} status={ingest.status} error={ingest.error} />
-            </div>
-          )}
-        </div>
+        <IngestConsoleFab
+          events={ingest.events}
+          status={ingest.status}
+          error={ingest.error}
+          onDismiss={ingest.dismiss}
+        />
       )}
       <RawArticleDrawer
         open={drawerSource !== null}
