@@ -148,3 +148,55 @@ export function startIngestStream(
   })();
   return { close: () => ctrl.abort() };
 }
+
+export interface WikiFrontmatter {
+  type: WikiKind;
+  title: string;
+  aliases?: string[];
+  sources?: Array<{ account: string; article_id: string; quoted: string }>;
+  backlinks?: string[];
+  images?: Array<{ url: string; caption?: string; from_article?: string }>;
+  last_ingest?: string;
+  [k: string]: unknown;
+}
+
+export interface WikiPageFull {
+  frontmatter: WikiFrontmatter;
+  body: string;
+}
+
+export async function getPageMeta(path: string): Promise<WikiPageFull> {
+  const r = await fetch(`/api/kb/wiki/pages/${path}?meta=1`);
+  if (!r.ok) throw new Error(`getPageMeta ${r.status}`);
+  return (await r.json()) as WikiPageFull;
+}
+
+export interface WikiIndexEntry {
+  path: string;
+  title: string;
+  aliases: string[];
+}
+
+export async function getWikiIndex(): Promise<WikiIndexEntry[]> {
+  const r = await fetch(`/api/kb/wiki/index.json`);
+  if (!r.ok) throw new Error(`getWikiIndex ${r.status}`);
+  return (await r.json()) as WikiIndexEntry[];
+}
+
+export interface RawArticle {
+  id: string;
+  account: string;
+  title: string;
+  author: string | null;
+  published_at: string;
+  url: string | null;
+  body_plain: string;
+  md_path: string | null;
+  word_count: number | null;
+}
+
+export async function getRawArticle(account: string, id: string): Promise<RawArticle> {
+  const r = await fetch(`/api/kb/raw-articles/${encodeURIComponent(account)}/${encodeURIComponent(id)}`);
+  if (!r.ok) throw new Error(`getRawArticle ${r.status}`);
+  return (await r.json()) as RawArticle;
+}
