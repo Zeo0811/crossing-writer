@@ -7,12 +7,15 @@ export interface KbWikiDeps { vaultPath: string; sqlitePath: string }
 
 interface IngestBody {
   accounts?: string[];
+  article_ids?: string[];
   per_account_limit?: number;
   batch_size?: number;
   mode?: IngestMode;
   since?: string;
   until?: string;
   cli_model?: { cli: "claude" | "codex"; model?: string };
+  max_articles?: number;
+  force_reingest?: boolean;
 }
 
 function countAccount(sqlitePath: string, account: string): number {
@@ -28,9 +31,28 @@ export function registerKbWikiRoutes(app: FastifyInstance, deps: KbWikiDeps) {
   app.post<{ Body: IngestBody }>("/api/kb/wiki/ingest", async (req, reply) => {
     const body = req.body ?? {};
     const accounts = body.accounts ?? [];
-    if (!Array.isArray(accounts) || accounts.length === 0) {
+    const articleIds = body.article_ids ?? [];
+    const forceReingest = body.force_reingest ?? false;
+    const mode: IngestMode = body.mode ?? "full";
+
+    // Mode check
+    if (mode !== "full" && mode !== "incremental" && mode !== "selected") {
+      return reply.code(400).send({ error: `invalid mode: ${mode}` });
+    }
+
+    // Cross-field validation
+    if (articleIds.length > 0 && mode !== "selected") {
+      return reply.code(400).send({ error: "article_ids implies mode=selected" });
+    }
+    if (mode === "selected" && articleIds.length === 0) {
+      return reply.code(400).send({ error: "article_ids required for mode=selected" });
+    }
+
+    // Accounts required for non-selected modes
+    if (mode !== "selected" && accounts.length === 0) {
       return reply.code(400).send({ error: "accounts must be a non-empty array" });
     }
+
     const perAccountLimit = body.per_account_limit ?? 50;
     if (!Number.isInteger(perAccountLimit) || perAccountLimit < 1 || perAccountLimit > 500) {
       return reply.code(400).send({ error: "per_account_limit must be integer in [1, 500]" });
@@ -39,13 +61,26 @@ export function registerKbWikiRoutes(app: FastifyInstance, deps: KbWikiDeps) {
     if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 20) {
       return reply.code(400).send({ error: "batch_size must be integer in [1, 20]" });
     }
-    const mode: IngestMode = body.mode ?? "full";
-    if (mode !== "full" && mode !== "incremental") {
-      return reply.code(400).send({ error: `invalid mode: ${mode}` });
+    const maxArticles = body.max_articles ?? 50;
+    if (!Number.isInteger(maxArticles) || maxArticles < 1 || maxArticles > 500) {
+      return reply.code(400).send({ error: "max_articles must be integer in [1, 500]" });
     }
-    for (const a of accounts) {
-      if (countAccount(deps.sqlitePath, a) === 0) {
-        return reply.code(404).send({ error: `account not found: ${a}` });
+
+    // Project count check (before expensive DB scans)
+    const projectedCount = mode === "selected" ? articleIds.length : accounts.length * perAccountLimit;
+    if (projectedCount > maxArticles) {
+      return reply.code(413).send({
+        error: `max_articles exceeded: cap=${maxArticles} projected=${projectedCount}`,
+        cap: maxArticles, projected: projectedCount,
+      });
+    }
+
+    // Account existence check (only for non-selected modes)
+    if (mode !== "selected") {
+      for (const a of accounts) {
+        if (countAccount(deps.sqlitePath, a) === 0) {
+          return reply.code(404).send({ error: `account not found: ${a}` });
+        }
       }
     }
 
@@ -67,8 +102,11 @@ export function registerKbWikiRoutes(app: FastifyInstance, deps: KbWikiDeps) {
 
     try {
       const result = await runIngest({
-        accounts, perAccountLimit, batchSize, mode,
-        since: body.since, until: body.until, cliModel: body.cli_model, onEvent,
+        accounts, articleIds, perAccountLimit, batchSize, mode,
+        since: body.since, until: body.until,
+        cliModel: body.cli_model,
+        maxArticles, forceReingest,
+        onEvent,
       }, { vaultPath: deps.vaultPath, sqlitePath: deps.sqlitePath });
       send("ingest.result", result as unknown as Record<string, unknown>);
     } catch (err) {
