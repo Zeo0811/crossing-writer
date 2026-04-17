@@ -289,4 +289,13 @@ route 层 `packages/web-server/src/routes/writer.ts` 同样清理 `loadRefs` 和
 
 ## Validation log
 
-*待实施后追加*
+- **2026-04-17**: Trae project smoke test passed SP-C acceptance.
+  - Config migration: `config.json` auto-migrated on first `loadServerConfig` — `defaultModel: { writer: {cli: claude, model: claude-opus-4-6}, other: {cli: claude, model: sonnet} }` populated; per-agent `model` + `reference_accounts` fields purged from agents ✓
+  - `GET /api/config/agents` returns `defaultModel` at top level ✓
+  - `PATCH /api/config/agents` with `{ defaultModel: { writer: {cli, model} } }` accepted; validator rejects malformed cli (covered by 6 new tests in routes-config-agents.test.ts)
+  - Trae opening rewrite via `POST /api/projects/trae/writer/sections/opening/rewrite`: `writer.validation_passed` attempt=1, chars=379 ∈ `[160, 480]` tolerance band ✓ — B.3 validator still intact
+  - Final opening: zero `不是X而是Y`, zero `笔者`/`本人`, zero em-dashes; no `# 参考账号风格素材` header in rendered prompt ✓
+  - Grep audit: zero `cli_model_per_agent` / `loadReferenceAccountKb` / `refsBlock` / `loadRefs` in `packages/web-server/src` + `packages/agents/src` ✓
+  - ConfigWorkbench UI: 2 tabs (基础 + 状态); AgentsPanel + AgentCard deleted ✓
+  - TopNav: 5 entries (Projects / 风格面板 / 硬规则 / 选题专家 / 配置) ✓
+- **Task 7 correction**: Initial Task 7 commit touched `routes/config.ts` which is not registered in `server.ts`. Corrected in follow-up commit `a54fd52` — moved `defaultModel` GET/PATCH handlers to the active `routes/config-agents.ts`, deleted the dead legacy file.
