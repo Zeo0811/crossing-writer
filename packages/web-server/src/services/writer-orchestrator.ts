@@ -24,6 +24,7 @@ import {
   type ContextBundle,
 } from "./context-bundle-service.js";
 import { collectProjectImages } from "./brief-images.js";
+import type { HardRulesStore } from "./hard-rules-store.js";
 
 export class MissingArticleTypeError extends Error {
   constructor(public projectId: string) {
@@ -97,6 +98,9 @@ export interface RunWriterOpts {
    *  `[Project Context]` block (built + trimmed) is prepended to every writer
    *  agent user message so all agents share the same project snapshot. */
   contextBundleService?: ContextBundleService;
+  /** SP-B.2: optional hard rules store. When supplied, per-role word_count_overrides
+   *  are read once per run and passed to opening/closing bookend calls. */
+  hardRulesStore?: HardRulesStore;
 }
 
 function prependContextBlock(
@@ -209,7 +213,12 @@ function buildCriticUserMessage(fullArticle: string, sectionKeys: string[], refs
   ].join("\n");
 }
 
-function invokerFor(agentKey: string, cli: "claude" | "codex", model?: string) {
+function invokerFor(
+  agentKey: string,
+  cli: "claude" | "codex",
+  model?: string,
+  runLogDir?: string,
+) {
   return async (messages: ChatMessage[], opts?: { images?: string[]; addDirs?: string[] }) => {
     const sys = messages.find((m) => m.role === "system")?.content ?? "";
     const userParts = messages
@@ -224,6 +233,7 @@ function invokerFor(agentKey: string, cli: "claude" | "codex", model?: string) {
       userMessage: userParts,
       images: opts?.images,
       addDirs: opts?.addDirs,
+      runLogDir,
     });
     return {
       text: result.text,
@@ -345,6 +355,15 @@ export async function runWriter(
     }
   }
 
+  // SP-B.2: pull hard rules once; per-role overrides applied to bookend calls.
+  const hardRules = opts.hardRulesStore ? await opts.hardRulesStore.read() : null;
+  const openingWordOverride = hardRules?.word_count_overrides?.opening;
+  const closingWordOverride = hardRules?.word_count_overrides?.closing;
+
+  // Per-project run-log directory for writer artifacts (bookend only —
+  // practice / stitcher / style_critic don't set this to avoid disk bloat).
+  const writerRunLogDir = join(opts.projectsDir, opts.projectId, 'runs');
+
   const selectedRaw = await readFile(join(pDir, "mission/case-plan/selected-cases.md"), "utf-8");
   const cases = parseSelectedCases(selectedRaw);
   const missionSummary = existsSync(join(pDir, "mission/selected.md"))
@@ -405,8 +424,9 @@ export async function runWriter(
           panelFrontmatter: (openingStyle?.panel.frontmatter ?? {}) as any,
           hardRulesBlock: openingStyle?.hardRulesBlock ?? '',
           projectContextBlock: ctxBundle ? renderContextBlock(ctxBundle) : '',
+          wordOverride: openingWordOverride,
           product_name: project.product_info?.name ?? undefined,
-          invokeAgent: invokerFor("writer.opening", openingResolved.cli, openingResolved.model),
+          invokeAgent: invokerFor("writer.opening", openingResolved.cli, openingResolved.model, writerRunLogDir),
           userMessage: buildOpeningUserMessage(briefSummary, missionSummary, productOverview, refs),
           images: projectImages,
           addDirs: projectAddDirs,
@@ -608,8 +628,9 @@ export async function runWriter(
         panelFrontmatter: (closingStyle?.panel.frontmatter ?? {}) as any,
         hardRulesBlock: closingStyle?.hardRulesBlock ?? '',
         projectContextBlock: ctxBundle ? renderContextBlock(ctxBundle) : '',
+        wordOverride: closingWordOverride,
         product_name: project.product_info?.name ?? undefined,
-        invokeAgent: invokerFor("writer.closing", closingResolved.cli, closingResolved.model),
+        invokeAgent: invokerFor("writer.closing", closingResolved.cli, closingResolved.model, writerRunLogDir),
         userMessage: buildClosingUserMessage(openingBody, stitchedPractice, refs),
         images: projectImages,
         addDirs: projectAddDirs,

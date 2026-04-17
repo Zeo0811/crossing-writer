@@ -173,6 +173,7 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
             writerConfig,
             ...(resolveStyleForAgent ? { resolveStyleForAgent } : {}),
             ...(deps.contextBundleService ? { contextBundleService: deps.contextBundleService } : {}),
+            ...(deps.hardRulesStore ? { hardRulesStore: deps.hardRulesStore } : {}),
             onEvent: async (ev) => {
               try {
                 const { appendEvent } = await import("../services/event-log.js");
@@ -509,6 +510,7 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
             writerConfig, sectionsToRun: failed,
             ...(resolveStyleForAgent ? { resolveStyleForAgent } : {}),
             ...(deps.contextBundleService ? { contextBundleService: deps.contextBundleService } : {}),
+            ...(deps.hardRulesStore ? { hardRulesStore: deps.hardRulesStore } : {}),
           });
         } catch {}
       })();
