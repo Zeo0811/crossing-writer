@@ -103,6 +103,14 @@ export function IngestTab({ model }: IngestTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="sticky top-0 z-10 bg-[var(--bg-1)] pt-1 pb-2 -mx-6 px-6">
+        <IngestCartBar
+          entries={cart.entries}
+          maxArticles={MAX_ARTICLES}
+          onClear={cart.clear}
+          onSubmit={() => setShowConfirm(true)}
+        />
+      </div>
       {showGrid ? (
         <AccountGrid
           accounts={accounts}
@@ -154,13 +162,6 @@ export function IngestTab({ model }: IngestTabProps) {
           </main>
         </div>
       )}
-
-      <IngestCartBar
-        entries={cart.entries}
-        maxArticles={MAX_ARTICLES}
-        onClear={cart.clear}
-        onSubmit={() => setShowConfirm(true)}
-      />
 
       <IngestConfirmDialog
         open={showConfirm}
