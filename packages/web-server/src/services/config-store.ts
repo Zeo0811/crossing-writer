@@ -1,11 +1,12 @@
 import { readFileSync, writeFileSync, renameSync } from "node:fs";
-import { loadServerConfig, type ServerConfig } from "../config.js";
+import { loadServerConfig, type ServerConfig, type DefaultModelConfig } from "../config.js";
 import type { AgentConfig } from "@crossing/agents";
 
 export interface AgentConfigPatch {
   defaultCli?: "claude" | "codex";
   fallbackCli?: "claude" | "codex";
   agents?: Record<string, AgentConfig>;
+  defaultModel?: Partial<DefaultModelConfig>;
 }
 
 export interface ConfigStore {
@@ -29,6 +30,10 @@ export function createConfigStore(path: string): ConfigStore {
     }
     if (patch.agents != null) {
       raw.agents = patch.agents;
+    }
+    if (patch.defaultModel != null) {
+      const current = (raw.defaultModel ?? {}) as Record<string, unknown>;
+      raw.defaultModel = { ...current, ...patch.defaultModel };
     }
     const tmp = `${path}.tmp.${process.pid}.${Date.now()}`;
     writeFileSync(tmp, JSON.stringify(raw, null, 2), "utf-8");

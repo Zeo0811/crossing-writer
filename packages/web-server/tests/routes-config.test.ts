@@ -69,3 +69,64 @@ describe("GET/PATCH /api/config/agents", () => {
     expect(res.statusCode).toBe(400);
   });
 });
+
+describe("PATCH /api/config/agents — defaultModel", () => {
+  it("GET includes defaultModel", async () => {
+    const { app } = mkApp();
+    await app.ready();
+    const r = await app.inject({ method: "GET", url: "/api/config/agents" });
+    const body = r.json();
+    expect(body.defaultModel).toBeDefined();
+    expect(body.defaultModel.writer).toBeDefined();
+    expect(body.defaultModel.other).toBeDefined();
+  });
+
+  it("persists defaultModel.writer change", async () => {
+    const { app } = mkApp();
+    await app.ready();
+    const put = await app.inject({
+      method: "PATCH",
+      url: "/api/config/agents",
+      payload: {
+        defaultModel: {
+          writer: { cli: "codex", model: "gpt-5" },
+        },
+      },
+    });
+    expect(put.statusCode).toBe(200);
+    const get = await app.inject({ method: "GET", url: "/api/config/agents" });
+    const body = get.json();
+    expect(body.defaultModel.writer).toEqual({ cli: "codex", model: "gpt-5" });
+  });
+
+  it("preserves other tier when only writer is set", async () => {
+    const { app } = mkApp();
+    await app.ready();
+    const before = await app.inject({ method: "GET", url: "/api/config/agents" });
+    const otherBefore = before.json().defaultModel.other;
+
+    const put = await app.inject({
+      method: "PATCH",
+      url: "/api/config/agents",
+      payload: { defaultModel: { writer: { cli: "codex", model: "gpt-5" } } },
+    });
+    expect(put.statusCode).toBe(200);
+
+    const after = await app.inject({ method: "GET", url: "/api/config/agents" });
+    const dm = after.json().defaultModel;
+    expect(dm.writer).toEqual({ cli: "codex", model: "gpt-5" });
+    expect(dm.other).toEqual(otherBefore);
+  });
+
+  it("rejects malformed cli", async () => {
+    const { app } = mkApp();
+    await app.ready();
+    const r = await app.inject({
+      method: "PATCH",
+      url: "/api/config/agents",
+      payload: { defaultModel: { writer: { cli: "gemini" } } },
+    });
+    expect(r.statusCode).toBe(400);
+    expect(r.json().error).toMatch(/defaultModel\.writer\.cli/);
+  });
+});

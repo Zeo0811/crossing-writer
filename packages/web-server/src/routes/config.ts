@@ -14,6 +14,7 @@ export function registerConfigRoutes(app: FastifyInstance, deps: ConfigRoutesDep
       defaultCli: c.defaultCli,
       fallbackCli: c.fallbackCli,
       agents: c.agents,
+      defaultModel: c.defaultModel,
     };
   });
 
@@ -29,6 +30,19 @@ export function registerConfigRoutes(app: FastifyInstance, deps: ConfigRoutesDep
       for (const [k, v] of Object.entries(body.agents)) {
         if (!v || !VALID_CLI.has(v.cli)) {
           return reply.code(400).send({ error: `invalid cli for agent ${k}: ${v?.cli}` });
+        }
+      }
+    }
+    if (body.defaultModel != null) {
+      for (const tier of ["writer", "other"] as const) {
+        const entry = (body.defaultModel as Record<string, unknown>)[tier];
+        if (entry === undefined) continue;
+        if (!entry || typeof entry !== "object") {
+          return reply.code(400).send({ error: `defaultModel.${tier}.cli must be claude|codex` });
+        }
+        const cli = (entry as { cli?: unknown }).cli;
+        if (typeof cli !== "string" || !VALID_CLI.has(cli)) {
+          return reply.code(400).send({ error: `defaultModel.${tier}.cli must be claude|codex` });
         }
       }
     }
