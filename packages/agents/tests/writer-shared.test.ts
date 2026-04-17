@@ -3,6 +3,7 @@ import {
   extractSubsection,
   renderHardRulesBlock,
   renderBookendPrompt,
+  parseWordCountRange,
   type WritingHardRules,
   type PanelFrontmatterLike,
 } from '../src/roles/writer-shared.js';
@@ -214,5 +215,39 @@ describe('renderBookendPrompt', () => {
       projectContextBlock: '',
     });
     expect(out).not.toMatch(/\{\{[^}]+\}\}/);
+  });
+});
+
+describe('parseWordCountRange', () => {
+  it('parses half-width dash, per-paragraph suffix', () => {
+    expect(parseWordCountRange('10 - 110 字(单段)')).toEqual({ min: 10, max: 110, perPara: true });
+  });
+
+  it('parses full-width em dash, per-paragraph suffix', () => {
+    expect(parseWordCountRange('10 – 110 字(单段)')).toEqual({ min: 10, max: 110, perPara: true });
+  });
+
+  it('parses hyphen-minus, no suffix', () => {
+    expect(parseWordCountRange('150-260 字')).toEqual({ min: 150, max: 260, perPara: false });
+  });
+
+  it('parses "X 字以内" as [0, X]', () => {
+    expect(parseWordCountRange('200 字以内')).toEqual({ min: 0, max: 200, perPara: false });
+  });
+
+  it('returns null on garbage', () => {
+    expect(parseWordCountRange('纯粹的文字')).toBeNull();
+  });
+
+  it('returns null on empty string', () => {
+    expect(parseWordCountRange('')).toBeNull();
+  });
+
+  it('handles full-width spaces around dash', () => {
+    expect(parseWordCountRange('150 – 260 字')).toEqual({ min: 150, max: 260, perPara: false });
+  });
+
+  it('detects full-width parens 单段', () => {
+    expect(parseWordCountRange('10 – 110 字（单段）')).toEqual({ min: 10, max: 110, perPara: true });
   });
 });

@@ -12,6 +12,13 @@ export interface WritingHardRules {
   banned_phrases: Array<{ pattern: string; is_regex: boolean; reason: string; example?: string }>;
   banned_vocabulary: Array<{ word: string; reason: string }>;
   layout_rules: string[];
+  /** Optional per-role total word-count override. When set, takes precedence
+   *  over panel's `### 字数范围` subsection text. Tuple is [min, max]. */
+  word_count_overrides?: {
+    opening?: [number, number];
+    closing?: [number, number];
+    article?: [number, number];
+  };
 }
 
 /**
@@ -67,6 +74,44 @@ export function extractSubsection(typeSection: string, subsectionName: string): 
   const re = new RegExp(`(?:^|\\n)###\\s+${escaped}[^\\n]*\\n([\\s\\S]*?)(?=\\n###\\s|$)`, 'u');
   const m = typeSection.match(re);
   return m?.[1]?.trim() ?? '';
+}
+
+// ============================================================================
+// parseWordCountRange
+// ============================================================================
+
+/**
+ * Parse a 字数范围 text like "10 – 110 字(单段)" or "150-260 字".
+ * Supports: hyphen-minus / em dash / en dash as range separator,
+ *          full- or half-width parens on "单段" suffix,
+ *          "X 字以内" form (min defaults to 0).
+ * Returns null for unparseable inputs.
+ */
+export function parseWordCountRange(
+  text: string,
+): { min: number; max: number; perPara: boolean } | null {
+  if (!text) return null;
+  const perPara = /[（(]单段[）)]/.test(text);
+  // Range form: "min <dash> max 字"
+  const rangeRe = /(\d+)\s*[-–—]\s*(\d+)\s*字/u;
+  const m = text.match(rangeRe);
+  if (m) {
+    const min = Number.parseInt(m[1]!, 10);
+    const max = Number.parseInt(m[2]!, 10);
+    if (Number.isFinite(min) && Number.isFinite(max)) {
+      return { min, max, perPara };
+    }
+  }
+  // "X 字以内" form
+  const capRe = /(\d+)\s*字\s*以内/u;
+  const m2 = text.match(capRe);
+  if (m2) {
+    const max = Number.parseInt(m2[1]!, 10);
+    if (Number.isFinite(max)) {
+      return { min: 0, max, perPara };
+    }
+  }
+  return null;
 }
 
 // ============================================================================
