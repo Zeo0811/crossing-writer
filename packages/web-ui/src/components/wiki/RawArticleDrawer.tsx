@@ -1,9 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as RadixDialog from "@radix-ui/react-dialog";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Dialog, DialogContent, Chip } from "../ui";
 import { getRawArticle, type RawArticle } from "../../api/wiki-client";
+
+// body_plain is extracted text with image URLs sitting inline. Promote
+// anything that looks like an image URL to a markdown image on its own
+// line so ReactMarkdown actually renders it.
+function preprocessBody(body: string): string {
+  // 1) image URLs — either wx_fmt=png|jpg|… or a direct image extension
+  const withImages = body.replace(
+    /(https?:\/\/[^\s<>()]+?(?:wx_fmt=(?:png|jpg|jpeg|gif|webp)|\.(?:png|jpg|jpeg|gif|webp))[^\s<>()]*)/gi,
+    (url) => `\n\n![](${url})\n\n`,
+  );
+  // 2) non-image URLs glued directly onto surrounding text: insert a space
+  //    so they parse as a link instead of being absorbed into a word
+  const withSpacedLinks = withImages.replace(
+    /([^\s>])(https?:\/\/)/g,
+    "$1 $2",
+  );
+  return withSpacedLinks;
+}
 
 export interface RawArticleDrawerProps {
   open: boolean;
@@ -16,6 +34,11 @@ export function RawArticleDrawer({ open, account, articleId, onClose }: RawArtic
   const [article, setArticle] = useState<RawArticle | null>(null);
   const [missing, setMissing] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const preparedBody = useMemo(
+    () => article ? preprocessBody(article.body_plain) : "",
+    [article],
+  );
 
   useEffect(() => {
     if (!open || !account || !articleId) return;
@@ -65,7 +88,27 @@ export function RawArticleDrawer({ open, account, articleId, onClose }: RawArtic
                 </div>
               </header>
               <div className="prose prose-sm max-w-none">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{article.body_plain}</ReactMarkdown>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    img: ({ src, alt }) => (
+                      <img
+                        src={typeof src === "string" ? src : ""}
+                        alt={alt ?? ""}
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                        className="rounded border border-[var(--hair)] my-3 max-w-full h-auto"
+                      />
+                    ),
+                    a: ({ href, children }) => (
+                      <a href={href} target="_blank" rel="noreferrer noopener" className="text-[var(--accent)] hover:underline break-all">
+                        {children}
+                      </a>
+                    ),
+                  }}
+                >
+                  {preparedBody}
+                </ReactMarkdown>
               </div>
               {article.url && (
                 <a
