@@ -11,7 +11,7 @@ interface Article {
 
 interface Props {
   account: string;
-  onIngestSelected?: (ids: string[]) => void;
+  onArticleClick?: (articleId: string, title: string, publishedAt: string, wordCount: number | null) => void;
 }
 
 function daysBetween(a: Date, b: Date): number {
@@ -24,13 +24,12 @@ function weekStart(d: Date): Date {
   return copy;
 }
 
-export function AccountHeatmap({ account, onIngestSelected }: Props) {
+export function AccountHeatmap({ account, onArticleClick }: Props) {
   const [articles, setArticles] = useState<Article[] | null>(null);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [hoveredDate, setHoveredDate] = useState<string | null>(null);
 
   useEffect(() => {
     setArticles(null);
-    setSelected(new Set());
     fetch(`/api/kb/accounts/${encodeURIComponent(account)}/articles?limit=3000`)
       .then((r) => r.json())
       .then(setArticles)
@@ -57,7 +56,7 @@ export function AccountHeatmap({ account, onIngestSelected }: Props) {
 
     const cells: Array<{
       date: string;
-      day: number; // 0-6 (Sun-Sat)
+      day: number;
       week: number;
       articles: Article[];
       ingested: number;
@@ -90,65 +89,6 @@ export function AccountHeatmap({ account, onIngestSelected }: Props) {
     return { cells, weeks: totalWeeks, months };
   }, [articles]);
 
-  function toggleArticle(id: string) {
-    setSelected((s) => {
-      const n = new Set(s);
-      if (n.has(id)) n.delete(id); else n.add(id);
-      return n;
-    });
-  }
-
-  function toggleDate(date: string, rawIds: string[]) {
-    if (rawIds.length === 0) return;
-    setSelected((s) => {
-      const n = new Set(s);
-      const allIn = rawIds.every((id) => n.has(id));
-      if (allIn) {
-        for (const id of rawIds) n.delete(id);
-      } else {
-        for (const id of rawIds) n.add(id);
-      }
-      return n;
-    });
-  }
-
-  function applyDrag(rawIds: string[], mode: "select" | "deselect") {
-    if (rawIds.length === 0) return;
-    setSelected((s) => {
-      const n = new Set(s);
-      for (const id of rawIds) {
-        if (mode === "select") n.add(id); else n.delete(id);
-      }
-      return n;
-    });
-  }
-
-  function onCellMouseDown(rawIds: string[]) {
-    if (rawIds.length === 0) return;
-    const allIn = rawIds.every((id) => selected.has(id));
-    const mode = allIn ? "deselect" : "select";
-    setDragging(true);
-    setDragMode(mode);
-    applyDrag(rawIds, mode);
-  }
-
-  function onCellMouseEnter(rawIds: string[]) {
-    if (!dragging || rawIds.length === 0) return;
-    applyDrag(rawIds, dragMode);
-  }
-
-  function onDragEnd() {
-    setDragging(false);
-  }
-
-  function selectAllRaw() {
-    if (!articles) return;
-    setSelected(new Set(articles.filter((a) => a.ingest_status === "raw" || a.ingest_status === "tag_failed").map((a) => a.id)));
-  }
-
-  const [hoveredDate, setHoveredDate] = useState<string | null>(null);
-  const [dragging, setDragging] = useState(false);
-  const [dragMode, setDragMode] = useState<"select" | "deselect">("select");
   const hoveredArticles = useMemo(() => {
     if (!hoveredDate || !articles) return [];
     return articles.filter((a) => a.published_at.startsWith(hoveredDate));
@@ -157,7 +97,6 @@ export function AccountHeatmap({ account, onIngestSelected }: Props) {
   if (articles === null) return <div className="py-4 text-xs text-[var(--meta)]">加载 {account} 的文章…</div>;
   if (articles.length === 0) return <div className="py-4 text-xs text-[var(--faint)]">该账号无文章</div>;
 
-  const rawCount = articles.filter((a) => a.ingest_status === "raw" || a.ingest_status === "tag_failed").length;
   const cellSize = 12;
   const gap = 2;
   const svgW = weeks * (cellSize + gap);
@@ -165,9 +104,8 @@ export function AccountHeatmap({ account, onIngestSelected }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="overflow-x-auto pb-2 select-none" onMouseUp={onDragEnd} onMouseLeave={onDragEnd}>
+      <div className="overflow-x-auto pb-2 select-none">
         <svg width={svgW} height={svgH} className="block">
-          {/* month labels */}
           {months.map((m, i) => m ? (
             <text key={i} x={i * (cellSize + gap)} y={10} fontSize={9} fill="var(--meta)">{m}</text>
           ) : null)}
@@ -187,15 +125,8 @@ export function AccountHeatmap({ account, onIngestSelected }: Props) {
             }
             const allIngested = c.ingested === c.total;
             const partial = c.ingested > 0 && c.ingested < c.total;
-            const rawIds = c.articles.filter((a) => a.ingest_status === "raw" || a.ingest_status === "tag_failed").map((a) => a.id);
-            const someSelected = rawIds.some((id) => selected.has(id));
-            const allSelected = rawIds.length > 0 && rawIds.every((id) => selected.has(id));
             const fill = allIngested
               ? "var(--accent)"
-              : allSelected
-              ? "var(--amber)"
-              : someSelected
-              ? "var(--amber-hair)"
               : partial
               ? "var(--accent-soft)"
               : "var(--hair-strong)";
@@ -211,8 +142,7 @@ export function AccountHeatmap({ account, onIngestSelected }: Props) {
                 fill={fill}
                 opacity={opacity}
                 className="cursor-pointer"
-                onMouseDown={(e) => { e.preventDefault(); onCellMouseDown(rawIds); setHoveredDate(c.date); }}
-                onMouseEnter={() => { onCellMouseEnter(rawIds); setHoveredDate(c.date); }}
+                onMouseEnter={() => setHoveredDate(c.date)}
                 onMouseLeave={() => setHoveredDate(null)}
               />
             );
@@ -225,15 +155,11 @@ export function AccountHeatmap({ account, onIngestSelected }: Props) {
           <span className="w-3 h-3 rounded-sm" style={{ background: "var(--hair-strong)" }} /> 未入库
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm" style={{ background: "var(--amber)" }} /> 已选中
-        </span>
-        <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-sm" style={{ background: "var(--accent-soft)" }} /> 部分入库
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-sm" style={{ background: "var(--accent)" }} /> 全部入库
         </span>
-        <span className="ml-auto">{selected.size > 0 ? `已选 ${selected.size} / ` : ""}{rawCount} 篇未入库</span>
       </div>
 
       {hoveredDate && hoveredArticles.length > 0 && (
@@ -244,55 +170,21 @@ export function AccountHeatmap({ account, onIngestSelected }: Props) {
           <div className="space-y-1 max-h-[200px] overflow-auto">
             {hoveredArticles.map((a) => {
               const isRaw = a.ingest_status === "raw" || a.ingest_status === "tag_failed";
-              const checked = selected.has(a.id);
               return (
                 <div
                   key={a.id}
                   className={`flex items-center gap-2 px-2 py-1 rounded text-xs ${
-                    isRaw ? "cursor-pointer hover:bg-[var(--bg-1)]" : ""
+                    isRaw && onArticleClick ? "cursor-pointer hover:bg-[var(--bg-1)]" : ""
                   }`}
-                  onClick={() => isRaw && toggleArticle(a.id)}
+                  onClick={() => isRaw && onArticleClick?.(a.id, a.title, a.published_at, a.word_count)}
                 >
-                  {isRaw && (
-                    <span className={`w-3 h-3 rounded-sm border flex items-center justify-center text-[8px] shrink-0 ${
-                      checked ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-on)]" : "border-[var(--hair-strong)]"
-                    }`}>
-                      {checked && "✓"}
-                    </span>
-                  )}
-                  {!isRaw && <span className="w-3 h-3 rounded-sm bg-[var(--accent)] shrink-0" />}
+                  <span className="w-3 h-3 rounded-sm shrink-0" style={{ background: isRaw ? "var(--hair-strong)" : "var(--accent)" }} />
                   <span className={`truncate flex-1 ${isRaw ? "text-[var(--body)]" : "text-[var(--meta)]"}`}>{a.title}</span>
                   <span className="text-[var(--faint)] shrink-0">{a.word_count ?? "—"} 字</span>
                 </div>
               );
             })}
           </div>
-        </div>
-      )}
-
-      {rawCount > 0 && (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={selectAllRaw}
-              className="text-xs text-[var(--accent)] hover:underline"
-            >
-              全选未入库（{rawCount}）
-            </button>
-            {selected.size > 0 && (
-              <button onClick={() => setSelected(new Set())} className="text-xs text-[var(--meta)] hover:text-[var(--heading)]">
-                清空选择
-              </button>
-            )}
-          </div>
-          {selected.size > 0 && onIngestSelected && (
-            <button
-              onClick={() => onIngestSelected([...selected])}
-              className="px-4 py-1.5 rounded border border-[var(--accent-soft)] bg-[var(--accent)] text-[var(--accent-on)] text-xs font-semibold"
-            >
-              入库选中 {selected.size} 篇 →
-            </button>
-          )}
         </div>
       )}
     </div>
