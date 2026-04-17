@@ -9,6 +9,7 @@ import type { StylePanelStore } from "../services/style-panel-store.js";
 import { mergeAgentConfig } from "../services/config-merger.js";
 import { resolveStyleBindingV2 } from "../services/style-binding-resolver.js";
 import { runWriter, runBookendWithValidation, type WriterAgentKey, type WriterConfig, type ResolveStyleForAgent } from "../services/writer-orchestrator.js";
+import { resolveModelForAgent } from "../services/model-resolver.js";
 import type { ContextBundleService } from "../services/context-bundle-service.js";
 import type { HardRulesStore } from "../services/hard-rules-store.js";
 import { ArticleStore, type SectionKey } from "../services/article-store.js";
@@ -27,7 +28,7 @@ export interface WriterDeps {
   projectsDir: string;
   vaultPath: string;
   sqlitePath: string;
-  configStore: ConfigStore | { get(key: string): Promise<{ cli?: string; model?: string } | undefined> };
+  configStore: ConfigStore;
   agentConfigStore?: AgentConfigStore;
   projectOverrideStore?: ProjectOverrideStore;
   stylePanelStore?: StylePanelStore;
@@ -92,13 +93,15 @@ async function mergeWriterConfig(
   body: Partial<WriterConfig>,
 ): Promise<WriterConfig> {
   const cliModel: WriterConfig["cli_model_per_agent"] = {};
+  const agents = deps.configStore.current.agents ?? {};
   for (const key of AGENT_KEYS) {
     const override = body.cli_model_per_agent?.[key];
-    const globalCfg = await (deps.configStore as any).get(key);
+    const globalCfg = agents[key] as { cli?: string; model?: unknown } | undefined;
     const nestedModel = globalCfg?.model;
     const isNewFormat = nestedModel && typeof nestedModel === "object" && "cli" in nestedModel;
-    const cli: "claude" | "codex" = (isNewFormat ? nestedModel.cli : globalCfg?.cli) ?? "claude";
-    const model: string | undefined = isNewFormat ? nestedModel.model : (typeof nestedModel === "string" ? nestedModel : undefined);
+    const rawCli = (isNewFormat ? (nestedModel as { cli?: string }).cli : globalCfg?.cli) ?? "claude";
+    const cli: "claude" | "codex" = rawCli === "codex" ? "codex" : "claude";
+    const model: string | undefined = isNewFormat ? (nestedModel as { model?: string }).model : (typeof nestedModel === "string" ? nestedModel : undefined);
     cliModel[key] = override ?? (globalCfg ? { cli, model } : undefined);
   }
   return { cli_model_per_agent: cliModel };
@@ -144,6 +147,7 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
             vaultPath: deps.vaultPath,
             sqlitePath: deps.sqlitePath,
             writerConfig,
+            defaultModel: deps.configStore.current.defaultModel,
             ...(resolveStyleForAgent ? { resolveStyleForAgent } : {}),
             ...(deps.contextBundleService ? { contextBundleService: deps.contextBundleService } : {}),
             ...(deps.hardRulesStore ? { hardRulesStore: deps.hardRulesStore } : {}),
@@ -253,8 +257,7 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
 
       try {
         await deps.store.update(req.params.id, { status: "writing_editing" });
-        const cfg = project.writer_config;
-        const cliModel = cfg?.cli_model_per_agent?.[agentKey] ?? { cli: "claude" };
+        const cliModel = resolveModelForAgent(agentKey, deps.configStore.current.defaultModel);
         let newBody = "";
         const pDir = join(deps.projectsDir, req.params.id);
 
@@ -485,6 +488,7 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
             projectId: req.params.id, projectsDir: deps.projectsDir, store: deps.store,
             vaultPath: deps.vaultPath, sqlitePath: deps.sqlitePath,
             writerConfig, sectionsToRun: failed,
+            defaultModel: deps.configStore.current.defaultModel,
             ...(resolveStyleForAgent ? { resolveStyleForAgent } : {}),
             ...(deps.contextBundleService ? { contextBundleService: deps.contextBundleService } : {}),
             ...(deps.hardRulesStore ? { hardRulesStore: deps.hardRulesStore } : {}),

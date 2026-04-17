@@ -27,6 +27,8 @@ import {
 } from "./context-bundle-service.js";
 import { collectProjectImages } from "./brief-images.js";
 import type { HardRulesStore } from "./hard-rules-store.js";
+import { resolveModelForAgent } from "./model-resolver.js";
+import type { DefaultModelConfig } from "../config.js";
 
 export class MissingArticleTypeError extends Error {
   constructor(public projectId: string) {
@@ -88,6 +90,9 @@ export interface RunWriterOpts {
   vaultPath: string;
   sqlitePath: string;
   writerConfig: WriterConfig;
+  /** SP-C Task 5: global 2-tier model defaults used by resolveModelForAgent.
+   *  Replaces per-agent cli_model_per_agent lookup inside the orchestrator. */
+  defaultModel: DefaultModelConfig;
   sectionsToRun?: string[];
   /** Optional style-binding resolver (SP-10). If omitted, orchestrator skips
    *  all binding validation/injection for backwards compatibility. */
@@ -133,14 +138,9 @@ function parseSelectedCases(md: string): ParsedCase[] {
 
 function resolve(
   key: WriterAgentKey,
-  cfg: WriterConfig,
-  fallbackCli: "claude" | "codex" = "claude",
+  defaultModel: DefaultModelConfig,
 ): { cli: "claude" | "codex"; model?: string } {
-  const cliModel = cfg.cli_model_per_agent[key];
-  return {
-    cli: cliModel?.cli ?? fallbackCli,
-    model: cliModel?.model,
-  };
+  return resolveModelForAgent(key, defaultModel);
 }
 
 function firstLast(text: string, lines = 3): { first: string; last: string } {
@@ -458,8 +458,8 @@ export async function runWriter(
   const dispatchTool = (call: { command: string; args: string[] }) =>
     dispatchSkill(call, { vaultPath: opts.vaultPath, sqlitePath: opts.sqlitePath });
 
-  const openingResolved = resolve("writer.opening", opts.writerConfig);
-  const practiceResolved = resolve("writer.practice", opts.writerConfig);
+  const openingResolved = resolve("writer.opening", opts.defaultModel);
+  const practiceResolved = resolve("writer.practice", opts.defaultModel);
 
   const jobs: Promise<void>[] = [];
 
@@ -599,7 +599,7 @@ export async function runWriter(
   }
 
   // Stage 2: stitcher (still via class — no tool use)
-  const stitcherResolved = resolve("practice.stitcher", opts.writerConfig);
+  const stitcherResolved = resolve("practice.stitcher", opts.defaultModel);
   const practiceTexts = await Promise.all(
     cases.map(async (c) => ({
       caseId: c.caseId,
@@ -660,7 +660,7 @@ export async function runWriter(
   }
 
   // Stage 3: closing
-  const closingResolved = resolve("writer.closing", opts.writerConfig);
+  const closingResolved = resolve("writer.closing", opts.defaultModel);
   const openingBody = (await articleStore.readSection("opening"))?.body ?? "";
   const stitchedPractice = practiceTexts
     .map((p, i) => {
@@ -734,7 +734,7 @@ export async function runWriter(
   }
 
   // Stage 4: style critic — non-fatal, via runner
-  const criticResolved = resolve("style_critic", opts.writerConfig);
+  const criticResolved = resolve("style_critic", opts.defaultModel);
   try {
     const sectionKeys = ["opening", ...cases.map((c) => `practice.${c.caseId}`), "closing"];
     const fullArticle = await articleStore.mergeFinal();

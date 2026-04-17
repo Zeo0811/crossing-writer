@@ -192,6 +192,10 @@ function serverConfig() {
     expertsDir: join(vaultPath, "08_experts"),
     defaultCli: "claude" as const,
     fallbackCli: "claude" as const,
+    defaultModel: {
+      writer: { cli: "claude" as const, model: "claude-opus-4-6" },
+      other: { cli: "claude" as const, model: "claude-sonnet-4-5" },
+    },
     agents: {} as Record<string, unknown>,
     configPath,
   } as any;

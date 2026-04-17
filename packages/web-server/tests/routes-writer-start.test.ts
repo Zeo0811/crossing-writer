@@ -26,7 +26,7 @@ describe("POST /api/projects/:id/writer/start", () => {
     const p = await store.create({ name: "T" });
     await store.update(p.id, { status: "brief_ready" });
     const app = Fastify();
-    registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: { async get() { return undefined; } } as any });
+    registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: { current: { agents: {}, defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } } } } as any });
     await app.ready();
     const res = await app.inject({ method: "POST", url: `/api/projects/${p.id}/writer/start`, payload: {} });
     expect(res.statusCode).toBe(400);
@@ -37,7 +37,11 @@ describe("POST /api/projects/:id/writer/start", () => {
     const p = await store.create({ name: "T" });
     await store.update(p.id, { status: "evidence_ready", article_type: "实测" });
     const app = Fastify();
-    registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: { async get() { return { cli: "claude", model: "opus" }; } } as any });
+    const mockAgents = Object.fromEntries(
+      ["writer.opening","writer.practice","writer.closing","practice.stitcher","style_critic"]
+        .map((k) => [k, { cli: "claude", model: "opus" }])
+    );
+    registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: { current: { agents: mockAgents, defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } } } } as any });
     await app.ready();
     const res = await app.inject({
       method: "POST", url: `/api/projects/${p.id}/writer/start`,

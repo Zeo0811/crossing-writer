@@ -79,6 +79,7 @@ describe("writer-orchestrator runs agents through runner", () => {
       projectId: pid, projectsDir, store,
       vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"),
       writerConfig: { cli_model_per_agent: {} },
+      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
     });
 
     // Check events.ndjson contains writer.tool_called

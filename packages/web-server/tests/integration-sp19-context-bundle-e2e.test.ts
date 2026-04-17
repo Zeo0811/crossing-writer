@@ -76,6 +76,7 @@ describe("SP-19 E2E: ContextBundle end-to-end", () => {
       projectId: env.projectId, projectsDir: env.projectsDir,
       store: env.store, vaultPath: env.vault, sqlitePath: join(env.vault, "kb.sqlite"),
       writerConfig: { cli_model_per_agent: {} },
+      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
       contextBundleService: env.svc,
     });
     expect(captured.some((c) => c.userMessage.includes("INITIAL-BRIEF"))).toBe(true);
@@ -87,6 +88,7 @@ describe("SP-19 E2E: ContextBundle end-to-end", () => {
       projectId: env.projectId, projectsDir: env.projectsDir,
       store: env.store, vaultPath: env.vault, sqlitePath: join(env.vault, "kb.sqlite"),
       writerConfig: { cli_model_per_agent: {} },
+      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
       contextBundleService: env.svc,
     });
     expect(captured.length).toBeGreaterThan(0);
@@ -105,6 +107,7 @@ describe("SP-19 E2E: ContextBundle end-to-end", () => {
       projectId: env.projectId, projectsDir: env.projectsDir,
       store: env.store, vaultPath: env.vault, sqlitePath: join(env.vault, "kb.sqlite"),
       writerConfig: { cli_model_per_agent: {} },
+      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
       contextBundleService: env.svc,
     });
     expect(captured.length).toBeGreaterThan(0);

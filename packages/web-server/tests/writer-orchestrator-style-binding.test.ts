@@ -112,6 +112,7 @@ describe("writer-orchestrator sp10 style binding integration", () => {
       vaultPath: vault,
       sqlitePath: join(vault, "kb.sqlite"),
       writerConfig: { cli_model_per_agent: {} },
+      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
       resolveStyleForAgent,
     });
 
@@ -163,6 +164,7 @@ describe("writer-orchestrator sp10 style binding integration", () => {
       vaultPath: vault,
       sqlitePath: join(vault, "kb.sqlite"),
       writerConfig: { cli_model_per_agent: {} },
+      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
       resolveStyleForAgent,
       onEvent,
     })) as any;
@@ -213,6 +215,7 @@ describe("writer-orchestrator sp10 style binding integration", () => {
       vaultPath: vault,
       sqlitePath: join(vault, "kb.sqlite"),
       writerConfig: { cli_model_per_agent: {} },
+      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
       resolveStyleForAgent,
     });
 

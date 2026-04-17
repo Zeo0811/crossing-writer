@@ -58,7 +58,7 @@ describe("SP-05 e2e", () => {
     writeFileSync(join(pDir, "evidence/case-01/notes.md"), "---\ncase_id: case-01\n---\nn\n", "utf-8");
 
     const app = Fastify();
-    const cfg = { async get(_k: string) { return { cli: "claude" as const, model: "opus" }; } } as any;
+    const cfg = { current: { agents: {}, defaultModel: { writer: { cli: 'claude' as const, model: 'opus' }, other: { cli: 'claude' as const, model: 'opus' } } } } as any;
     registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: cfg });
     registerKbStylePanelsRoutes(app, { vaultPath: vault });
     await app.ready();

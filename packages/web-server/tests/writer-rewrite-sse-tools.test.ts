@@ -66,7 +66,7 @@ async function seed() {
     projectsDir,
     vaultPath: vault,
     sqlitePath: join(vault, "kb.sqlite"),
-    configStore: { async get() { return { cli: "claude", model: "opus" }; } } as any,
+    configStore: { current: { agents: {}, defaultModel: { writer: { cli: 'claude', model: 'opus' }, other: { cli: 'claude', model: 'opus' } } } } as any,
     agentConfigStore: {
       get: (_key: string) => ({
         agentKey: _key,
