@@ -1,0 +1,58 @@
+export type Violation =
+  | { kind: 'word_count'; chars: number; min: number; max: number; tolerance: 0.2 }
+  | { kind: 'banned_phrase'; pattern: string; reason: string; excerpt: string }
+  | { kind: 'banned_vocabulary'; word: string; reason: string };
+
+export interface ValidationResult {
+  ok: boolean;
+  violations: Violation[];
+  chars: number;
+}
+
+/**
+ * Count body chars: strip markdown markers (**, #, backticks, list bullets)
+ * + strip whitespace; count what's left.
+ */
+export function countChars(text: string): number {
+  let s = text;
+  // Strip code fences (``` blocks) entirely
+  s = s.replace(/```[\s\S]*?```/g, '');
+  // Strip inline backticks but keep their content
+  s = s.replace(/`([^`]*)`/g, '$1');
+  // Strip bold / italic markers
+  s = s.replace(/\*+/g, '');
+  s = s.replace(/_+/g, '');
+  // Strip heading hashes at line start
+  s = s.replace(/^#+\s*/gm, '');
+  // Strip list bullets at line start
+  s = s.replace(/^[\s]*[-*+]\s+/gm, '');
+  s = s.replace(/^[\s]*\d+\.\s+/gm, '');
+  // Strip blockquote markers
+  s = s.replace(/^>\s*/gm, '');
+  // Strip all whitespace (incl. newlines, full-width spaces)
+  s = s.replace(/[\s\u3000]+/g, '');
+  return s.length;
+}
+
+/**
+ * Check total word count against override. Returns null if override missing
+ * OR chars within tolerance band [floor(min*0.8), ceil(max*1.2)].
+ */
+export function checkWordCount(
+  text: string,
+  override: [number, number] | undefined,
+): Extract<Violation, { kind: 'word_count' }> | null {
+  if (!override) return null;
+  const [min, max] = override;
+  const lowerBound = Math.floor(min * 0.8);
+  const upperBound = Math.ceil(max * 1.2);
+  const chars = countChars(text);
+  if (chars >= lowerBound && chars <= upperBound) return null;
+  return {
+    kind: 'word_count',
+    chars,
+    min,
+    max,
+    tolerance: 0.2,
+  };
+}
