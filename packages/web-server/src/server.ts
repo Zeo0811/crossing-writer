@@ -20,6 +20,9 @@ import { registerKbAccountsRoutes } from "./routes/kb-accounts.js";
 import { registerKbRawArticlesRoutes } from "./routes/kb-raw-articles.js";
 import { registerKbWikiRunsRoutes } from "./routes/kb-wiki-runs.js";
 import { registerKbWikiRoutes } from "./routes/kb-wiki.js";
+import { ensureSchema } from "@crossing/kb";
+import Database from "better-sqlite3";
+import { existsSync } from "node:fs";
 import { registerWriterRoutes } from "./routes/writer.js";
 import { registerWriterRewriteSelectionRoutes } from "./routes/writer-rewrite-selection.js";
 import { createAgentConfigStore } from "./services/agent-config-store.js";
@@ -99,6 +102,12 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
   const configStore = createConfigStore(configPath);
   // Legacy routes/config.ts was removed — SP-10 config-agents + config-project-overrides
   // are the active config routes; defaultModel GET/PATCH lives on /api/config/agents.
+
+  // Ensure wiki_ingest_* schema is applied idempotently at startup.
+  if (existsSync(configStore.current.sqlitePath)) {
+    const schemaDb = new Database(configStore.current.sqlitePath);
+    try { ensureSchema(schemaDb); } finally { schemaDb.close(); }
+  }
 
   const vaultRegistry = new ExpertRegistry(cfg.vaultPath);
   registerCasePlanRoutes(app, {
