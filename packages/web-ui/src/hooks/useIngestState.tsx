@@ -9,6 +9,8 @@ interface IngestState {
   events: IngestStreamEvent[];
   error: string | null;
   runningCount: number;
+  /** Increments every time a run finishes (success or error). Use as a refetch trigger. */
+  completedSeq: number;
   start: (args: IngestStartArgs) => void;
   dismiss: () => void;
 }
@@ -20,6 +22,7 @@ export function IngestProvider({ children }: { children: ReactNode }) {
   const [runningCount, setRunningCount] = useState(0);
   const [hasCompleted, setHasCompleted] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
+  const [completedSeq, setCompletedSeq] = useState(0);
 
   const status: IngestStatus =
     runningCount > 0 ? "running" :
@@ -35,10 +38,12 @@ export function IngestProvider({ children }: { children: ReactNode }) {
       () => {
         setRunningCount((c) => c - 1);
         setHasCompleted(true);
+        setCompletedSeq((s) => s + 1);
       },
       (err) => {
         setRunningCount((c) => c - 1);
         setLastError(err);
+        setCompletedSeq((s) => s + 1);
       },
     );
   }, []);
@@ -52,7 +57,7 @@ export function IngestProvider({ children }: { children: ReactNode }) {
   }, [runningCount]);
 
   return (
-    <Ctx.Provider value={{ status, events, error: lastError, runningCount, start, dismiss }}>
+    <Ctx.Provider value={{ status, events, error: lastError, runningCount, completedSeq, start, dismiss }}>
       {children}
     </Ctx.Provider>
   );

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useIngestState } from "../../hooks/useIngestState";
 
 interface Article {
   id: string;
@@ -29,6 +30,7 @@ export function AccountHeatmap({ account, selectedDates, onDateToggle, onClearDa
   const [articles, setArticles] = useState<Article[] | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(800);
+  const { completedSeq } = useIngestState();
 
   useEffect(() => {
     setArticles(null);
@@ -37,6 +39,15 @@ export function AccountHeatmap({ account, selectedDates, onDateToggle, onClearDa
       .then(setArticles)
       .catch(() => setArticles([]));
   }, [account]);
+
+  // Refresh on ingest completion so the grid colors update in place
+  useEffect(() => {
+    if (completedSeq === 0) return;
+    fetch(`/api/kb/accounts/${encodeURIComponent(account)}/articles?limit=3000`)
+      .then((r) => r.json())
+      .then(setArticles)
+      .catch(() => {});
+  }, [completedSeq, account]);
 
   useEffect(() => {
     if (!containerRef.current) return;

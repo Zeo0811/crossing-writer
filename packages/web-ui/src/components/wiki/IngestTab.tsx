@@ -38,7 +38,7 @@ export function IngestTab({ model, cart }: IngestTabProps) {
     void fetch("/api/kb/accounts").then(async (r) => {
       if (r.ok) setAccounts(await r.json());
     }).catch(() => {});
-  }, []);
+  }, [ingest.completedSeq]);
 
   useEffect(() => {
     setHeatmapDates(new Set());
@@ -47,6 +47,14 @@ export function IngestTab({ model, cart }: IngestTabProps) {
       if (r.ok) setArticles(await r.json());
     }).catch(() => {});
   }, [activeAccount]);
+
+  // Refetch articles when any run completes (so ArticleList status + heatmap grid refresh)
+  useEffect(() => {
+    if (!activeAccount || ingest.completedSeq === 0) return;
+    void fetch(`/api/kb/accounts/${encodeURIComponent(activeAccount)}/articles?limit=3000`).then(async (r) => {
+      if (r.ok) setArticles(await r.json());
+    }).catch(() => {});
+  }, [ingest.completedSeq, activeAccount]);
 
   const visibleArticles = useMemo(() => {
     let list = articles;
