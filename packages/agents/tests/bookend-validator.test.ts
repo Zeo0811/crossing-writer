@@ -236,3 +236,49 @@ describe('validateBookend', () => {
     expect(r.violations[0]!.kind).toBe('word_count');
   });
 });
+
+import { formatViolations } from '../src/roles/bookend-validator.js';
+
+describe('formatViolations', () => {
+  it('formats word_count violation with bounds', () => {
+    const out = formatViolations([
+      { kind: 'word_count', chars: 500, min: 200, max: 350, tolerance: 0.2 },
+    ]);
+    expect(out).toContain('[word_count]');
+    expect(out).toContain('500');
+    expect(out).toContain('200');
+    expect(out).toContain('350');
+    expect(out).toContain('420'); // ceil(350 * 1.2)
+  });
+
+  it('formats banned_phrase with pattern + excerpt', () => {
+    const out = formatViolations([
+      {
+        kind: 'banned_phrase',
+        pattern: '不是.+?而是',
+        reason: '烂大街',
+        excerpt: '上下文 不是A而是B 上下文',
+      },
+    ]);
+    expect(out).toContain('[banned_phrase]');
+    expect(out).toContain('不是.+?而是');
+    expect(out).toContain('不是A而是B');
+  });
+
+  it('formats banned_vocabulary with word', () => {
+    const out = formatViolations([
+      { kind: 'banned_vocabulary', word: '笔者', reason: '第三人称' },
+    ]);
+    expect(out).toContain('[banned_vocabulary]');
+    expect(out).toContain('笔者');
+  });
+
+  it('numbers multiple violations starting at 1', () => {
+    const out = formatViolations([
+      { kind: 'word_count', chars: 500, min: 200, max: 350, tolerance: 0.2 },
+      { kind: 'banned_vocabulary', word: '笔者', reason: 'x' },
+    ]);
+    expect(out).toMatch(/^1\. /m);
+    expect(out).toMatch(/^2\. /m);
+  });
+});

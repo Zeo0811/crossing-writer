@@ -157,3 +157,24 @@ export function validateBookend(opts: ValidateBookendOpts): ValidationResult {
     chars,
   };
 }
+
+/** Format violations into a numbered markdown list for feedback to the agent */
+export function formatViolations(violations: Violation[]): string {
+  return violations
+    .map((v, i) => `${i + 1}. ${formatOne(v)}`)
+    .join('\n');
+}
+
+function formatOne(v: Violation): string {
+  switch (v.kind) {
+    case 'word_count': {
+      const upper = Math.ceil(v.max * (1 + v.tolerance));
+      const lower = Math.floor(v.min * (1 - v.tolerance));
+      return `[word_count] 全文 ${v.chars} 字，超出允许区间 [${lower}, ${upper}] 字（基准 [${v.min}, ${v.max}] ± ${v.tolerance * 100}%）。调整到 [${v.min}, ${v.max}] 之内。`;
+    }
+    case 'banned_phrase':
+      return `[banned_phrase] 命中模式「${v.pattern}」（${v.reason}）。片段：「${v.excerpt}」。换一种写法。`;
+    case 'banned_vocabulary':
+      return `[banned_vocabulary] 出现禁用词「${v.word}」（${v.reason}）。去掉或替换。`;
+  }
+}
