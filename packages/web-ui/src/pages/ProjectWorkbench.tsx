@@ -659,7 +659,7 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
   return (
     <div
       data-testid="page-project-workbench"
-      className="rounded border border-[var(--hair)] bg-[var(--bg-1)] overflow-hidden"
+      className="rounded border border-[var(--hair)] bg-[var(--bg-1)]"
     >
       {toast && (
         <div
