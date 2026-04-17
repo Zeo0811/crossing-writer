@@ -19,9 +19,10 @@ export function SelectionBubble({ rect, onClick }: SelectionBubbleProps) {
       <button
         type="button"
         onClick={onClick}
-        className="px-3 py-1 rounded-[2px] bg-[var(--bg-2)] text-[var(--body)] border border-[var(--hair-strong,var(--hair))] text-xs hover:text-[var(--accent)] hover:border-[var(--accent)]"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[var(--accent)] text-[var(--accent-on,white)] text-xs font-medium shadow-md hover:brightness-110 active:brightness-95"
       >
-        ✍️ 重写选中
+        <span>✍️</span>
+        <span>重写选中</span>
       </button>
     </div>
   );
