@@ -167,11 +167,6 @@ export function EvidenceSection({
                   "practice.stitcher": { cli: "claude", model: "haiku" },
                   "style_critic": { cli: "claude", model: "opus" },
                 } as any,
-                reference_accounts_per_agent: {
-                  "writer.opening": [],
-                  "writer.practice": [],
-                  "writer.closing": [],
-                } as any,
               });
             } catch { /* writer may already be running; refetch will show reality */ }
             reload();

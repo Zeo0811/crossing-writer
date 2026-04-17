@@ -1,12 +1,11 @@
-import { useEffect, useState } from "react";
-import { startWriter, listStylePanels, type WriterAgentKey, type StylePanelEntry } from "../../api/writer-client";
+import { useState } from "react";
+import { startWriter, type WriterAgentKey } from "../../api/writer-client";
 import { Button, Input, FormField } from "../ui";
 
 const AGENT_KEYS: WriterAgentKey[] = [
   "writer.opening", "writer.practice", "writer.closing",
   "practice.stitcher", "style_critic",
 ];
-const AGENTS_WITH_REFS = new Set<WriterAgentKey>(["writer.opening", "writer.practice", "writer.closing", "style_critic"]);
 
 const LABELS: Record<string, string> = {
   "writer.opening": "开篇",
@@ -23,35 +22,16 @@ export interface WriterConfigFormProps {
 }
 
 export function WriterConfigForm({ projectId, defaults, onStarted }: WriterConfigFormProps) {
-  const [panels, setPanels] = useState<StylePanelEntry[]>([]);
   const [cliModel, setCliModel] = useState(defaults);
-  const [refs, setRefs] = useState<Record<WriterAgentKey, Set<string>>>(() => {
-    const init: any = {};
-    for (const k of AGENT_KEYS) init[k] = new Set<string>();
-    return init;
-  });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => { listStylePanels().then(setPanels).catch(() => setPanels([])); }, []);
-
-  const toggleRef = (agent: WriterAgentKey, id: string) => {
-    setRefs((r) => {
-      const next = { ...r, [agent]: new Set(r[agent]) };
-      if (next[agent].has(id)) next[agent].delete(id); else next[agent].add(id);
-      return next;
-    });
-  };
 
   const handleSubmit = async () => {
     setSubmitting(true);
     setError(null);
     try {
-      const refsPayload: Record<string, string[]> = {};
-      for (const k of AGENT_KEYS) refsPayload[k] = [...refs[k]];
       await startWriter(projectId, {
         cli_model_per_agent: cliModel,
-        reference_accounts_per_agent: refsPayload as any,
       });
       onStarted();
     } catch (e) {
@@ -87,27 +67,6 @@ export function WriterConfigForm({ projectId, defaults, onStarted }: WriterConfi
                 />
               </FormField>
             </div>
-            {AGENTS_WITH_REFS.has(agent) && panels.length > 0 && (
-              <div>
-                <div className="text-xs text-[var(--meta)] mb-1.5">参考账号</div>
-                <div className="flex flex-wrap gap-2">
-                  {panels.map((p) => {
-                    const checked = refs[agent].has(p.id);
-                    return (
-                      <label key={p.id} className="flex items-center gap-1.5 text-xs text-[var(--body)] cursor-pointer" aria-label={`${agent}-${p.id}`}>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleRef(agent, p.id)}
-                          className="accent-[var(--accent)]"
-                        />
-                        {p.id}
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
         ))}
       </div>

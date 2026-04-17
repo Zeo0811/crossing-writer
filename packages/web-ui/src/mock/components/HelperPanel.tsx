@@ -26,7 +26,7 @@ const HINTS: Partial<Record<HeroStatus, { title: string; body: string; eta?: str
   case_plan_approved: { title: "Case 已批准", body: "去跑真实测，把截图 / 录屏 / 笔记传到每个 case 下。" },
   evidence_collecting: { title: "Evidence 收集", body: "每个 case 至少一份截图 + 一份笔记。" },
   evidence_ready: { title: "Evidence 齐备", body: "可进入写作配置。" },
-  writing_configuring: { title: "写作配置", body: "选作者风格、参考账号、写作专家。" },
+  writing_configuring: { title: "写作配置", body: "选作者风格、写作专家。" },
   writing_running: { title: "写作中", body: "Writer 正在分段生成。", eta: "5-10 分钟" },
   writing_ready: { title: "初稿就绪", body: "可逐段编辑、Selection rewrite、@-mention skill。" },
   writing_editing: { title: "正在编辑", body: "改完会自动重新合稿。" },

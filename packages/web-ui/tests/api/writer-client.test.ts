@@ -23,7 +23,7 @@ describe("writer-client", () => {
 
   it("startWriter posts config body", async () => {
     (global.fetch as any).mockResolvedValue({ ok: true, status: 200, json: async () => ({ ok: true }) });
-    await startWriter("pid", { cli_model_per_agent: { "writer.opening": { cli: "claude", model: "opus" } }, reference_accounts_per_agent: {} });
+    await startWriter("pid", { cli_model_per_agent: { "writer.opening": { cli: "claude", model: "opus" } } });
     const call = (global.fetch as any).mock.calls[0];
     expect(call[0]).toContain("/writer/start");
     expect(JSON.parse(call[1].body).cli_model_per_agent["writer.opening"].cli).toBe("claude");

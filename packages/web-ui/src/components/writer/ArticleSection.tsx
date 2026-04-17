@@ -226,7 +226,6 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
   const opening = sections.find((s) => s.key === "opening");
   const closing = sections.find((s) => s.key === "closing");
   const practice = sections.filter((s) => s.key.startsWith("practice.case-"));
-  const refAccounts = [...new Set(sections.flatMap((s) => s.frontmatter.reference_accounts ?? []))];
 
   const renderOrder: string[] = [];
   if (opening) renderOrder.push("opening");
@@ -292,7 +291,6 @@ export function ArticleSection({ projectId, status }: ArticleSectionProps) {
           <div key={p.key} className="ml-4">├ {p.key.slice("practice.".length)} <span className="text-xs text-[var(--meta)]">{p.frontmatter.last_agent}</span></div>
         ))}
         {closing && <div>📝 结尾 <span className="text-xs text-[var(--meta)]">{closing.frontmatter.last_agent}</span></div>}
-        {refAccounts.length > 0 && <div className="text-xs text-[var(--meta)] mt-1">参考账号: {refAccounts.join(" / ")}</div>}
         <a href={`/api/projects/${projectId}/writer/final`} download="final.md" className="mt-2 px-2 py-1 bg-[var(--bg-2)] rounded text-center">导出 final.md</a>
       </div>
 

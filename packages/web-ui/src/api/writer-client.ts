@@ -19,7 +19,6 @@ export interface SectionFrontmatter {
   section: string;
   last_agent: string;
   last_updated_at: string;
-  reference_accounts?: string[];
   cli?: string;
   model?: string;
   tools_used?: ToolUsageFrontmatter[];
@@ -45,7 +44,6 @@ export interface StylePanelEntry {
 
 export interface StartWriterBody {
   cli_model_per_agent: Partial<Record<WriterAgentKey, { cli: "claude" | "codex"; model?: string }>>;
-  reference_accounts_per_agent: Partial<Record<WriterAgentKey, string[]>>;
 }
 
 async function throwingFetch(input: string, init?: RequestInit) {
