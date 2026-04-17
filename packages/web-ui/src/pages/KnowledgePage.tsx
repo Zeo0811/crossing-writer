@@ -140,7 +140,7 @@ export function KnowledgePage() {
                 </button>
               ))}
             </div>
-            <div className="flex-1">
+            <div className="flex-[3]">
               <Input
                 value={q}
                 onChange={(e) => runSearch(e.target.value)}
@@ -149,6 +149,7 @@ export function KnowledgePage() {
                 className="h-10"
               />
             </div>
+            <div className="flex-1" aria-hidden="true" />
           </div>
 
           {selected ? (
