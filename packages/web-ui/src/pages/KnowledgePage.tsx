@@ -98,16 +98,36 @@ export function KnowledgePage() {
   })();
 
   const toneClass = {
-    amber: "border-[var(--amber-hair)] bg-[var(--amber-bg)] text-[var(--amber)]",
-    red: "border-[var(--red)] bg-[rgba(255,107,107,0.05)] text-[var(--red)]",
-    accent: "border-[var(--accent-soft)] bg-[var(--accent-fill)] text-[var(--accent)]",
-    neutral: "border-[var(--hair)] bg-[var(--bg-2)] text-[var(--meta)] hover:text-[var(--heading)] hover:border-[var(--accent-soft)]",
+    amber: "bg-[var(--amber)] text-[var(--bg-0)] border-[var(--amber)] shadow-[0_0_12px_rgba(255,209,102,0.35)]",
+    red: "bg-[var(--red)] text-white border-[var(--red)] shadow-[0_0_12px_rgba(255,107,107,0.35)]",
+    accent: "bg-[var(--accent)] text-[var(--accent-on)] border-[var(--accent-soft)] shadow-[0_0_12px_var(--accent-dim)]",
+    neutral: "bg-[var(--bg-1)] text-[var(--body)] border-[var(--hair-strong)] hover:border-[var(--accent-soft)] hover:text-[var(--accent)]",
   }[ingestButton.tone];
 
   return (
     <div data-testid="page-knowledge" className="rounded border border-[var(--hair)] bg-[var(--bg-1)] overflow-hidden">
-      <header className="flex items-center justify-between px-6 h-12 border-b border-[var(--hair)]">
-        <h1 className="text-lg font-semibold text-[var(--heading)]">知识库</h1>
+      <header className="flex items-center justify-between px-6 h-14 border-b border-[var(--hair)]">
+        <div className="flex items-center gap-4">
+          <h1 className="text-lg font-semibold text-[var(--heading)]">知识库</h1>
+          <button
+            type="button"
+            data-testid="ingest-mode-toggle"
+            onClick={() => setMode(mode === "browse" ? "ingest" : "browse")}
+            className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-sm font-semibold transition-all ${toneClass}`}
+          >
+            {ingestButton.dot && (
+              <span className="w-2 h-2 rounded-full bg-current animate-pulse shrink-0" />
+            )}
+            <span>
+              {mode === "ingest" ? "← 回到浏览" : ingestButton.label}
+            </span>
+            {mode === "browse" && ingestButton.suffix && (
+              <span className="text-xs font-normal opacity-90 px-1.5 py-0.5 rounded-full bg-[rgba(0,0,0,0.15)]">
+                {ingestButton.suffix}
+              </span>
+            )}
+          </button>
+        </div>
         <div className="flex items-center gap-3">
           {statusInfo && (
             <div className="text-xs text-[var(--meta)]" style={{ fontFamily: "var(--font-mono)" }}>
@@ -115,18 +135,6 @@ export function KnowledgePage() {
             </div>
           )}
           <ModelSelector onChange={setModel} />
-          <button
-            type="button"
-            data-testid="ingest-mode-toggle"
-            onClick={() => setMode(mode === "browse" ? "ingest" : "browse")}
-            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded border text-xs font-semibold transition-colors ${toneClass}`}
-          >
-            {ingestButton.dot && <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />}
-            <span>{mode === "ingest" ? "← 浏览" : ingestButton.label}</span>
-            {mode === "browse" && ingestButton.suffix && (
-              <span className="font-normal">· {ingestButton.suffix}</span>
-            )}
-          </button>
         </div>
       </header>
 
