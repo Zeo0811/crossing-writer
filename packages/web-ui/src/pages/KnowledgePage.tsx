@@ -140,6 +140,7 @@ export function KnowledgePage() {
                 </button>
               ))}
             </div>
+            <div className="flex-1" aria-hidden="true" />
             <div className="flex-[3]">
               <Input
                 value={q}
@@ -149,7 +150,6 @@ export function KnowledgePage() {
                 className="h-10"
               />
             </div>
-            <div className="flex-1" aria-hidden="true" />
           </div>
 
           {selected ? (
