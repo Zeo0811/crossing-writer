@@ -95,7 +95,8 @@ export function registerKbWikiRoutes(app: FastifyInstance, deps: KbWikiDeps) {
 
     const onEvent = (ev: IngestStepEvent) => {
       send(`ingest.${ev.type}`, {
-        account: ev.account, batchIndex: ev.batchIndex, totalBatches: ev.totalBatches,
+        runId: ev.runId, account: ev.account, articleId: ev.articleId,
+        batchIndex: ev.batchIndex, totalBatches: ev.totalBatches,
         op: ev.op, path: ev.path, duration_ms: ev.duration_ms, stats: ev.stats, error: ev.error,
       });
     };
