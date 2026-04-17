@@ -38,6 +38,20 @@ function loadSystemPrompt(): string {
 
 const VALID_ROLES: Role[] = ['opening', 'practice', 'closing', 'other'];
 
+/**
+ * Sonnet occasionally prefixes a one-line preamble ("处理5篇文章的批量标注。")
+ * before the YAML root. Drop any text up to the first `articles:` line and
+ * strip surrounding code fences.
+ */
+function stripToYamlRoot(text: string): string {
+  let t = text.replace(/```[a-z]*\n?/g, '').replace(/```$/g, '').trim();
+  const idx = t.indexOf('\narticles:');
+  if (idx > 0 && !t.startsWith('articles:')) {
+    t = t.slice(idx + 1);
+  }
+  return t;
+}
+
 /** Backwards-compatible single-article API. Delegates to labelArticlesBatch. */
 export async function labelArticle(
   sample: ArticleSample,
@@ -91,7 +105,7 @@ export function parseBatchResponse(
   rawText: string,
   durationMs: number,
 ): LabeledArticle[] {
-  const cleaned = rawText.replace(/```[a-z]*\n?/g, '').replace(/```$/g, '').trim();
+  const cleaned = stripToYamlRoot(rawText);
   const parsed = yaml.load(cleaned) as any;
   if (!parsed || typeof parsed !== 'object') {
     throw new Error(`article-labeler: non-object YAML: ${cleaned.slice(0, 200)}`);
