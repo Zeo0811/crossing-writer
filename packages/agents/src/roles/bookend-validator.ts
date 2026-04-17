@@ -56,3 +56,74 @@ export function checkWordCount(
     tolerance: 0.2,
   };
 }
+
+/** Snippet of surrounding text for a phrase hit — makes violation feedback useful */
+function extractExcerpt(text: string, matchIndex: number, matchLen: number, ctx = 15): string {
+  const start = Math.max(0, matchIndex - ctx);
+  const end = Math.min(text.length, matchIndex + matchLen + ctx);
+  return text.slice(start, end).replace(/\s+/g, ' ').trim();
+}
+
+export interface BannedPhraseRule {
+  pattern: string;
+  is_regex: boolean;
+  reason: string;
+}
+export interface BannedVocabRule {
+  word: string;
+  reason: string;
+}
+
+export function findBannedPhrases(
+  text: string,
+  phrases: BannedPhraseRule[],
+): Array<Extract<Violation, { kind: 'banned_phrase' }>> {
+  const hits: Array<Extract<Violation, { kind: 'banned_phrase' }>> = [];
+  for (const p of phrases) {
+    if (p.is_regex) {
+      let re: RegExp;
+      try {
+        re = new RegExp(p.pattern, 'u');
+      } catch {
+        continue;
+      }
+      const m = text.match(re);
+      if (m && m.index !== undefined) {
+        hits.push({
+          kind: 'banned_phrase',
+          pattern: p.pattern,
+          reason: p.reason,
+          excerpt: extractExcerpt(text, m.index, m[0].length),
+        });
+      }
+    } else {
+      const idx = text.indexOf(p.pattern);
+      if (idx !== -1) {
+        hits.push({
+          kind: 'banned_phrase',
+          pattern: p.pattern,
+          reason: p.reason,
+          excerpt: extractExcerpt(text, idx, p.pattern.length),
+        });
+      }
+    }
+  }
+  return hits;
+}
+
+export function findBannedVocabulary(
+  text: string,
+  vocab: BannedVocabRule[],
+): Array<Extract<Violation, { kind: 'banned_vocabulary' }>> {
+  const hits: Array<Extract<Violation, { kind: 'banned_vocabulary' }>> = [];
+  for (const v of vocab) {
+    if (text.includes(v.word)) {
+      hits.push({
+        kind: 'banned_vocabulary',
+        word: v.word,
+        reason: v.reason,
+      });
+    }
+  }
+  return hits;
+}

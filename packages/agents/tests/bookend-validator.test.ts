@@ -69,3 +69,79 @@ describe('checkWordCount', () => {
     });
   });
 });
+
+import { findBannedPhrases, findBannedVocabulary } from '../src/roles/bookend-validator.js';
+
+describe('findBannedPhrases', () => {
+  it('matches literal phrase', () => {
+    const hits = findBannedPhrases('这句有正如所见的翻译腔', [
+      { pattern: '正如所见', is_regex: false, reason: '翻译腔' },
+    ]);
+    expect(hits).toHaveLength(1);
+    expect(hits[0]).toMatchObject({
+      kind: 'banned_phrase',
+      pattern: '正如所见',
+      reason: '翻译腔',
+    });
+    expect(hits[0]!.excerpt).toContain('正如所见');
+  });
+
+  it('matches regex phrase', () => {
+    const hits = findBannedPhrases('这不是工具而是伙伴', [
+      { pattern: '不是.+?而是', is_regex: true, reason: '烂大街' },
+    ]);
+    expect(hits).toHaveLength(1);
+    expect(hits[0]!.pattern).toBe('不是.+?而是');
+  });
+
+  it('returns empty when no hit', () => {
+    expect(findBannedPhrases('一段干净的文字', [
+      { pattern: '不是.+?而是', is_regex: true, reason: 'x' },
+    ])).toHaveLength(0);
+  });
+
+  it('skips regex that fails to compile (no throw)', () => {
+    const hits = findBannedPhrases('任意文字', [
+      { pattern: '[unclosed', is_regex: true, reason: 'x' },
+      { pattern: '文字', is_regex: false, reason: 'y' },
+    ]);
+    expect(hits).toHaveLength(1);
+    expect(hits[0]!.pattern).toBe('文字');
+  });
+
+  it('returns multiple hits for multiple phrases', () => {
+    const hits = findBannedPhrases('不是A而是B。另外还有正如所见。', [
+      { pattern: '不是.+?而是', is_regex: true, reason: '1' },
+      { pattern: '正如所见', is_regex: false, reason: '2' },
+    ]);
+    expect(hits).toHaveLength(2);
+  });
+});
+
+describe('findBannedVocabulary', () => {
+  it('matches word via includes', () => {
+    const hits = findBannedVocabulary('笔者认为值得一试', [
+      { word: '笔者', reason: '第三人称自称不自然' },
+    ]);
+    expect(hits).toHaveLength(1);
+    expect(hits[0]).toEqual({
+      kind: 'banned_vocabulary',
+      word: '笔者',
+      reason: '第三人称自称不自然',
+    });
+  });
+
+  it('returns empty when no hit', () => {
+    expect(findBannedVocabulary('我认为', [
+      { word: '笔者', reason: 'x' },
+    ])).toHaveLength(0);
+  });
+
+  it('returns multiple hits for multiple words', () => {
+    const hits = findBannedVocabulary('笔者和本人都这么想', [
+      { word: '笔者', reason: '1' },
+      { word: '本人', reason: '2' },
+    ]);
+    expect(hits).toHaveLength(2);
+  });
+});
