@@ -265,7 +265,9 @@ function runChildProcess(
 export async function invokeAgent(opts: InvokeOptions): Promise<AgentResult> {
   const startedMs = Date.now();
   const startedIso = new Date(startedMs).toISOString();
-  const timeout = opts.timeout ?? 600_000;
+  // Default 20 min — opus bookend agents occasionally hit 10-minute wall when
+  // thinking tokens + tool-call rounds compound. 600s was too tight.
+  const timeout = opts.timeout ?? 1_200_000;
   const fullPrompt = opts.systemPrompt
     ? `${opts.systemPrompt}\n\n---\n\n${opts.userMessage}`
     : opts.userMessage;
