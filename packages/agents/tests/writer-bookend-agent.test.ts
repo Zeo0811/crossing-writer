@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { runWriterBookend } from '../src/roles/writer-bookend-agent.js';
 import type { PanelFrontmatterLike } from '../src/roles/writer-shared.js';
+import type { ChatMessage } from '@crossing/agents';
 
 const PANEL_FM: PanelFrontmatterLike = {
   word_count_ranges: { opening: [150, 260], article: [3500, 8000] },
@@ -161,5 +162,42 @@ describe('runWriterBookend', () => {
     expect(systemMsg.content).toContain('200');
     expect(systemMsg.content).toContain('400');
     expect(systemMsg.content).toContain('硬规则指定');
+  });
+});
+
+describe('runWriterBookend retryFeedback', () => {
+  it('plumbs retryFeedback into the system prompt', async () => {
+    let capturedSystem = '';
+    const fakeInvoke = async (messages: ChatMessage[]) => {
+      capturedSystem = messages.find((m) => m.role === 'system')?.content ?? '';
+      return { text: '段落正文', meta: { cli: 'claude', durationMs: 1 } };
+    };
+    await runWriterBookend({
+      role: 'opening',
+      sectionKey: 'opening',
+      account: 'acc',
+      articleType: '实测',
+      typeSection: `### 字数范围\n150-260 字\n\n### 目标\nfoo\n`,
+      panelFrontmatter: {
+        word_count_ranges: { opening: [150, 260], article: [3500, 8000] },
+        pronoun_policy: { we_ratio: 0.4, you_ratio: 0.3, avoid: [] },
+        tone: { primary: '客观克制', humor_frequency: 'low', opinionated: 'mid' },
+        bold_policy: { frequency: '每段 0-2 处', what_to_bold: [], dont_bold: [] },
+        transition_phrases: [],
+        data_citation: { required: false, format_style: '', min_per_article: 0 },
+      },
+      hardRulesBlock: '',
+      projectContextBlock: '',
+      retryFeedback: {
+        previousText: '上一次',
+        violationsText: '1. [word_count] 超',
+      },
+      invokeAgent: fakeInvoke,
+      userMessage: '',
+      dispatchTool: async () => ({ status: 'ok', text: '' } as any),
+    });
+    expect(capturedSystem).toContain('上一次产出 - 不合规');
+    expect(capturedSystem).toContain('上一次');
+    expect(capturedSystem).toContain('1. [word_count] 超');
   });
 });

@@ -44,6 +44,21 @@ export type {
   WriterOutput,
   RenderBookendPromptOpts,
 } from "./roles/writer-shared.js";
+export {
+  countChars,
+  checkWordCount,
+  findBannedPhrases,
+  findBannedVocabulary,
+  validateBookend,
+  formatViolations,
+} from "./roles/bookend-validator.js";
+export type {
+  Violation,
+  ValidationResult,
+  ValidateBookendOpts,
+  BannedPhraseRule,
+  BannedVocabRule,
+} from "./roles/bookend-validator.js";
 export { WriterPracticeAgent, runWriterPractice } from "./roles/writer-practice-agent.js";
 export type { WriterPracticeInput, RunWriterPracticeOpts } from "./roles/writer-practice-agent.js";
 export { PracticeStitcherAgent } from "./roles/practice-stitcher-agent.js";

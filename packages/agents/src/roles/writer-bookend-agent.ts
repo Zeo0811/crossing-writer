@@ -27,6 +27,12 @@ export interface RunWriterBookendOpts {
    *  When set, takes precedence over panel 字数范围 text. See
    *  resolveWordConstraint in writer-shared.ts for priority logic. */
   wordOverride?: [number, number];
+  /** SP-B.3: when set, this is a retry run. runWriterBookend passes the block
+   *  through to renderBookendPrompt which injects "上一次产出 - 不合规". */
+  retryFeedback?: {
+    previousText: string;
+    violationsText: string;
+  };
   invokeAgent: (
     messages: ChatMessage[],
     opts?: { images?: string[]; addDirs?: string[] },
@@ -52,6 +58,7 @@ export async function runWriterBookend(opts: RunWriterBookendOpts): Promise<Writ
     product_name: opts.product_name,
     guest_name: opts.guest_name,
     wordOverride: opts.wordOverride,
+    retryFeedback: opts.retryFeedback,
   });
 
   const systemPrompt = `${basePrompt}\n\n${TOOL_PROTOCOL_PROMPT}`;
