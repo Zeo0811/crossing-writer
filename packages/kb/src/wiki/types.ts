@@ -23,7 +23,8 @@ export type PatchOp =
 export type IngestMode = "full" | "incremental" | "selected";
 
 export interface IngestStepEvent {
-  type: "batch_started" | "op_applied" | "batch_completed" | "batch_failed" | "account_completed" | "all_completed" | "article_skipped";
+  type: "batch_started" | "op_applied" | "batch_completed" | "batch_failed" | "account_completed" | "all_completed" | "article_skipped" | "run_started" | "run_completed";
+  runId?: string;
   account?: string;
   articleId?: string;   // NEW — used for article_skipped events
   batchIndex?: number;
@@ -56,7 +57,8 @@ export interface IngestResult {
   sources_appended: number;
   images_appended: number;
   notes: string[];
-  skipped_count: number;   // NEW
+  skipped_count: number;
+  run_id: string;   // NEW
 }
 
 export interface SearchWikiInput { query: string; kind?: WikiKind; limit?: number }

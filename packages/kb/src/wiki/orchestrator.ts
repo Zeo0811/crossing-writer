@@ -140,10 +140,29 @@ export async function runIngest(opts: IngestOptions, ctx: Ctx): Promise<IngestRe
     }
   }
 
+  // Create run record (shared by both selected and legacy paths)
+  const { ensureSchema } = await import("./migrations.js");
+  const { createRun, finishRun, appendRunOp } = await import("./ingest-runs-repo.js");
+  const runSetupDb = new Database(ctx.sqlitePath, { fileMustExist: true });
+  ensureSchema(runSetupDb);
+  const runId = (globalThis.crypto as Crypto).randomUUID();
+  const startedAt = new Date().toISOString();
+  const model = `${opts.cliModel?.cli ?? "claude"}/${opts.cliModel?.model ?? "default"}`;
+  createRun(runSetupDb, {
+    runId, startedAt,
+    accounts: opts.accounts,
+    articleIds: opts.articleIds ?? [],
+    mode: opts.mode,
+    model,
+  });
+  runSetupDb.close();
+  emit(opts.onEvent, { type: "run_started", runId });
+
   if (opts.mode === "selected") {
-    return runSelectedIngest(opts, ctx);
+    return runSelectedIngest(opts, ctx, runId);
   }
 
+  // Legacy account-loop path
   ensureVaultScaffold(ctx.vaultPath);
   const store = new WikiStore(ctx.vaultPath);
   const guide = loadGuide(ctx.vaultPath);
@@ -155,69 +174,104 @@ export async function runIngest(opts: IngestOptions, ctx: Ctx): Promise<IngestRe
   let imagesAppended = 0;
   const notes: string[] = [];
   const accountsDone: string[] = [];
+  let opSeq = 0;
 
-  for (const account of opts.accounts) {
-    const sinceAuto = opts.mode === "incremental" ? lastIngestedAt(ctx.vaultPath, account) : null;
-    const articles = loadArticles(ctx.sqlitePath, account, {
-      perAccountLimit: opts.perAccountLimit,
-      since: opts.since, until: opts.until,
-      mode: opts.mode, sinceAuto,
-      vaultRootPath: dirname(dirname(ctx.sqlitePath)),
-    });
-    if (articles.length === 0) {
-      emit(opts.onEvent, { type: "account_completed", account, stats: { articles_processed: 0 } });
-      accountsDone.push(account);
-      continue;
-    }
-    const batches: IngestArticle[][] = [];
-    for (let i = 0; i < articles.length; i += opts.batchSize) batches.push(articles.slice(i, i + opts.batchSize));
-
-    let maxPublished = articles[0]!.published_at;
-    let accountOps = 0;
-
-    for (let bi = 0; bi < batches.length; bi += 1) {
-      const batch = batches[bi]!;
-      emit(opts.onEvent, { type: "batch_started", account, batchIndex: bi, totalBatches: batches.length, stats: { articles_in_batch: batch.length } });
-      const t0 = Date.now();
-      try {
-        const snap = buildSnapshot(ctx.vaultPath, batch, 10);
-        const res = await agent.ingest({
-          account, batchIndex: bi, totalBatches: batches.length,
-          articles: batch, existingPages: snap.pages, indexMd: snap.indexMd, wikiGuide: guide,
-        });
-        let opsApplied = 0;
-        for (const rawOp of res.ops) {
-          const patch = toPatchOp(rawOp);
-          if (!patch) continue;
-          try {
-            const r = store.applyPatch(patch);
-            opsApplied += 1;
-            if (patch.op === "upsert") { if (r.created) pagesCreated += 1; if (r.updated) pagesUpdated += 1; }
-            else if (patch.op === "append_source") sourcesAppended += 1;
-            else if (patch.op === "append_image") imagesAppended += 1;
-            else if (patch.op === "note" && r.noted) notes.push(r.noted);
-            emit(opts.onEvent, { type: "op_applied", account, op: patch.op, path: patch.op !== "note" ? patch.path : undefined });
-          } catch (e) {
-            emit(opts.onEvent, { type: "op_applied", account, op: patch.op, error: (e as Error).message });
-          }
-        }
-        accountOps += opsApplied;
-        for (const a of batch) if (a.published_at > maxPublished) maxPublished = a.published_at;
-        emit(opts.onEvent, { type: "batch_completed", account, batchIndex: bi, totalBatches: batches.length, duration_ms: Date.now() - t0, stats: { ops_applied: opsApplied } });
-      } catch (e) {
-        emit(opts.onEvent, { type: "batch_failed", account, batchIndex: bi, totalBatches: batches.length, error: (e as Error).message });
+  const legacyDb = new Database(ctx.sqlitePath, { fileMustExist: true });
+  try {
+    for (const account of opts.accounts) {
+      const sinceAuto = opts.mode === "incremental" ? lastIngestedAt(ctx.vaultPath, account) : null;
+      const articles = loadArticles(ctx.sqlitePath, account, {
+        perAccountLimit: opts.perAccountLimit,
+        since: opts.since, until: opts.until,
+        mode: opts.mode, sinceAuto,
+        vaultRootPath: dirname(dirname(ctx.sqlitePath)),
+      });
+      if (articles.length === 0) {
+        emit(opts.onEvent, { type: "account_completed", account, stats: { articles_processed: 0 } });
+        accountsDone.push(account);
+        continue;
       }
+      const batches: IngestArticle[][] = [];
+      for (let i = 0; i < articles.length; i += opts.batchSize) batches.push(articles.slice(i, i + opts.batchSize));
+
+      let maxPublished = articles[0]!.published_at;
+      let accountOps = 0;
+
+      for (let bi = 0; bi < batches.length; bi += 1) {
+        const batch = batches[bi]!;
+        emit(opts.onEvent, { type: "batch_started", account, batchIndex: bi, totalBatches: batches.length, stats: { articles_in_batch: batch.length } });
+        const t0 = Date.now();
+        try {
+          const snap = buildSnapshot(ctx.vaultPath, batch, 10);
+          const res = await agent.ingest({
+            account, batchIndex: bi, totalBatches: batches.length,
+            articles: batch, existingPages: snap.pages, indexMd: snap.indexMd, wikiGuide: guide,
+          });
+          let opsApplied = 0;
+          for (const rawOp of res.ops) {
+            const patch = toPatchOp(rawOp);
+            if (!patch) continue;
+            try {
+              const r = store.applyPatch(patch);
+              opsApplied += 1;
+              if (patch.op === "upsert") { if (r.created) pagesCreated += 1; if (r.updated) pagesUpdated += 1; }
+              else if (patch.op === "append_source") sourcesAppended += 1;
+              else if (patch.op === "append_image") imagesAppended += 1;
+              else if (patch.op === "note" && r.noted) notes.push(r.noted);
+              appendRunOp(legacyDb, {
+                runId, seq: opSeq, op: patch.op,
+                path: patch.op !== "note" ? patch.path : null,
+                articleId: null,
+                createdPage: patch.op === "upsert" ? !!r.created : false,
+                conflict: false,
+              });
+              opSeq += 1;
+              emit(opts.onEvent, { type: "op_applied", account, op: patch.op, path: patch.op !== "note" ? patch.path : undefined });
+            } catch (e) {
+              appendRunOp(legacyDb, {
+                runId, seq: opSeq, op: patch.op,
+                path: patch.op !== "note" ? patch.path : null,
+                articleId: null, error: (e as Error).message,
+              });
+              opSeq += 1;
+              emit(opts.onEvent, { type: "op_applied", account, op: patch.op, error: (e as Error).message });
+            }
+          }
+          accountOps += opsApplied;
+          for (const a of batch) if (a.published_at > maxPublished) maxPublished = a.published_at;
+          emit(opts.onEvent, { type: "batch_completed", account, batchIndex: bi, totalBatches: batches.length, duration_ms: Date.now() - t0, stats: { ops_applied: opsApplied } });
+        } catch (e) {
+          emit(opts.onEvent, { type: "batch_failed", account, batchIndex: bi, totalBatches: batches.length, error: (e as Error).message });
+        }
+      }
+
+      appendFileSync(join(ctx.vaultPath, "log.md"), `- ${new Date().toISOString()} account=${account} max_published_at=${maxPublished} articles=${articles.length} ops=${accountOps}\n`, "utf-8");
+      emit(opts.onEvent, { type: "account_completed", account, stats: { articles_processed: articles.length, ops: accountOps } });
+      accountsDone.push(account);
     }
 
-    appendFileSync(join(ctx.vaultPath, "log.md"), `- ${new Date().toISOString()} account=${account} max_published_at=${maxPublished} articles=${articles.length} ops=${accountOps}\n`, "utf-8");
-    emit(opts.onEvent, { type: "account_completed", account, stats: { articles_processed: articles.length, ops: accountOps } });
-    accountsDone.push(account);
+    rebuildIndex(ctx.vaultPath);
+    finishRun(legacyDb, {
+      runId, finishedAt: new Date().toISOString(), status: "done",
+      stats: {
+        pages_created: pagesCreated,
+        pages_updated: pagesUpdated,
+        sources_appended: sourcesAppended,
+        images_appended: imagesAppended,
+        skipped_count: 0,
+        conflict_count: 0,
+      },
+    });
+    emit(opts.onEvent, { type: "run_completed", runId });
+    emit(opts.onEvent, { type: "all_completed", stats: { accounts_done: accountsDone.length, pages_created: pagesCreated, pages_updated: pagesUpdated } });
+
+    return { accounts_done: accountsDone, pages_created: pagesCreated, pages_updated: pagesUpdated, sources_appended: sourcesAppended, images_appended: imagesAppended, notes, skipped_count: 0, run_id: runId };
+  } catch (err) {
+    finishRun(legacyDb, { runId, finishedAt: new Date().toISOString(), status: "error", error: (err as Error).message });
+    throw err;
+  } finally {
+    legacyDb.close();
   }
-
-  rebuildIndex(ctx.vaultPath);
-  emit(opts.onEvent, { type: "all_completed", stats: { accounts_done: accountsDone.length, pages_created: pagesCreated, pages_updated: pagesUpdated } });
-
-  return { accounts_done: accountsDone, pages_created: pagesCreated, pages_updated: pagesUpdated, sources_appended: sourcesAppended, images_appended: imagesAppended, notes, skipped_count: 0 };
 }
 
 function loadArticlesByIds(sqlitePath: string, articleIds: string[]): IngestArticle[] {
@@ -245,26 +299,29 @@ function loadArticlesByIds(sqlitePath: string, articleIds: string[]): IngestArti
   } finally { db.close(); }
 }
 
-async function runSelectedIngest(opts: IngestOptions, ctx: Ctx): Promise<IngestResult> {
+async function runSelectedIngest(opts: IngestOptions, ctx: Ctx, runId: string): Promise<IngestResult> {
   ensureVaultScaffold(ctx.vaultPath);
   const store = new WikiStore(ctx.vaultPath);
   const guide = loadGuide(ctx.vaultPath);
   const agent = new WikiIngestorAgent({ cli: opts.cliModel?.cli ?? "claude", model: opts.cliModel?.model });
-
   const articles = loadArticlesByIds(ctx.sqlitePath, opts.articleIds!);
 
-  // Mark filtering
-  let filteredArticles = articles;
-  let skippedCount = 0;
-  if (!opts.forceReingest) {
-    const { filterAlreadyIngested } = await import("./ingest-marks-repo.js");
-    const sqliteReadDb = new Database(ctx.sqlitePath, { readonly: true, fileMustExist: true });
-    try {
-      const hasTable = sqliteReadDb.prepare(
+  const { filterAlreadyIngested, upsertMark } = await import("./ingest-marks-repo.js");
+  const { appendRunOp, finishRun } = await import("./ingest-runs-repo.js");
+
+  // Single long-lived DB handle for this run
+  const db = new Database(ctx.sqlitePath, { fileMustExist: true });
+
+  try {
+    // Mark filtering
+    let filteredArticles = articles;
+    let skippedCount = 0;
+    if (!opts.forceReingest) {
+      const hasTable = db.prepare(
         `SELECT name FROM sqlite_master WHERE type='table' AND name='wiki_ingest_marks'`,
       ).get();
       if (hasTable) {
-        const { alreadyIngested } = filterAlreadyIngested(sqliteReadDb, articles.map((a) => a.id));
+        const { alreadyIngested } = filterAlreadyIngested(db, articles.map((a) => a.id));
         if (alreadyIngested.length > 0) {
           for (const id of alreadyIngested) {
             emit(opts.onEvent, { type: "article_skipped", account: "selected", articleId: id });
@@ -274,70 +331,96 @@ async function runSelectedIngest(opts: IngestOptions, ctx: Ctx): Promise<IngestR
           skippedCount = alreadyIngested.length;
         }
       }
-    } finally { sqliteReadDb.close(); }
-  }
-
-  let pagesCreated = 0, pagesUpdated = 0, sourcesAppended = 0, imagesAppended = 0;
-  const notes: string[] = [];
-
-  const batches: IngestArticle[][] = [];
-  for (let i = 0; i < filteredArticles.length; i += opts.batchSize) batches.push(filteredArticles.slice(i, i + opts.batchSize));
-
-  for (let bi = 0; bi < batches.length; bi += 1) {
-    const batch = batches[bi]!;
-    emit(opts.onEvent, { type: "batch_started", account: "selected", batchIndex: bi, totalBatches: batches.length, stats: { articles_in_batch: batch.length } });
-    const t0 = Date.now();
-    try {
-      const snap = buildSnapshot(ctx.vaultPath, batch, 10);
-      const res = await agent.ingest({
-        account: "selected", batchIndex: bi, totalBatches: batches.length,
-        articles: batch, existingPages: snap.pages, indexMd: snap.indexMd, wikiGuide: guide,
-      });
-      let opsApplied = 0;
-      for (const rawOp of res.ops) {
-        const patch = toPatchOp(rawOp);
-        if (!patch) continue;
-        try {
-          const r = store.applyPatch(patch);
-          opsApplied += 1;
-          if (patch.op === "upsert") { if (r.created) pagesCreated += 1; if (r.updated) pagesUpdated += 1; }
-          else if (patch.op === "append_source") sourcesAppended += 1;
-          else if (patch.op === "append_image") imagesAppended += 1;
-          else if (patch.op === "note" && r.noted) notes.push(r.noted);
-          emit(opts.onEvent, { type: "op_applied", account: "selected", op: patch.op, path: patch.op !== "note" ? patch.path : undefined });
-        } catch (e) {
-          emit(opts.onEvent, { type: "op_applied", account: "selected", op: patch.op, error: (e as Error).message });
-        }
-      }
-      emit(opts.onEvent, { type: "batch_completed", account: "selected", batchIndex: bi, totalBatches: batches.length, duration_ms: Date.now() - t0, stats: { ops_applied: opsApplied } });
-    } catch (e) {
-      emit(opts.onEvent, { type: "batch_failed", account: "selected", batchIndex: bi, totalBatches: batches.length, error: (e as Error).message });
     }
-  }
 
-  // Write marks for successfully processed articles (placeholder run_id; T6 will replace)
-  if (filteredArticles.length > 0) {
-    const { upsertMark } = await import("./ingest-marks-repo.js");
-    const { ensureSchema } = await import("./migrations.js");
-    const nowIso = new Date().toISOString();
-    const markDb = new Database(ctx.sqlitePath, { fileMustExist: true });
-    try {
-      ensureSchema(markDb);  // idempotent, ensures table exists
-      for (const a of filteredArticles) {
-        upsertMark(markDb, { articleId: a.id, runId: "pending-run-id", now: nowIso });
+    let pagesCreated = 0, pagesUpdated = 0, sourcesAppended = 0, imagesAppended = 0;
+    const notes: string[] = [];
+    let opSeq = 0;
+
+    const batches: IngestArticle[][] = [];
+    for (let i = 0; i < filteredArticles.length; i += opts.batchSize) batches.push(filteredArticles.slice(i, i + opts.batchSize));
+
+    for (let bi = 0; bi < batches.length; bi += 1) {
+      const batch = batches[bi]!;
+      emit(opts.onEvent, { type: "batch_started", account: "selected", batchIndex: bi, totalBatches: batches.length, stats: { articles_in_batch: batch.length } });
+      const t0 = Date.now();
+      try {
+        const snap = buildSnapshot(ctx.vaultPath, batch, 10);
+        const res = await agent.ingest({
+          account: "selected", batchIndex: bi, totalBatches: batches.length,
+          articles: batch, existingPages: snap.pages, indexMd: snap.indexMd, wikiGuide: guide,
+        });
+        let opsApplied = 0;
+        for (const rawOp of res.ops) {
+          const patch = toPatchOp(rawOp);
+          if (!patch) continue;
+          try {
+            const r = store.applyPatch(patch);
+            opsApplied += 1;
+            if (patch.op === "upsert") { if (r.created) pagesCreated += 1; if (r.updated) pagesUpdated += 1; }
+            else if (patch.op === "append_source") sourcesAppended += 1;
+            else if (patch.op === "append_image") imagesAppended += 1;
+            else if (patch.op === "note" && r.noted) notes.push(r.noted);
+            appendRunOp(db, {
+              runId, seq: opSeq, op: patch.op,
+              path: patch.op !== "note" ? patch.path : null,
+              articleId: null,
+              createdPage: patch.op === "upsert" ? !!r.created : false,
+              conflict: false,
+            });
+            opSeq += 1;
+            emit(opts.onEvent, { type: "op_applied", account: "selected", op: patch.op, path: patch.op !== "note" ? patch.path : undefined });
+          } catch (e) {
+            appendRunOp(db, {
+              runId, seq: opSeq, op: patch.op,
+              path: patch.op !== "note" ? patch.path : null,
+              articleId: null, error: (e as Error).message,
+            });
+            opSeq += 1;
+            emit(opts.onEvent, { type: "op_applied", account: "selected", op: patch.op, error: (e as Error).message });
+          }
+        }
+        emit(opts.onEvent, { type: "batch_completed", account: "selected", batchIndex: bi, totalBatches: batches.length, duration_ms: Date.now() - t0, stats: { ops_applied: opsApplied } });
+      } catch (e) {
+        emit(opts.onEvent, { type: "batch_failed", account: "selected", batchIndex: bi, totalBatches: batches.length, error: (e as Error).message });
       }
-    } finally { markDb.close(); }
-  }
+    }
 
-  rebuildIndex(ctx.vaultPath);
-  emit(opts.onEvent, { type: "all_completed", stats: { pages_created: pagesCreated, pages_updated: pagesUpdated } });
-  return {
-    accounts_done: ["selected"],
-    pages_created: pagesCreated,
-    pages_updated: pagesUpdated,
-    sources_appended: sourcesAppended,
-    images_appended: imagesAppended,
-    notes,
-    skipped_count: skippedCount,
-  };
+    // Write marks with real runId
+    if (filteredArticles.length > 0) {
+      const nowIso = new Date().toISOString();
+      for (const a of filteredArticles) {
+        upsertMark(db, { articleId: a.id, runId, now: nowIso });
+      }
+    }
+
+    rebuildIndex(ctx.vaultPath);
+
+    finishRun(db, {
+      runId, finishedAt: new Date().toISOString(), status: "done",
+      stats: {
+        pages_created: pagesCreated,
+        pages_updated: pagesUpdated,
+        sources_appended: sourcesAppended,
+        images_appended: imagesAppended,
+        skipped_count: skippedCount,
+        conflict_count: 0,
+      },
+    });
+    emit(opts.onEvent, { type: "run_completed", runId });
+    emit(opts.onEvent, { type: "all_completed", stats: { pages_created: pagesCreated, pages_updated: pagesUpdated } });
+
+    return {
+      accounts_done: ["selected"], pages_created: pagesCreated, pages_updated: pagesUpdated,
+      sources_appended: sourcesAppended, images_appended: imagesAppended, notes, skipped_count: skippedCount, run_id: runId,
+    };
+  } catch (err) {
+    finishRun(db, {
+      runId, finishedAt: new Date().toISOString(), status: "error",
+      error: (err as Error).message,
+    });
+    throw err;
+  } finally {
+    db.close();
+  }
 }
