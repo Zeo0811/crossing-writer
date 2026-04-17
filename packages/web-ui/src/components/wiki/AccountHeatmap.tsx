@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface Article {
   id: string;
@@ -26,6 +26,8 @@ function weekStart(d: Date): Date {
 
 export function AccountHeatmap({ account, selectedDate, onDateSelect }: Props) {
   const [articles, setArticles] = useState<Article[] | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(800);
 
   useEffect(() => {
     setArticles(null);
@@ -34,6 +36,15 @@ export function AccountHeatmap({ account, selectedDate, onDateSelect }: Props) {
       .then(setArticles)
       .catch(() => setArticles([]));
   }, [account]);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const el = containerRef.current;
+    const obs = new ResizeObserver(() => setContainerWidth(el.clientWidth));
+    obs.observe(el);
+    setContainerWidth(el.clientWidth);
+    return () => obs.disconnect();
+  }, []);
 
   const { cells, weeks, months } = useMemo(() => {
     if (!articles || articles.length === 0) return { cells: [], weeks: 0, months: [] as string[] };
@@ -96,20 +107,24 @@ export function AccountHeatmap({ account, selectedDate, onDateSelect }: Props) {
   if (articles === null) return <div className="py-4 text-xs text-[var(--meta)]">加载 {account} 的文章…</div>;
   if (articles.length === 0) return <div className="py-4 text-xs text-[var(--faint)]">该账号无文章</div>;
 
-  const cellSize = 12;
+  const MIN_CELL = 12;
+  const MAX_CELL = 22;
   const gap = 2;
+  const naturalCellBase = MIN_CELL + gap;
+  const naturalW = weeks * naturalCellBase;
+  // If natural width fits the container, stretch cells up to MAX_CELL.
+  // Otherwise keep MIN_CELL and use horizontal scroll.
+  const stretched = naturalW < containerWidth;
+  const cellSize = stretched
+    ? Math.min(MAX_CELL, Math.floor((containerWidth - 4) / weeks) - gap)
+    : MIN_CELL;
   const svgW = weeks * (cellSize + gap);
   const svgH = 7 * (cellSize + gap) + 20;
 
   return (
     <div className="space-y-3">
-      <div className="pb-2 select-none">
-        <svg
-          width="100%"
-          viewBox={`0 0 ${svgW} ${svgH}`}
-          preserveAspectRatio="xMinYMid meet"
-          className="block"
-        >
+      <div ref={containerRef} className="overflow-x-auto pb-2 select-none">
+        <svg width={svgW} height={svgH} className="block">
           {months.map((m, i) => m ? (
             <text key={i} x={i * (cellSize + gap)} y={10} fontSize={9} fill="var(--meta)">{m}</text>
           ) : null)}
