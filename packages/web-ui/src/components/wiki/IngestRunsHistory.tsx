@@ -56,6 +56,16 @@ export function IngestRunsHistory({ onOpenPage }: Props) {
       .finally(() => setDetailLoading(false));
   }, [activeId]);
 
+  // Poll every 3s while the selected run is still running, so live ops/stats update in place
+  useEffect(() => {
+    if (!activeId || detail?.status !== "running") return;
+    const t = setInterval(() => {
+      void getIngestRun(activeId).then(setDetail).catch(() => {});
+      void listIngestRuns({ limit: 50 }).then(setRuns).catch(() => {});
+    }, 3000);
+    return () => clearInterval(t);
+  }, [activeId, detail?.status]);
+
   const grouped = useMemo(() => {
     if (!detail) return { created: [], updated: [], appended: [], errors: [] };
     const created: string[] = [];
@@ -74,6 +84,29 @@ export function IngestRunsHistory({ onOpenPage }: Props) {
     }
     return { created, updated, appended, errors };
   }, [detail]);
+
+  // While running, persisted stats are still 0 (finishRun writes them only at the end).
+  // Derive a live count from the incrementally-recorded ops table.
+  const liveStats = useMemo(() => {
+    if (!detail) return null;
+    if (detail.status !== "running") {
+      return {
+        pages_created: detail.pages_created,
+        pages_updated: detail.pages_updated,
+        sources_appended: detail.sources_appended,
+        skipped_count: detail.skipped_count,
+      };
+    }
+    const createdN = new Set(grouped.created).size;
+    const updatedN = new Set(grouped.updated).size;
+    const appendedN = grouped.appended.length;
+    return {
+      pages_created: createdN,
+      pages_updated: updatedN,
+      sources_appended: appendedN,
+      skipped_count: 0, // article_skipped events don't write ops; unknown during run
+    };
+  }, [detail, grouped]);
 
   if (runs === null) {
     return <div className="py-12 text-center text-sm text-[var(--meta)]">加载中…</div>;
@@ -168,10 +201,10 @@ export function IngestRunsHistory({ onOpenPage }: Props) {
             )}
 
             <div className="grid grid-cols-4 gap-2 text-center">
-              <Stat value={detail.pages_created} label="新建页" />
-              <Stat value={detail.pages_updated} label="更新页" />
-              <Stat value={detail.sources_appended} label="追加来源" />
-              <Stat value={detail.skipped_count} label="已跳过" />
+              <Stat value={liveStats?.pages_created ?? 0} label={detail.status === "running" ? "新建页 · 实时" : "新建页"} />
+              <Stat value={liveStats?.pages_updated ?? 0} label={detail.status === "running" ? "更新页 · 实时" : "更新页"} />
+              <Stat value={liveStats?.sources_appended ?? 0} label={detail.status === "running" ? "追加来源 · 实时" : "追加来源"} />
+              <Stat value={liveStats?.skipped_count ?? 0} label={detail.status === "running" ? "已跳过（跑完可得）" : "已跳过"} />
             </div>
 
             {detail.accounts.length > 0 && (
