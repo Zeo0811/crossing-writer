@@ -74,13 +74,19 @@ export function AccountHeatmap({ account, selectedDate, onDateSelect }: Props) {
     }
 
     const months: string[] = [];
-    let lastMonth = "";
+    let lastLabeledMonth = "";
     for (let w = 0; w < totalWeeks; w++) {
       const cell = cells[w * 7];
       if (cell) {
         const m = cell.date.slice(0, 7);
-        months.push(m !== lastMonth ? m.slice(5) + "月" : "");
-        lastMonth = m;
+        const day = Number(cell.date.slice(8, 10));
+        // Only label if this week contains the first 7 days of a new month
+        if (m !== lastLabeledMonth && day <= 7) {
+          months.push(m.slice(5) + "月");
+          lastLabeledMonth = m;
+        } else {
+          months.push("");
+        }
       }
     }
 
@@ -97,8 +103,13 @@ export function AccountHeatmap({ account, selectedDate, onDateSelect }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="overflow-x-auto pb-2 select-none">
-        <svg width={svgW} height={svgH} className="block">
+      <div className="pb-2 select-none">
+        <svg
+          width="100%"
+          viewBox={`0 0 ${svgW} ${svgH}`}
+          preserveAspectRatio="xMinYMid meet"
+          className="block"
+        >
           {months.map((m, i) => m ? (
             <text key={i} x={i * (cellSize + gap)} y={10} fontSize={9} fill="var(--meta)">{m}</text>
           ) : null)}
