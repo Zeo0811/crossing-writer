@@ -12,7 +12,7 @@ export { analyzeQuant } from "./style-distiller/quant-analyzer.js";
 export { stratifiedSample, pickDeepRead } from "./style-distiller/sample-picker.js";
 export { aggregateSnippets } from "./style-distiller/snippet-aggregator.js";
 export { runIngest } from "./wiki/orchestrator.js";
-export { WikiStore } from "./wiki/wiki-store.js";
+export { WikiStore, parseFrontmatter, serializeFrontmatter } from "./wiki/wiki-store.js";
 export { searchWiki } from "./wiki/search-wiki.js";
 export { rebuildIndex } from "./wiki/index-maintainer.js";
 export type {

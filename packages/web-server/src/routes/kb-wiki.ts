@@ -97,18 +97,26 @@ export function registerKbWikiRoutes(app: FastifyInstance, deps: KbWikiDeps) {
     return reply.send(out);
   });
 
-  app.get<{ Params: { "*": string } }>("/api/kb/wiki/pages/*", async (req, reply) => {
-    const rel = (req.params as { "*": string })["*"];
-    if (!rel || rel.includes("..")) return reply.code(400).send({ error: "invalid path" });
-    const { WikiStore } = await import("@crossing/kb");
-    const store = new WikiStore(deps.vaultPath);
-    let abs: string;
-    try { abs = store.absPath(rel); } catch { return reply.code(400).send({ error: "invalid path" }); }
-    const { existsSync, readFileSync } = await import("node:fs");
-    if (!existsSync(abs)) return reply.code(404).send({ error: "not found" });
-    reply.header("Content-Type", "text/markdown; charset=utf-8");
-    return reply.send(readFileSync(abs, "utf-8"));
-  });
+  app.get<{ Params: { "*": string }; Querystring: { meta?: string } }>(
+    "/api/kb/wiki/pages/*",
+    async (req, reply) => {
+      const rel = (req.params as { "*": string })["*"];
+      if (!rel || rel.includes("..")) return reply.code(400).send({ error: "invalid path" });
+      const { WikiStore, parseFrontmatter } = await import("@crossing/kb");
+      const store = new WikiStore(deps.vaultPath);
+      let abs: string;
+      try { abs = store.absPath(rel); } catch { return reply.code(400).send({ error: "invalid path" }); }
+      const { existsSync, readFileSync } = await import("node:fs");
+      if (!existsSync(abs)) return reply.code(404).send({ error: "not found" });
+      const text = readFileSync(abs, "utf-8");
+      if (req.query.meta === "1") {
+        const { frontmatter, body } = parseFrontmatter(text);
+        return reply.send({ frontmatter, body });
+      }
+      reply.header("Content-Type", "text/markdown; charset=utf-8");
+      return reply.send(text);
+    },
+  );
 
   app.get<{ Querystring: { q?: string; kind?: string; limit?: string } }>("/api/kb/wiki/search", async (req, reply) => {
     const q = (req.query.q ?? "").trim();

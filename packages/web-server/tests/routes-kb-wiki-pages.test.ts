@@ -66,3 +66,25 @@ describe("GET /api/kb/wiki/pages/*", () => {
     await app.close();
   });
 });
+
+describe("GET /api/kb/wiki/pages/* with ?meta=1", () => {
+  it("returns JSON with frontmatter and body", async () => {
+    const { app } = await mk();
+    const res = await app.inject({ method: "GET", url: "/api/kb/wiki/pages/entities/A.md?meta=1" });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/application\/json/);
+    const body = res.json() as { frontmatter: Record<string, unknown>; body: string };
+    expect(body.frontmatter.type).toBe("entity");
+    expect(body.frontmatter.title).toBe("A");
+    expect(body.body).toContain("# A");
+    await app.close();
+  });
+
+  it("preserves raw markdown response when meta not set", async () => {
+    const { app } = await mk();
+    const res = await app.inject({ method: "GET", url: "/api/kb/wiki/pages/entities/A.md" });
+    expect(res.headers["content-type"]).toMatch(/text\/markdown/);
+    expect(res.body).toContain("# A");
+    await app.close();
+  });
+});
