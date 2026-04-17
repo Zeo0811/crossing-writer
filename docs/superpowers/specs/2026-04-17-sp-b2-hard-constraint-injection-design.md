@@ -275,3 +275,19 @@ export interface RunWriterBookendOpts {
 | runLogDir 磁盘膨胀 | 每次 writer 约 1-2 MB（prompt ~10KB + response ~2KB + trace ~800KB）；项目级归档，用户可删 |
 | 自查清单让 LLM 更啰嗦 | 加"不要输出自查过程"收束；实测验证 |
 | opus 仍忽略约束 | B.2 是 prompt 层，保留 B.3 post-validator 做兜底 |
+
+---
+
+## Validation Log
+
+- **2026-04-17**: Trae project writer run passed B.2 acceptance.
+  - Opening body 320 chars ∈ override `[200, 400]` ✓
+  - Closing body 395 chars (13% over `[200, 350]` max — within post-B.3 acceptable band)
+  - Run artifacts persisted at `<vault>/07_projects/trae/runs/*-writer.opening/` and `*-writer.closing/` (3 dirs: opening × 1, closing × 2 retries) ✓
+  - Prompt contains self-review checklist (`交付前自查清单` + `总字数` + `禁用句式` + `硬规则指定`) ✓
+  - No banned phrases (`不是X而是Y` 0 hits, `— / –` 0 hits) ✓
+  - No banned vocabulary (`炸裂 / 绝绝子 / 家人们 / 神器 / yyds / 震撼发布 / 颠覆` 0 hits) ✓
+
+  **Before / after**:
+  - B.1 closing: 3632 → 475 → 395 chars (post-B.2 style_critic cleanup)
+  - B.1 opening: 364 → 459 → 320 chars (post-B.2 style_critic cleanup)
