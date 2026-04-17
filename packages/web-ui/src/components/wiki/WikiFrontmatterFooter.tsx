@@ -85,13 +85,22 @@ export function WikiFrontmatterFooter({
           </h3>
           <div className="grid grid-cols-4 gap-2">
             {images.map((im, i) => (
-              <img
+              <a
                 key={`${im.url}-${i}`}
-                src={im.url}
-                alt={im.caption ?? `image-${i}`}
-                className="w-full h-16 object-cover rounded bg-[var(--bg-2)]"
-                loading="lazy"
-              />
+                href={im.url}
+                target="_blank"
+                rel="noreferrer noopener"
+                title={im.caption ?? ""}
+                className="block"
+              >
+                <img
+                  src={im.url}
+                  alt={im.caption ?? `image-${i}`}
+                  referrerPolicy="no-referrer"
+                  loading="lazy"
+                  className="w-full h-16 object-cover rounded bg-[var(--bg-2)]"
+                />
+              </a>
             ))}
           </div>
         </section>
