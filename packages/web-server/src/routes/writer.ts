@@ -8,7 +8,7 @@ import type { ProjectOverrideStore } from "../services/project-override-store.js
 import type { StylePanelStore } from "../services/style-panel-store.js";
 import { mergeAgentConfig } from "../services/config-merger.js";
 import { resolveStyleBindingV2 } from "../services/style-binding-resolver.js";
-import { runWriter, type WriterAgentKey, type WriterConfig, type ResolveStyleForAgent } from "../services/writer-orchestrator.js";
+import { runWriter, runBookendWithValidation, type WriterAgentKey, type WriterConfig, type ResolveStyleForAgent } from "../services/writer-orchestrator.js";
 import type { ContextBundleService } from "../services/context-bundle-service.js";
 import type { HardRulesStore } from "../services/hard-rules-store.js";
 import { ArticleStore, type SectionKey } from "../services/article-store.js";
@@ -392,21 +392,35 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
               ].join("\n");
             }
 
-            const out = await runWriterBookend({
+            const wordOverride = rules.word_count_overrides?.[role];
+            const publishEvent = async (type: string, data: Record<string, unknown>) => {
+              send(type, data);
+              try { await appendEvent(pDir, { type, ...data } as any); } catch { /* ignore */ }
+            };
+            const out = await runBookendWithValidation({
               role,
               sectionKey: req.params.key,
-              account: binding.account,
-              articleType: project.article_type,
-              typeSection: resolvedStyle.typeSection,
-              panelFrontmatter: resolvedStyle.panel.frontmatter as any,
-              hardRulesBlock,
-              projectContextBlock: '',
-              product_name: project.product_info?.name ?? undefined,
-              invokeAgent: invoker,
-              userMessage,
-              dispatchTool,
-              onEvent,
-              maxRounds: 5,
+              publishEvent,
+              hardRules: rules,
+              wordOverride,
+              runBookend: (retry) => runWriterBookend({
+                role,
+                sectionKey: req.params.key,
+                account: binding.account,
+                articleType: project.article_type!,
+                typeSection: resolvedStyle.typeSection,
+                panelFrontmatter: resolvedStyle.panel.frontmatter as any,
+                hardRulesBlock,
+                projectContextBlock: '',
+                wordOverride,
+                retryFeedback: retry,
+                product_name: project.product_info?.name ?? undefined,
+                invokeAgent: invoker,
+                userMessage,
+                dispatchTool,
+                onEvent,
+                maxRounds: 5,
+              }),
             });
             newBody = out.finalText;
           } else {
