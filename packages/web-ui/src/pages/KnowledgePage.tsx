@@ -129,24 +129,24 @@ export function KnowledgePage() {
       {mode === "browse" ? (
         <div className="p-6 space-y-4">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 p-1 h-9 rounded border border-[var(--hair)]">
+            <div className="flex-1 flex items-center gap-1 p-1 h-10 rounded border border-[var(--hair)] overflow-x-auto">
               {kinds.map((k) => (
                 <button
                   key={k}
                   onClick={() => { setKindFilter(k); setSelected(null); }}
-                  className={`px-3 py-1 text-xs rounded ${kindFilter === k ? "bg-[var(--accent-fill)] text-[var(--accent)]" : "text-[var(--meta)] hover:text-[var(--heading)]"}`}
+                  className={`px-4 py-1.5 text-sm rounded whitespace-nowrap transition-colors ${kindFilter === k ? "bg-[var(--accent-fill)] text-[var(--accent)] font-semibold" : "text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"}`}
                 >
                   {KIND_LABEL[k] ?? k}
                 </button>
               ))}
             </div>
-            <div className="flex-1">
+            <div className="w-72 shrink-0">
               <Input
                 value={q}
                 onChange={(e) => runSearch(e.target.value)}
                 placeholder="搜索标题 / 内容…"
                 leftSlot="⌕"
-                className="h-9"
+                className="h-10"
               />
             </div>
           </div>
