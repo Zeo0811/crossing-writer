@@ -4,7 +4,7 @@ import { RawArticleDrawer } from "../components/wiki/RawArticleDrawer.js";
 import { IngestTab } from "../components/wiki/IngestTab.js";
 import { ModelSelector } from "../components/wiki/ModelSelector.js";
 import { IngestConsoleFab } from "../components/wiki/IngestConsoleFab.js";
-import { Input } from "../components/ui";
+import { Input, Button, Chip } from "../components/ui";
 import { formatBeijingShort } from "../utils/time";
 import { useIngestState } from "../hooks/useIngestState";
 import { useIngestCart } from "../hooks/useIngestCart";
@@ -79,54 +79,42 @@ export function KnowledgePage() {
   }
 
   // Ingest button state: running > error > cart > idle
-  const ingestButton = (() => {
+  type IngestBtnState =
+    | { variant: "primary" | "secondary" | "danger"; suffix: string | null; dot: boolean; chipVariant?: "amber" | "red" | "accent" | "neutral"; chipLabel?: string };
+
+  const ingestButton: IngestBtnState = (() => {
+    if (mode === "ingest") {
+      return { variant: "secondary", suffix: null, dot: false };
+    }
     if (ingest.status === "running") {
-      return {
-        label: "入库",
-        suffix: "运行中",
-        tone: "amber" as const,
-        dot: true,
-      };
+      return { variant: "primary", suffix: null, dot: true, chipVariant: "amber", chipLabel: "运行中" };
     }
     if (ingest.status === "error") {
-      return { label: "入库", suffix: "失败", tone: "red" as const, dot: false };
+      return { variant: "danger", suffix: null, dot: false, chipVariant: "red", chipLabel: "失败" };
     }
     if (cart.totalCount > 0) {
-      return { label: "入库", suffix: `已选 ${cart.totalCount}`, tone: "accent" as const, dot: false };
+      return { variant: "primary", suffix: null, dot: false, chipVariant: "accent", chipLabel: `已选 ${cart.totalCount}` };
     }
-    return { label: "入库", suffix: null, tone: "neutral" as const, dot: false };
+    return { variant: "secondary", suffix: null, dot: false };
   })();
-
-  const toneClass = {
-    amber: "bg-[var(--amber)] text-[var(--bg-0)] border-[var(--amber)] shadow-[0_0_12px_rgba(255,209,102,0.35)]",
-    red: "bg-[var(--red)] text-white border-[var(--red)] shadow-[0_0_12px_rgba(255,107,107,0.35)]",
-    accent: "bg-[var(--accent)] text-[var(--accent-on)] border-[var(--accent-soft)] shadow-[0_0_12px_var(--accent-dim)]",
-    neutral: "bg-[var(--bg-1)] text-[var(--body)] border-[var(--hair-strong)] hover:border-[var(--accent-soft)] hover:text-[var(--accent)]",
-  }[ingestButton.tone];
 
   return (
     <div data-testid="page-knowledge" className="rounded border border-[var(--hair)] bg-[var(--bg-1)] overflow-hidden">
       <header className="flex items-center justify-between px-6 h-14 border-b border-[var(--hair)]">
         <div className="flex items-center gap-4">
           <h1 className="text-lg font-semibold text-[var(--heading)]">知识库</h1>
-          <button
-            type="button"
+          <Button
             data-testid="ingest-mode-toggle"
+            variant={ingestButton.variant}
+            size="sm"
             onClick={() => setMode(mode === "browse" ? "ingest" : "browse")}
-            className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-sm font-semibold transition-all ${toneClass}`}
+            leftSlot={ingestButton.dot ? <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" /> : undefined}
+            rightSlot={ingestButton.chipLabel ? (
+              <Chip variant={ingestButton.chipVariant ?? "neutral"} size="sm" tone="solid">{ingestButton.chipLabel}</Chip>
+            ) : undefined}
           >
-            {ingestButton.dot && (
-              <span className="w-2 h-2 rounded-full bg-current animate-pulse shrink-0" />
-            )}
-            <span>
-              {mode === "ingest" ? "← 回到浏览" : ingestButton.label}
-            </span>
-            {mode === "browse" && ingestButton.suffix && (
-              <span className="text-xs font-normal opacity-90 px-1.5 py-0.5 rounded-full bg-[rgba(0,0,0,0.15)]">
-                {ingestButton.suffix}
-              </span>
-            )}
-          </button>
+            {mode === "ingest" ? "← 回到浏览" : "入库"}
+          </Button>
         </div>
         <div className="flex items-center gap-3">
           {statusInfo && (
