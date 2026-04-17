@@ -217,6 +217,55 @@ describe('renderBookendPrompt', () => {
     });
     expect(out).not.toMatch(/\{\{[^}]+\}\}/);
   });
+
+  it('applies wordOverride: prompt shows override total and still shows panel per-para', () => {
+    const out = renderBookendPrompt({
+      role: 'opening',
+      account: 'acc',
+      articleType: '实测',
+      typeSection: `### 字数范围\n10 – 110 字(单段)\n\n### 目标\nfoo\n`,
+      panelFrontmatter: PANEL_FM,
+      hardRulesBlock: '',
+      projectContextBlock: '',
+      wordOverride: [200, 400],
+    });
+    expect(out).toContain('200');
+    expect(out).toContain('400');
+    expect(out).toContain('硬规则指定');
+    expect(out).toContain('每段 10 – 110 字');
+    expect(out).not.toMatch(/\{\{[^}]+\}\}/);
+  });
+
+  it('falls back to panel per-para extrapolation when no override', () => {
+    const out = renderBookendPrompt({
+      role: 'opening',
+      account: 'acc',
+      articleType: '实测',
+      typeSection: `### 字数范围\n10 – 110 字(单段)\n\n### 目标\nfoo\n`,
+      panelFrontmatter: PANEL_FM,
+      hardRulesBlock: '',
+      projectContextBlock: '',
+    });
+    // 5 paragraphs × 110 max = 550
+    expect(out).toContain('550');
+    expect(out).toContain('单段 × 5 段推算');
+  });
+
+  it('includes self-review checklist with 6 items', () => {
+    const out = renderBookendPrompt({
+      role: 'opening',
+      account: 'acc',
+      articleType: '实测',
+      typeSection: `### 字数范围\n150-260 字\n\n### 目标\nfoo\n`,
+      panelFrontmatter: PANEL_FM,
+      hardRulesBlock: '',
+      projectContextBlock: '',
+    });
+    expect(out).toContain('交付前自查清单');
+    expect(out).toContain('1. **总字数**');
+    expect(out).toContain('6. **衔接句**');
+    expect(out).toContain('不要输出自查过程');
+  });
 });
 
 describe('parseWordCountRange', () => {

@@ -246,6 +246,9 @@ export interface RenderBookendPromptOpts {
   projectContextBlock: string;
   product_name?: string;
   guest_name?: string;
+  /** Override [min, max] total word count. If provided, takes precedence
+   *  over panel 字数范围 text; see resolveWordConstraint. */
+  wordOverride?: [number, number];
 }
 
 export function renderBookendPrompt(opts: RenderBookendPromptOpts): string {
@@ -264,16 +267,11 @@ export function renderBookendPrompt(opts: RenderBookendPromptOpts): string {
     示例: extractSubsection(opts.typeSection, '示例'),
   };
 
-  // Panel schema has `word_count_ranges.opening` and `word_count_ranges.article`
-  // but NOT a closing-specific range. For closing, the per-role "字数范围"
-  // subsection text in the panel body is the real source of truth (e.g.
-  // "10 – 110 字(单段)"). Use it whenever available; fall back to the
-  // frontmatter numeric range only if the subsection is missing.
-  const wordRange = subs.字数范围
-    ? subs.字数范围
-    : opts.role === 'opening'
-      ? `${opts.panelFrontmatter.word_count_ranges.opening.join('-')} 字`
-      : `${opts.panelFrontmatter.word_count_ranges.article.join('-')} 字（全文参考，非本段独占）`;
+  const wordConstraint = resolveWordConstraint(
+    opts.role,
+    subs.字数范围,
+    opts.wordOverride,
+  );
 
   // Conditional blocks — render only the matching role's block, drop the other
   let out = applyConditionalBlocks(template, opts.role);
@@ -284,7 +282,9 @@ export function renderBookendPrompt(opts: RenderBookendPromptOpts): string {
     '{{article_type}}': opts.articleType,
     '{{role中文}}': roleCn,
     '{{panel.目标}}': subs.目标,
-    '{{panel.word_count}}': wordRange,
+    '{{panel.word_count_per_para}}': wordConstraint.perParaText,
+    '{{panel.word_count_total}}': wordConstraint.totalText,
+    '{{panel.word_count_total_max}}': String(wordConstraint.totalMax),
     '{{panel.结构骨架}}': subs.结构骨架,
     '{{panel.高频锚词}}': subs.高频锚词,
     '{{panel.禁止出现}}': subs.禁止出现,
