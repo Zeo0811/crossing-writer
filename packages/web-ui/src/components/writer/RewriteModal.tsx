@@ -183,9 +183,6 @@ export function RewriteModal(props: RewriteModalProps) {
               </button>
             </>
           )}
-          {mode === 'rewrite_streaming' && (
-            <div className="text-sm text-[var(--meta)]">正在改写，请稍候…</div>
-          )}
           {mode === 'rewrite_done' && (
             <>
               <button onClick={onReject} className="px-3 py-1.5 rounded border border-[var(--hair)] text-sm text-[var(--body)]">
