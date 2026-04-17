@@ -283,7 +283,7 @@ export function renderBookendPrompt(opts: RenderBookendPromptOpts): string {
   let out = applyConditionalBlocks(template, opts.role);
 
   const retryFeedbackBlock = opts.retryFeedback
-    ? `## 上一次产出 - 不合规，需要重写\n\n上一次你产出的正文（供参考，不是让你微调）：\n\n\`\`\`\n${opts.retryFeedback.previousText}\n\`\`\`\n\n违规清单（按这些修，其他不变）：\n\n${opts.retryFeedback.violationsText}\n\n修完按交付前自查清单再扫一遍。`
+    ? `## 上一次产出 - 不合规，需要重写\n\n上一次你产出的正文（供参考，不是让你微调）：\n\n\`\`\`\`\n${opts.retryFeedback.previousText}\n\`\`\`\`\n\n违规清单（按这些修，其他不变）：\n\n${opts.retryFeedback.violationsText}\n\n修完按交付前自查清单再扫一遍。`
     : '';
 
   const fm = opts.panelFrontmatter;

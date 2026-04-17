@@ -278,6 +278,7 @@ describe('renderBookendPrompt', () => {
       projectContextBlock: '',
     });
     expect(out).not.toContain('上一次产出');
+    expect(out).not.toMatch(/\{\{[^}]+\}\}/);
   });
 
   it('renders retry block with previous text + violation list', () => {
@@ -299,6 +300,33 @@ describe('renderBookendPrompt', () => {
     expect(out).toContain('1. [word_count] 超了');
     expect(out).toContain('2. [banned_vocabulary] 笔者');
     expect(out).toContain('按这些修，其他不变');
+    expect(out).not.toMatch(/\{\{[^}]+\}\}/);
+    // retry block must appear BEFORE the "现在开始写" pivot sentence
+    expect(out.indexOf('上一次产出')).toBeLessThan(out.indexOf('现在开始写'));
+  });
+
+  it('survives triple-backtick collision in previousText (4-backtick fence)', () => {
+    const out = renderBookendPrompt({
+      role: 'closing',
+      account: 'acc',
+      articleType: '实测',
+      typeSection: `### 字数范围\n150-260 字\n\n### 目标\nfoo\n`,
+      panelFrontmatter: PANEL_FM,
+      hardRulesBlock: '',
+      projectContextBlock: '',
+      retryFeedback: {
+        previousText: '他说 ```js\nconsole.log(1)\n``` 然后继续',
+        violationsText: '1. [word_count] 超',
+      },
+    });
+    // The LLM's previous text (which contains ```) must not terminate the outer fence.
+    // Both the ``` and the tail "然后继续" stay inside the retry block's code fence.
+    expect(out).toContain('```js');
+    expect(out).toContain('然后继续');
+    // All 违规清单 content still renders after the fenced previousText
+    expect(out).toContain('违规清单');
+    expect(out).toContain('1. [word_count] 超');
+    expect(out).not.toMatch(/\{\{[^}]+\}\}/);
   });
 });
 
