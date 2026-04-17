@@ -281,4 +281,8 @@ describe('formatViolations', () => {
     expect(out).toMatch(/^1\. /m);
     expect(out).toMatch(/^2\. /m);
   });
+
+  it('returns empty string when no violations (caller guards this)', () => {
+    expect(formatViolations([])).toBe('');
+  });
 });

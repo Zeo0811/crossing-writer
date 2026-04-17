@@ -176,5 +176,9 @@ function formatOne(v: Violation): string {
       return `[banned_phrase] 命中模式「${v.pattern}」（${v.reason}）。片段：「${v.excerpt}」。换一种写法。`;
     case 'banned_vocabulary':
       return `[banned_vocabulary] 出现禁用词「${v.word}」（${v.reason}）。去掉或替换。`;
+    default: {
+      const _exhaustive: never = v;
+      throw new Error(`unknown violation kind: ${JSON.stringify(_exhaustive)}`);
+    }
   }
 }
