@@ -8,6 +8,7 @@ import { KnowledgePage } from "./pages/KnowledgePage.js";
 import { ConfigWorkbench } from "./pages/ConfigWorkbench";
 import { SettingsPage } from "./pages/SettingsPage";
 import { WritingHardRulesPage } from "./pages/WritingHardRulesPage";
+import { TopicExpertsPage } from "./pages/TopicExpertsPage";
 import { AppShell } from "./components/layout/AppShell";
 import { IngestProvider } from "./hooks/useIngestState";
 import { MockApp } from "./mock/MockApp";
@@ -40,6 +41,7 @@ export function App() {
               <Route path="/" element={<ProjectList />} />
               <Route path="/projects/:id" element={<ProjectWorkbench />} />
               <Route path="/style-panels" element={<StylePanelsPage />} />
+              <Route path="/topic-experts" element={<TopicExpertsPage />} />
               <Route path="/knowledge" element={<KnowledgePage />} />
               <Route path="/config" element={<ConfigWorkbench />} />
               <Route path="/writing-hard-rules" element={<WritingHardRulesPage />} />

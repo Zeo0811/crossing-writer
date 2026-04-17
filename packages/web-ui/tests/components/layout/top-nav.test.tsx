@@ -22,8 +22,10 @@ describe("TopNav", () => {
     expect(screen.getByText("CROSSING.WRITER")).toBeInTheDocument();
     expect(screen.getByText("v0.14")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /projects/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /library/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /settings/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "风格面板" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "硬规则" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "选题专家" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "配置" })).toBeInTheDocument();
   });
 
   it("theme toggle flips data-theme and swaps glyph", () => {

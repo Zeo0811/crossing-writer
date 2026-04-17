@@ -8,8 +8,10 @@ interface TopNavProps {
 
 const LINKS = [
   { to: "/", label: "Projects", end: true },
-  { to: "/style-panels", label: "Library" },
-  { to: "/config", label: "Settings" },
+  { to: "/style-panels", label: "风格面板" },
+  { to: "/writing-hard-rules", label: "硬规则" },
+  { to: "/topic-experts", label: "选题专家" },
+  { to: "/config", label: "配置" },
 ];
 
 export function TopNav({ version = "v0.14", breadcrumb }: TopNavProps) {
