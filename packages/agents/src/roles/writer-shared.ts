@@ -35,8 +35,8 @@ export interface PanelFrontmatterLike {
 }
 
 /**
- * Re-exported so callers that previously imported these from the deleted
- * writer-opening-agent / writer-closing-agent can get them here.
+ * Shared types used by writer-bookend-agent, writer-practice-agent,
+ * style-critic-agent, and other writer roles.
  */
 export interface ReferenceAccountKb {
   id: string;

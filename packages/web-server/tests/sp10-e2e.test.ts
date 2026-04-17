@@ -10,7 +10,7 @@ import Database from "better-sqlite3";
 
 // Mock @crossing/agents BEFORE importing buildApp so both the distill
 // orchestrator (runSectionSlicer + StyleDistiller* agents) and the
-// writer-orchestrator (runWriterOpening/Practice/Closing/Stitcher) pick up
+// writer-orchestrator (runWriterBookend/Practice/Stitcher) pick up
 // canned responses. Keep real exports for everything else.
 vi.mock("@crossing/agents", async () => {
   const actual = await vi.importActual<any>("@crossing/agents");
@@ -44,8 +44,8 @@ vi.mock("@crossing/agents", async () => {
         meta: { cli: "claude", model: null, durationMs: 1 },
       })),
     })),
-    runWriterOpening: vi.fn(async (opts: any) => ({
-      finalText: "OPENING_FINAL",
+    runWriterBookend: vi.fn(async (opts: any) => ({
+      finalText: opts.role === "opening" ? "OPENING_FINAL" : "CLOSING_FINAL",
       toolsUsed: [],
       rounds: 1,
       meta: { cli: "claude", model: "opus", durationMs: 1, total_duration_ms: 1 },
@@ -53,12 +53,6 @@ vi.mock("@crossing/agents", async () => {
     })),
     runWriterPractice: vi.fn(async () => ({
       finalText: "PRACTICE_FINAL",
-      toolsUsed: [],
-      rounds: 1,
-      meta: { cli: "claude", model: "opus", durationMs: 1, total_duration_ms: 1 },
-    })),
-    runWriterClosing: vi.fn(async () => ({
-      finalText: "CLOSING_FINAL",
       toolsUsed: [],
       rounds: 1,
       meta: { cli: "claude", model: "opus", durationMs: 1, total_duration_ms: 1 },
@@ -321,7 +315,7 @@ describe("SP-10 e2e: distill SSE + writer-run with styleBinding", () => {
       expect(missingBindings[0].reason).toBe("panel_version_too_old");
       // Ensure writer agents were NOT started
       const agents = await import("@crossing/agents");
-      expect((agents.runWriterOpening as any).mock.calls.length).toBe(0);
+      expect((agents.runWriterBookend as any).mock.calls.length).toBe(0);
     } finally {
       await app.close();
     }

@@ -2,11 +2,20 @@ import { describe, it, expect, vi } from "vitest";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { runWriterOpening } from "@crossing/agents";
+import { runWriterBookend } from "@crossing/agents";
 import { ArticleStore } from "../src/services/article-store.js";
 import type { ToolCall, SkillResult, WriterToolEvent } from "@crossing/agents";
 
-describe("sp08 e2e: writer-opening with tools → store + events", () => {
+const STUB_PANEL = {
+  word_count_ranges: { opening: [100, 200] as [number, number], article: [800, 1200] as [number, number] },
+  pronoun_policy: { we_ratio: 0.5, you_ratio: 0.5, avoid: [] as string[] },
+  tone: { primary: "conversational", humor_frequency: "low", opinionated: "moderate" },
+  bold_policy: { frequency: "low", what_to_bold: [] as string[], dont_bold: [] as string[] },
+  transition_phrases: [] as string[],
+  data_citation: { required: true, format_style: "inline", min_per_article: 1 },
+};
+
+describe("sp08 e2e: writer-opening (bookend) with tools → store + events", () => {
   it("multi-round tool use lands in frontmatter and emits 4 event types", async () => {
     const events: WriterToolEvent[] = [];
     const dir = mkdtempSync(join(tmpdir(), "sp08e2e-"));
@@ -56,11 +65,18 @@ describe("sp08 e2e: writer-opening with tools → store + events", () => {
       };
     });
 
-    const result = await runWriterOpening({
+    const result = await runWriterBookend({
+      role: "opening",
+      sectionKey: "opening",
+      account: "test-account",
+      articleType: "实测",
+      typeSection: "",
+      panelFrontmatter: STUB_PANEL,
+      hardRulesBlock: "",
+      projectContextBlock: "",
       invokeAgent,
       userMessage: "写一篇关于 A 的文章",
       dispatchTool,
-      sectionKey: "opening",
       maxRounds: 4,
       onEvent: (ev) => events.push(ev),
     });

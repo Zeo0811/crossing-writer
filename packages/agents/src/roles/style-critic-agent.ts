@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { invokeAgent } from "../model-adapter.js";
 import { TOOL_PROTOCOL_PROMPT } from "../prompts/load.js";
-import type { ReferenceAccountKb } from "./writer-opening-agent.js";
+import type { ReferenceAccountKb } from "./writer-shared.js";
 import {
   runWriterWithTools,
   type ChatMessage,

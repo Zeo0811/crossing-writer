@@ -9,17 +9,13 @@ vi.mock("@crossing/agents", async () => {
   const actual = await vi.importActual<any>("@crossing/agents");
   return {
     ...actual,
-    runWriterOpening: vi.fn(async (opts: any) => {
-      captured.push({ key: "opening", userMessage: opts.userMessage });
-      return { finalText: "O", toolsUsed: [], rounds: 1, meta: { cli: "claude", durationMs: 1 } };
+    runWriterBookend: vi.fn(async (opts: any) => {
+      captured.push({ key: opts.role, userMessage: opts.userMessage });
+      return { finalText: opts.role === "opening" ? "O" : "C", toolsUsed: [], rounds: 1, meta: { cli: "claude", durationMs: 1 } };
     }),
     runWriterPractice: vi.fn(async (opts: any) => {
       captured.push({ key: "practice", userMessage: opts.userMessage });
       return { finalText: "P", toolsUsed: [], rounds: 1, meta: { cli: "claude", durationMs: 1 } };
-    }),
-    runWriterClosing: vi.fn(async (opts: any) => {
-      captured.push({ key: "closing", userMessage: opts.userMessage });
-      return { finalText: "C", toolsUsed: [], rounds: 1, meta: { cli: "claude", durationMs: 1 } };
     }),
     runStyleCritic: vi.fn(async (opts: any) => {
       captured.push({ key: "critic", userMessage: opts.userMessage });
