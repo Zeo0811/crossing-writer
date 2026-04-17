@@ -129,18 +129,18 @@ export function KnowledgePage() {
       {mode === "browse" ? (
         <div className="p-6 space-y-4">
           <div className="flex items-center gap-3">
-            <div className="inline-flex items-center gap-0.5 p-1 rounded border border-[var(--hair)]">
+            <div className="flex-1 flex items-center justify-between p-1 h-10 rounded border border-[var(--hair)]">
               {kinds.map((k) => (
                 <button
                   key={k}
                   onClick={() => { setKindFilter(k); setSelected(null); }}
-                  className={`px-2 py-1 text-sm rounded whitespace-nowrap transition-colors ${kindFilter === k ? "bg-[var(--accent-fill)] text-[var(--accent)] font-semibold" : "text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"}`}
+                  className={`px-3 py-1 text-sm rounded whitespace-nowrap transition-colors ${kindFilter === k ? "bg-[var(--accent-fill)] text-[var(--accent)] font-semibold" : "text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"}`}
                 >
                   {KIND_LABEL[k] ?? k}
                 </button>
               ))}
             </div>
-            <div className="w-72 shrink-0 ml-auto">
+            <div className="w-72 shrink-0">
               <Input
                 value={q}
                 onChange={(e) => runSearch(e.target.value)}
