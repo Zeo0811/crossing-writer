@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { WikiPagePreview } from "../components/wiki/WikiPagePreview.js";
+import { RawArticleDrawer } from "../components/wiki/RawArticleDrawer.js";
 import { IngestForm } from "../components/wiki/IngestForm.js";
 import { IngestProgressView } from "../components/wiki/IngestProgressView.js";
 import { Tabs, TabsList, TabsTrigger, TabsContent, Input, Button } from "../components/ui";
@@ -46,6 +47,7 @@ export function KnowledgePage() {
   const [statusInfo, setStatusInfo] = useState<WikiStatus | null>(null);
   const [accounts, setAccounts] = useState<AccountWithStats[]>([]);
   const [logOpen, setLogOpen] = useState(false);
+  const [drawerSource, setDrawerSource] = useState<{ account: string; articleId: string } | null>(null);
 
   const ingest = useIngestState();
 
@@ -163,7 +165,11 @@ export function KnowledgePage() {
                   ✕
                 </button>
               </div>
-              <WikiPagePreview path={selected} />
+              <WikiPagePreview
+                path={selected}
+                onNavigate={(p) => { setHits(null); setQ(""); setSelected(p); }}
+                onOpenSource={(account, articleId) => setDrawerSource({ account, articleId })}
+              />
             </div>
           ) : hits ? (
             <div className="grid grid-cols-2 gap-4">
@@ -238,6 +244,12 @@ export function KnowledgePage() {
           )}
         </div>
       )}
+      <RawArticleDrawer
+        open={drawerSource !== null}
+        account={drawerSource?.account ?? null}
+        articleId={drawerSource?.articleId ?? null}
+        onClose={() => setDrawerSource(null)}
+      />
     </div>
   );
 }
