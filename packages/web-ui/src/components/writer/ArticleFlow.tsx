@@ -105,7 +105,6 @@ export function ArticleFlow({ projectId }: ArticleFlowProps) {
           ))}
         </main>
       </div>
-      <WriterConsoleFab />
     </RewriteMutexProvider>
   );
 }

@@ -165,11 +165,6 @@ export function RewriteModal(props: RewriteModalProps) {
             </div>
           )}
 
-          {mode === 'rewrite_streaming' && (
-            <div className="text-xs text-[var(--meta)] italic">
-              正在调用工具与生成 · 活动详情在右下角「改写控制台」浮标
-            </div>
-          )}
         </div>
 
         {/* Footer */}
