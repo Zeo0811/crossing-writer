@@ -6,6 +6,11 @@ export interface WritingHardRules {
   banned_phrases: HardRulePhrase[];
   banned_vocabulary: HardRuleVocabulary[];
   layout_rules: string[];
+  word_count_overrides?: {
+    opening?: [number, number];
+    closing?: [number, number];
+    article?: [number, number];
+  };
 }
 
 export async function getWritingHardRules(): Promise<WritingHardRules> {

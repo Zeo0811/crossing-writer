@@ -106,6 +106,53 @@ export function WritingHardRulesPage() {
         }}
         onDelete={(i) => update({ layout_rules: rules.layout_rules.filter((_, j) => j !== i) })}
       />
+
+      <RulesSection
+        title="字数范围（覆盖面板）"
+        kind="word_count"
+        rows={
+          rules.word_count_overrides
+            ? Object.entries(rules.word_count_overrides).map(([role, range]) => ({
+                role,
+                min: range?.[0] ?? 0,
+                max: range?.[1] ?? 0,
+              }))
+            : []
+        }
+        columns={[
+          { key: 'role', label: 'role' },
+          { key: 'min', label: 'min' },
+          { key: 'max', label: 'max' },
+        ]}
+        onAdd={(v) => {
+          const current = rules.word_count_overrides ?? {};
+          update({
+            word_count_overrides: {
+              ...current,
+              [v.role]: [Number(v.min), Number(v.max)],
+            },
+          });
+        }}
+        onEdit={(i, v) => {
+          const current = rules.word_count_overrides ?? {};
+          const oldKey = Object.keys(current)[i];
+          const next = { ...current } as Record<string, [number, number] | undefined>;
+          if (oldKey) delete next[oldKey];
+          next[v.role] = [Number(v.min), Number(v.max)];
+          update({ word_count_overrides: next as any });
+        }}
+        onDelete={(i) => {
+          const current = rules.word_count_overrides ?? {};
+          const keys = Object.keys(current);
+          const target = keys[i];
+          if (!target) return;
+          const next = { ...current } as Record<string, [number, number] | undefined>;
+          delete next[target];
+          update({
+            word_count_overrides: Object.keys(next).length ? (next as any) : undefined,
+          });
+        }}
+      />
     </div>
   );
 }

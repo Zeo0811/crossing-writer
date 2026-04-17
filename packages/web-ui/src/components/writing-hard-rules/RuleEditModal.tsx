@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../ui';
 
-export type RuleKind = 'phrase' | 'vocabulary' | 'layout';
+export type RuleKind = 'phrase' | 'vocabulary' | 'layout' | 'word_count';
 
 interface FieldSpec {
   key: string;
   label: string;
   required?: boolean;
-  type?: 'bool';
+  type?: 'bool' | 'number';
 }
 
 export interface RuleEditModalProps {
@@ -31,11 +31,17 @@ const FIELDS: Record<RuleKind, FieldSpec[]> = {
   layout: [
     { key: 'rule', label: '规则文本', required: true },
   ],
+  word_count: [
+    { key: 'role', label: '角色 (opening / closing / article)', required: true },
+    { key: 'min', label: '最小字数', required: true, type: 'number' },
+    { key: 'max', label: '最大字数', required: true, type: 'number' },
+  ],
 };
 
 function defaultFor(kind: RuleKind): Record<string, any> {
   if (kind === 'phrase') return { pattern: '', is_regex: false, reason: '', example: '' };
   if (kind === 'vocabulary') return { word: '', reason: '' };
+  if (kind === 'word_count') return { role: '', min: 0, max: 0 };
   return { rule: '' };
 }
 
@@ -51,7 +57,9 @@ export function RuleEditModal({ kind, initialValue, onCancel, onSubmit }: RuleEd
 
   function save() {
     for (const f of fields) {
-      if (f.required && !String(state[f.key] ?? '').trim()) {
+      const v = state[f.key];
+      const isEmpty = v === undefined || v === null || v === '';
+      if (f.required && isEmpty) {
         setError(`${f.label} 是必填`);
         return;
       }
@@ -83,6 +91,16 @@ export function RuleEditModal({ kind, initialValue, onCancel, onSubmit }: RuleEd
                 type="checkbox"
                 checked={!!state[f.key]}
                 onChange={(e) => setState({ ...state, [f.key]: e.target.checked })}
+              />
+            ) : f.type === 'number' ? (
+              <input
+                type="number"
+                value={state[f.key] ?? ''}
+                onChange={(e) => setState({
+                  ...state,
+                  [f.key]: e.target.value === '' ? '' : Number(e.target.value),
+                })}
+                className="w-full h-9 px-2 rounded border border-[var(--hair)] bg-[var(--bg-0)] text-sm text-[var(--body)]"
               />
             ) : (
               <input
