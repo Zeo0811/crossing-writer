@@ -1,6 +1,6 @@
-import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 import type { IngestStreamEvent, IngestStartArgs } from "../api/wiki-client";
-import { startIngestStream, getPages, status as wikiStatus } from "../api/wiki-client";
+import { startIngestStream } from "../api/wiki-client";
 
 export type IngestStatus = "idle" | "running" | "done" | "error";
 
@@ -8,6 +8,7 @@ interface IngestState {
   status: IngestStatus;
   events: IngestStreamEvent[];
   error: string | null;
+  runningCount: number;
   start: (args: IngestStartArgs) => void;
   dismiss: () => void;
 }
@@ -15,42 +16,43 @@ interface IngestState {
 const Ctx = createContext<IngestState | null>(null);
 
 export function IngestProvider({ children }: { children: ReactNode }) {
-  const [status, setStatus] = useState<IngestStatus>("idle");
   const [events, setEvents] = useState<IngestStreamEvent[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const runningRef = useRef(false);
+  const [runningCount, setRunningCount] = useState(0);
+  const [hasCompleted, setHasCompleted] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
+
+  const status: IngestStatus =
+    runningCount > 0 ? "running" :
+    lastError ? "error" :
+    hasCompleted ? "done" : "idle";
 
   const start = useCallback((args: IngestStartArgs) => {
-    if (runningRef.current) return;
-    runningRef.current = true;
-    setEvents([]);
-    setStatus("running");
-    setError(null);
+    setRunningCount((c) => c + 1);
+    setLastError(null);
     startIngestStream(
       args,
       (e) => setEvents((prev) => [...prev, { ...e, receivedAt: new Date().toISOString() }]),
       () => {
-        setStatus("done");
-        runningRef.current = false;
+        setRunningCount((c) => c - 1);
+        setHasCompleted(true);
       },
       (err) => {
-        setStatus("error");
-        setError(err);
-        runningRef.current = false;
+        setRunningCount((c) => c - 1);
+        setLastError(err);
       },
     );
   }, []);
 
   const dismiss = useCallback(() => {
-    if (status !== "running") {
-      setStatus("idle");
+    if (runningCount === 0) {
       setEvents([]);
-      setError(null);
+      setLastError(null);
+      setHasCompleted(false);
     }
-  }, [status]);
+  }, [runningCount]);
 
   return (
-    <Ctx.Provider value={{ status, events, error, start, dismiss }}>
+    <Ctx.Provider value={{ status, events, error: lastError, runningCount, start, dismiss }}>
       {children}
     </Ctx.Provider>
   );

@@ -96,7 +96,11 @@ export function KnowledgePage() {
       return { variant: "secondary", label: "← 回到浏览" };
     }
     if (ingest.status === "running") {
-      return { variant: "secondary", label: "入库中", dotColor: "var(--amber)" };
+      const label = ingest.runningCount > 1 ? `入库中 · ${ingest.runningCount}` : "入库中";
+      if (cart.totalCount > 0) {
+        return { variant: "secondary", label, dotColor: "var(--amber)", chipVariant: "accent", chipLabel: `+${cart.totalCount}` };
+      }
+      return { variant: "secondary", label, dotColor: "var(--amber)" };
     }
     if (ingest.status === "error") {
       return { variant: "secondary", label: "入库失败", dotColor: "var(--red)" };
