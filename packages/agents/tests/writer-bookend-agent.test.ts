@@ -136,4 +136,30 @@ describe('runWriterBookend', () => {
     expect(out.finalText).toContain('这是最终段落。');
     expect(out.rounds).toBe(2);
   });
+
+  it('passes wordOverride through to renderBookendPrompt', async () => {
+    const invokeAgent = vi.fn(async () => ({
+      text: '段落正文。',
+      meta: { cli: 'claude', model: 'opus', durationMs: 10 },
+    }));
+    const dispatchTool = vi.fn();
+    await runWriterBookend({
+      role: 'opening',
+      sectionKey: 'opening',
+      account: 'acc',
+      articleType: '实测',
+      typeSection: `### 字数范围\n10 – 110 字(单段)\n\n### 目标\nx\n`,
+      panelFrontmatter: PANEL_FM,
+      hardRulesBlock: '',
+      projectContextBlock: '',
+      userMessage: 'x',
+      wordOverride: [200, 400],
+      invokeAgent,
+      dispatchTool: dispatchTool as any,
+    });
+    const systemMsg = (invokeAgent.mock.calls[0]![0] as any[]).find((m: any) => m.role === 'system');
+    expect(systemMsg.content).toContain('200');
+    expect(systemMsg.content).toContain('400');
+    expect(systemMsg.content).toContain('硬规则指定');
+  });
 });
