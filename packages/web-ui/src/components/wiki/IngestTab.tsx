@@ -5,7 +5,7 @@ import { AccountHeatmap } from "./AccountHeatmap";
 import { ArticleList, type ArticleListItem } from "./ArticleList";
 import { IngestCartBar } from "./IngestCartBar";
 import { IngestConfirmDialog } from "./IngestConfirmDialog";
-import { useIngestCart, type CartEntry } from "../../hooks/useIngestCart";
+import { type CartEntry, type UseIngestCartReturn } from "../../hooks/useIngestCart";
 import { useIngestState } from "../../hooks/useIngestState";
 import { Input } from "../ui";
 import type { IngestStartArgs } from "../../api/wiki-client";
@@ -20,18 +20,18 @@ interface AccountStat {
 
 export interface IngestTabProps {
   model: { cli: "claude" | "codex"; model: string };
+  cart: UseIngestCartReturn;
 }
 
 const MAX_ARTICLES = 50;
 
-export function IngestTab({ model }: IngestTabProps) {
+export function IngestTab({ model, cart }: IngestTabProps) {
   const [accounts, setAccounts] = useState<AccountStat[]>([]);
   const [activeAccount, setActiveAccount] = useState<string | null>(null);
   const [articles, setArticles] = useState<ArticleListItem[]>([]);
   const [search, setSearch] = useState("");
   const [heatmapDate, setHeatmapDate] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
-  const cart = useIngestCart({ maxArticles: MAX_ARTICLES });
   const ingest = useIngestState();
 
   useEffect(() => {

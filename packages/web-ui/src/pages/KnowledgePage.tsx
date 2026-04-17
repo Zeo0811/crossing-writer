@@ -4,9 +4,10 @@ import { RawArticleDrawer } from "../components/wiki/RawArticleDrawer.js";
 import { IngestTab } from "../components/wiki/IngestTab.js";
 import { ModelSelector } from "../components/wiki/ModelSelector.js";
 import { IngestConsoleFab } from "../components/wiki/IngestConsoleFab.js";
-import { Tabs, TabsList, TabsTrigger, TabsContent, Input } from "../components/ui";
+import { Input } from "../components/ui";
 import { formatBeijingShort } from "../utils/time";
 import { useIngestState } from "../hooks/useIngestState";
+import { useIngestCart } from "../hooks/useIngestCart";
 import {
   getPages,
   search as searchWikiApi,
@@ -15,8 +16,6 @@ import {
   type WikiSearchResult,
   type WikiStatus,
 } from "../api/wiki-client.js";
-
-type Tab = "browse" | "ingest";
 
 const KIND_LABEL: Record<string, string> = {
   entity: "实体 entity",
@@ -30,8 +29,10 @@ const KIND_LABEL: Record<string, string> = {
   person: "人物 person",
 };
 
+const MAX_ARTICLES = 50;
+
 export function KnowledgePage() {
-  const [tab, setTab] = useState<Tab>("browse");
+  const [mode, setMode] = useState<"browse" | "ingest">("browse");
   const [pages, setPages] = useState<WikiPageMeta[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [hits, setHits] = useState<WikiSearchResult[] | null>(null);
@@ -42,13 +43,13 @@ export function KnowledgePage() {
   const [model, setModel] = useState<{ cli: "claude" | "codex"; model: string }>({ cli: "claude", model: "sonnet" });
 
   const ingest = useIngestState();
+  const cart = useIngestCart({ maxArticles: MAX_ARTICLES });
 
   useEffect(() => {
     void getPages().then(setPages).catch(() => setPages([]));
     void wikiStatus().then(setStatusInfo).catch(() => setStatusInfo(null));
   }, []);
 
-  // Refresh after ingest done
   useEffect(() => {
     if (ingest.status === "done") {
       void getPages().then(setPages);
@@ -77,43 +78,60 @@ export function KnowledgePage() {
     void searchWikiApi({ query, limit: 40 }).then(setHits).catch(() => setHits([]));
   }
 
+  // Ingest button state: running > error > cart > idle
+  const ingestButton = (() => {
+    if (ingest.status === "running") {
+      return {
+        label: "入库",
+        suffix: "运行中",
+        tone: "amber" as const,
+        dot: true,
+      };
+    }
+    if (ingest.status === "error") {
+      return { label: "入库", suffix: "失败", tone: "red" as const, dot: false };
+    }
+    if (cart.totalCount > 0) {
+      return { label: "入库", suffix: `已选 ${cart.totalCount}`, tone: "accent" as const, dot: false };
+    }
+    return { label: "入库", suffix: null, tone: "neutral" as const, dot: false };
+  })();
+
+  const toneClass = {
+    amber: "border-[var(--amber-hair)] bg-[var(--amber-bg)] text-[var(--amber)]",
+    red: "border-[var(--red)] bg-[rgba(255,107,107,0.05)] text-[var(--red)]",
+    accent: "border-[var(--accent-soft)] bg-[var(--accent-fill)] text-[var(--accent)]",
+    neutral: "border-[var(--hair)] bg-[var(--bg-2)] text-[var(--meta)] hover:text-[var(--heading)] hover:border-[var(--accent-soft)]",
+  }[ingestButton.tone];
+
   return (
     <div data-testid="page-knowledge" className="rounded border border-[var(--hair)] bg-[var(--bg-1)] overflow-hidden">
       <header className="flex items-center justify-between px-6 h-12 border-b border-[var(--hair)]">
         <h1 className="text-lg font-semibold text-[var(--heading)]">知识库</h1>
         <div className="flex items-center gap-3">
-          {statusInfo && <div className="text-xs text-[var(--meta)]" style={{ fontFamily: "var(--font-mono)" }}>{`${statusInfo.total} 条 · 上次入库 ${formatBeijingShort(statusInfo.last_ingest_at)}`}</div>}
+          {statusInfo && (
+            <div className="text-xs text-[var(--meta)]" style={{ fontFamily: "var(--font-mono)" }}>
+              {`${statusInfo.total} 条 · 上次入库 ${formatBeijingShort(statusInfo.last_ingest_at)}`}
+            </div>
+          )}
           <ModelSelector onChange={setModel} />
+          <button
+            type="button"
+            data-testid="ingest-mode-toggle"
+            onClick={() => setMode(mode === "browse" ? "ingest" : "browse")}
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded border text-xs font-semibold transition-colors ${toneClass}`}
+          >
+            {ingestButton.dot && <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />}
+            <span>{mode === "ingest" ? "← 浏览" : ingestButton.label}</span>
+            {mode === "browse" && ingestButton.suffix && (
+              <span className="font-normal">· {ingestButton.suffix}</span>
+            )}
+          </button>
         </div>
       </header>
-      {ingest.status === "running" && (
-        <div className="px-6 py-2 border-b border-[var(--hair)] flex items-center gap-3 bg-[var(--accent-fill)]">
-          <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
-          <span className="text-xs text-[var(--accent)] font-semibold">正在入库…</span>
-          <span className="text-xs text-[var(--meta)]">{ingest.events.length} 条事件</span>
-        </div>
-      )}
-      {ingest.status === "done" && (
-        <div className="px-6 py-2 border-b border-[var(--hair)] flex items-center gap-3 bg-[var(--accent-fill)]">
-          <span className="text-xs text-[var(--accent)] font-semibold">入库完成</span>
-          <button onClick={ingest.dismiss} className="text-xs text-[var(--meta)] hover:text-[var(--heading)] ml-auto">关闭</button>
-        </div>
-      )}
-      {ingest.status === "error" && (
-        <div className="px-6 py-2 border-b border-[var(--red)] flex items-center gap-3 bg-[rgba(255,107,107,0.05)]">
-          <span className="text-xs text-[var(--red)] font-semibold">入库失败：{ingest.error}</span>
-          <button onClick={ingest.dismiss} className="text-xs text-[var(--meta)] hover:text-[var(--heading)] ml-auto">关闭</button>
-        </div>
-      )}
-      <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-        <div className="px-6 pt-3">
-          <TabsList>
-            <TabsTrigger value="browse">浏览</TabsTrigger>
-            <TabsTrigger value="ingest">入库</TabsTrigger>
-          </TabsList>
-        </div>
 
-      <TabsContent value="browse" className="p-6 space-y-4">
+      {mode === "browse" ? (
+        <div className="p-6 space-y-4">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1 p-1 h-9 rounded border border-[var(--hair)]">
               {kinds.map((k) => (
@@ -198,12 +216,12 @@ export function KnowledgePage() {
               {visible.length === 0 && <div className="col-span-2 py-12 text-center text-[var(--meta)]">无匹配条目</div>}
             </div>
           )}
-      </TabsContent>
-
-      <TabsContent value="ingest" className="p-6">
-          <IngestTab model={model} />
-      </TabsContent>
-      </Tabs>
+        </div>
+      ) : (
+        <div className="p-6">
+          <IngestTab model={model} cart={cart} />
+        </div>
+      )}
 
       {(ingest.status !== "idle" || ingest.events.length > 0) && (
         <IngestConsoleFab

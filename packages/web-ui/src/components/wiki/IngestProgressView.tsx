@@ -9,7 +9,7 @@ export interface IngestProgressViewProps {
 
 function fmt(e: IngestStreamEvent): { ts: string; tag: string; text: string; tone: "info" | "ok" | "err" } {
   const ts = new Date().toISOString().slice(11, 19);
-  const anyE = e as Record<string, unknown>;
+  const anyE = e as unknown as Record<string, unknown>;
   switch (e.type) {
     case "run_started":
       return { ts, tag: "run", text: `开始 · ${(anyE.runId as string | undefined)?.slice(0, 8) ?? ""}`, tone: "info" };
