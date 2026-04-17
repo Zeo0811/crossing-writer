@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { WikiPagePreview } from "../components/wiki/WikiPagePreview.js";
 import { RawArticleDrawer } from "../components/wiki/RawArticleDrawer.js";
-import { IngestForm } from "../components/wiki/IngestForm.js";
+import { IngestTab } from "../components/wiki/IngestTab.js";
+import { ModelSelector } from "../components/wiki/ModelSelector.js";
 import { IngestProgressView } from "../components/wiki/IngestProgressView.js";
-import { Tabs, TabsList, TabsTrigger, TabsContent, Input, Button } from "../components/ui";
+import { Tabs, TabsList, TabsTrigger, TabsContent, Input } from "../components/ui";
 import { formatBeijingShort } from "../utils/time";
 import { useIngestState } from "../hooks/useIngestState";
 import {
@@ -29,14 +30,6 @@ const KIND_LABEL: Record<string, string> = {
   person: "人物 person",
 };
 
-interface AccountWithStats {
-  account: string;
-  count: number;
-  ingested_count: number;
-  earliest_published_at: string;
-  latest_published_at: string;
-}
-
 export function KnowledgePage() {
   const [tab, setTab] = useState<Tab>("browse");
   const [pages, setPages] = useState<WikiPageMeta[]>([]);
@@ -45,18 +38,15 @@ export function KnowledgePage() {
   const [q, setQ] = useState("");
   const [kindFilter, setKindFilter] = useState<string>("全部");
   const [statusInfo, setStatusInfo] = useState<WikiStatus | null>(null);
-  const [accounts, setAccounts] = useState<AccountWithStats[]>([]);
   const [logOpen, setLogOpen] = useState(false);
   const [drawerSource, setDrawerSource] = useState<{ account: string; articleId: string } | null>(null);
+  const [model, setModel] = useState<{ cli: "claude" | "codex"; model: string }>({ cli: "claude", model: "sonnet" });
 
   const ingest = useIngestState();
 
   useEffect(() => {
     void getPages().then(setPages).catch(() => setPages([]));
     void wikiStatus().then(setStatusInfo).catch(() => setStatusInfo(null));
-    void fetch("/api/kb/accounts").then(async (r) => {
-      if (r.ok) setAccounts(await r.json());
-    }).catch(() => setAccounts([]));
   }, []);
 
   // Refresh after ingest done
@@ -64,9 +54,6 @@ export function KnowledgePage() {
     if (ingest.status === "done") {
       void getPages().then(setPages);
       void wikiStatus().then(setStatusInfo);
-      void fetch("/api/kb/accounts").then(async (r) => {
-        if (r.ok) setAccounts(await r.json());
-      });
     }
   }, [ingest.status]);
 
@@ -91,14 +78,13 @@ export function KnowledgePage() {
     void searchWikiApi({ query, limit: 40 }).then(setHits).catch(() => setHits([]));
   }
 
-  const accountNames = useMemo(() => accounts.map((a) => a.account), [accounts]);
-
   return (
     <div data-testid="page-knowledge" className="rounded border border-[var(--hair)] bg-[var(--bg-1)] overflow-hidden">
       <header className="flex items-center justify-between px-6 h-12 border-b border-[var(--hair)]">
         <h1 className="text-lg font-semibold text-[var(--heading)]">知识库</h1>
-        <div className="text-xs text-[var(--meta)]" style={{ fontFamily: "var(--font-mono)" }}>
-          {statusInfo && `${statusInfo.total} 条 · 上次入库 ${formatBeijingShort(statusInfo.last_ingest_at)}`}
+        <div className="flex items-center gap-3">
+          {statusInfo && <div className="text-xs text-[var(--meta)]" style={{ fontFamily: "var(--font-mono)" }}>{`${statusInfo.total} 条 · 上次入库 ${formatBeijingShort(statusInfo.last_ingest_at)}`}</div>}
+          <ModelSelector onChange={setModel} />
         </div>
       </header>
       {ingest.status === "running" && (
@@ -216,12 +202,7 @@ export function KnowledgePage() {
       </TabsContent>
 
       <TabsContent value="ingest" className="p-6">
-          <IngestForm
-            accounts={accountNames}
-            accountStats={accounts}
-            onSubmit={ingest.start}
-            disabled={ingest.status === "running"}
-          />
+          <IngestTab model={model} />
       </TabsContent>
       </Tabs>
 
