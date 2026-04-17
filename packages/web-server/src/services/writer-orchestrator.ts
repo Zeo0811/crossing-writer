@@ -5,11 +5,14 @@ import {
   runWriterBookend, runWriterPractice, runStyleCritic,
   PracticeStitcherAgent,
   invokeAgent,
+  validateBookend,
+  formatViolations,
   type ReferenceAccountKb,
   type ChatMessage,
   type WriterToolEvent,
   type WriterRunResult,
   type ToolUsage,
+  type WritingHardRules,
 } from "@crossing/agents";
 import { dispatchSkill } from "@crossing/kb";
 import yaml from "js-yaml";
@@ -264,6 +267,73 @@ function formatStyleReference(resolved: ResolvedStyle): string {
     ? `${resolved.hardRulesBlock}\n\n`
     : '';
   return `\n\n${hardRules}# Style Reference — ${account}/${role} v${version}\n\n${resolved.typeSection}\n`;
+}
+
+/**
+ * SP-B.3 wrapper around a single bookend call.
+ * - Runs runBookend() once.
+ * - If hardRules is null → skip validation, return first result unchanged.
+ * - Else: validate. If ok → publish validation_passed, return.
+ * - If not ok → publish validation_retry, runBookend(retry). Validate again.
+ *   Publish validation_passed (if now ok) or validation_failed.
+ * - In both paths, the last result is always returned (no throw).
+ */
+export async function runBookendWithValidation(params: {
+  role: 'opening' | 'closing';
+  sectionKey: string;
+  publishEvent: (type: string, data: Record<string, unknown>) => Promise<void>;
+  runBookend: (
+    retry?: { previousText: string; violationsText: string },
+  ) => Promise<WriterRunResult>;
+  hardRules: WritingHardRules | null;
+  wordOverride: [number, number] | undefined;
+}): Promise<WriterRunResult> {
+  const first = await params.runBookend(undefined);
+  if (!params.hardRules) return first;
+
+  const v1 = validateBookend({
+    finalText: first.finalText,
+    role: params.role,
+    hardRules: params.hardRules,
+    wordOverride: params.wordOverride,
+  });
+
+  if (v1.ok) {
+    await params.publishEvent('writer.validation_passed', {
+      section_key: params.sectionKey, attempt: 1, chars: v1.chars,
+    });
+    return first;
+  }
+
+  await params.publishEvent('writer.validation_retry', {
+    section_key: params.sectionKey,
+    violations: v1.violations,
+  });
+
+  const second = await params.runBookend({
+    previousText: first.finalText,
+    violationsText: formatViolations(v1.violations),
+  });
+
+  const v2 = validateBookend({
+    finalText: second.finalText,
+    role: params.role,
+    hardRules: params.hardRules,
+    wordOverride: params.wordOverride,
+  });
+
+  if (v2.ok) {
+    await params.publishEvent('writer.validation_passed', {
+      section_key: params.sectionKey, attempt: 2, chars: v2.chars,
+    });
+  } else {
+    await params.publishEvent('writer.validation_failed', {
+      section_key: params.sectionKey,
+      violations: v2.violations,
+    });
+  }
+
+  return second;
 }
 
 export async function runWriter(
