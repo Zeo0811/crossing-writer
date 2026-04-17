@@ -106,7 +106,7 @@ export function IngestTab({ model }: IngestTabProps) {
             onSelect={setActiveAccount}
           />
           <main className="flex-1 min-w-0 space-y-4">
-            <div className="rounded bg-[var(--bg-2)] p-4 w-fit max-w-full">
+            <div className="rounded bg-[var(--bg-2)] p-4">
               <div className="flex items-center gap-3 mb-3">
                 <h2 className="text-sm font-semibold text-[var(--heading)]">{activeAccount}</h2>
                 <span className="text-xs text-[var(--faint)]">
