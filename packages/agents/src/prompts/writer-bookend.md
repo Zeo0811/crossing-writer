@@ -96,4 +96,6 @@
 
 ---
 
+{{retryFeedbackBlock}}
+
 现在开始写。只输出**最终段落正文**，markdown 格式，不要前言 / 解释 / 代码围栏。

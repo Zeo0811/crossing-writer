@@ -249,6 +249,12 @@ export interface RenderBookendPromptOpts {
   /** Override [min, max] total word count. If provided, takes precedence
    *  over panel 字数范围 text; see resolveWordConstraint. */
   wordOverride?: [number, number];
+  /** SP-B.3: when set, prepend a "上一次产出 - 不合规" block to the prompt.
+   *  violationsText is produced by formatViolations(). */
+  retryFeedback?: {
+    previousText: string;
+    violationsText: string;
+  };
 }
 
 export function renderBookendPrompt(opts: RenderBookendPromptOpts): string {
@@ -275,6 +281,10 @@ export function renderBookendPrompt(opts: RenderBookendPromptOpts): string {
 
   // Conditional blocks — render only the matching role's block, drop the other
   let out = applyConditionalBlocks(template, opts.role);
+
+  const retryFeedbackBlock = opts.retryFeedback
+    ? `## 上一次产出 - 不合规，需要重写\n\n上一次你产出的正文（供参考，不是让你微调）：\n\n\`\`\`\n${opts.retryFeedback.previousText}\n\`\`\`\n\n违规清单（按这些修，其他不变）：\n\n${opts.retryFeedback.violationsText}\n\n修完按交付前自查清单再扫一遍。`
+    : '';
 
   const fm = opts.panelFrontmatter;
   const replacements: Record<string, string> = {
@@ -305,6 +315,7 @@ export function renderBookendPrompt(opts: RenderBookendPromptOpts): string {
     '{{guest_name}}': opts.guest_name ?? '（未知嘉宾）',
     '{{hardRulesBlock}}': opts.hardRulesBlock,
     '{{projectContextBlock}}': opts.projectContextBlock,
+    '{{retryFeedbackBlock}}': retryFeedbackBlock,
   };
 
   for (const [placeholder, value] of Object.entries(replacements)) {

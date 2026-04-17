@@ -266,6 +266,40 @@ describe('renderBookendPrompt', () => {
     expect(out).toContain('6. **衔接句**');
     expect(out).toContain('不要输出自查过程');
   });
+
+  it('no retry block when retryFeedback undefined', () => {
+    const out = renderBookendPrompt({
+      role: 'opening',
+      account: 'acc',
+      articleType: '实测',
+      typeSection: `### 字数范围\n150-260 字\n\n### 目标\nfoo\n`,
+      panelFrontmatter: PANEL_FM,
+      hardRulesBlock: '',
+      projectContextBlock: '',
+    });
+    expect(out).not.toContain('上一次产出');
+  });
+
+  it('renders retry block with previous text + violation list', () => {
+    const out = renderBookendPrompt({
+      role: 'closing',
+      account: 'acc',
+      articleType: '实测',
+      typeSection: `### 字数范围\n150-260 字\n\n### 目标\nfoo\n`,
+      panelFrontmatter: PANEL_FM,
+      hardRulesBlock: '',
+      projectContextBlock: '',
+      retryFeedback: {
+        previousText: '这是上一次的正文',
+        violationsText: '1. [word_count] 超了\n2. [banned_vocabulary] 笔者',
+      },
+    });
+    expect(out).toContain('上一次产出 - 不合规，需要重写');
+    expect(out).toContain('这是上一次的正文');
+    expect(out).toContain('1. [word_count] 超了');
+    expect(out).toContain('2. [banned_vocabulary] 笔者');
+    expect(out).toContain('按这些修，其他不变');
+  });
 });
 
 describe('parseWordCountRange', () => {
