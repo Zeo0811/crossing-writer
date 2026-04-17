@@ -4,17 +4,17 @@ export interface AccountGridItem {
   account: string;
   count: number;
   ingested_count: number;
+  earliest_published_at?: string;
+  latest_published_at?: string;
 }
 
 export interface AccountGridProps {
   accounts: AccountGridItem[];
   cartPerAccount: Map<string, number>;
   onSelect: (account: string) => void;
-  onQuickAdd: (account: string) => void;
-  quickAddLoading?: string | null;
 }
 
-export function AccountGrid({ accounts, cartPerAccount, onSelect, onQuickAdd, quickAddLoading }: AccountGridProps) {
+export function AccountGrid({ accounts, cartPerAccount, onSelect }: AccountGridProps) {
   return (
     <div
       data-testid="account-grid"
@@ -24,46 +24,39 @@ export function AccountGrid({ accounts, cartPerAccount, onSelect, onQuickAdd, qu
       {accounts.map((a) => {
         const cart = cartPerAccount.get(a.account) ?? 0;
         const unIngested = a.count - a.ingested_count;
-        const loading = quickAddLoading === a.account;
+        const latest = a.latest_published_at ? a.latest_published_at.slice(0, 10) : null;
         return (
-          <div
+          <button
             key={a.account}
+            type="button"
             data-testid={`account-card-${a.account}`}
-            className="rounded border border-[var(--hair)] bg-[var(--bg-2)] p-3 hover:border-[var(--accent-soft)] transition-colors group"
+            onClick={() => onSelect(a.account)}
+            className="text-left rounded border border-[var(--hair)] bg-[var(--bg-2)] p-3 hover:border-[var(--accent-soft)] transition-colors"
           >
-            <button
-              type="button"
-              onClick={() => onSelect(a.account)}
-              className="w-full text-left block"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-sm font-semibold text-[var(--heading)] truncate flex-1">{a.account}</span>
-                {cart > 0 && (
-                  <span
-                    data-testid={`card-cart-${a.account}`}
-                    className="text-[9px] bg-[var(--accent)] text-[var(--accent-on)] rounded-full px-1.5 py-0.5 shrink-0"
-                  >
-                    {cart}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2 mb-2">
-                <MiniHeatmap ingested={a.ingested_count} total={a.count} />
-                <span className="text-[10px] text-[var(--faint)] shrink-0 font-mono">
-                  {a.ingested_count}/{a.count}
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm font-semibold text-[var(--heading)] truncate flex-1">{a.account}</span>
+              {cart > 0 && (
+                <span
+                  data-testid={`card-cart-${a.account}`}
+                  className="text-[9px] bg-[var(--accent)] text-[var(--accent-on)] rounded-full px-1.5 py-0.5 shrink-0"
+                >
+                  已选 {cart}
                 </span>
-              </div>
-            </button>
-            <button
-              type="button"
-              data-testid={`card-quickadd-${a.account}`}
-              disabled={unIngested === 0 || loading}
-              onClick={(e) => { e.stopPropagation(); onQuickAdd(a.account); }}
-              className="w-full mt-1 px-2 py-1 text-[10px] rounded border border-[var(--hair)] text-[var(--meta)] hover:text-[var(--accent)] hover:border-[var(--accent-soft)] disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {loading ? "加载中…" : unIngested === 0 ? "全部已入库" : `+ 勾未入库（最多 50）`}
-            </button>
-          </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2 mb-2">
+              <MiniHeatmap ingested={a.ingested_count} total={a.count} />
+              <span className="text-[10px] text-[var(--faint)] shrink-0 font-mono">
+                {a.ingested_count}/{a.count}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-[10px] text-[var(--meta)]">
+              <span>
+                未入库 <span className={unIngested > 0 ? "text-[var(--body)] font-semibold" : "text-[var(--faint)]"}>{unIngested}</span>
+              </span>
+              {latest && <span className="text-[var(--faint)] font-mono">最近 {latest}</span>}
+            </div>
+          </button>
         );
       })}
     </div>

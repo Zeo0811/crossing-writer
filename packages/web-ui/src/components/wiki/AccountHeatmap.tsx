@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { formatBeijingDate } from "../../utils/time";
 
 interface Article {
   id: string;
@@ -11,7 +10,8 @@ interface Article {
 
 interface Props {
   account: string;
-  onArticleClick?: (articleId: string, title: string, publishedAt: string, wordCount: number | null) => void;
+  selectedDate?: string | null;
+  onDateSelect?: (date: string | null) => void;
 }
 
 function daysBetween(a: Date, b: Date): number {
@@ -24,13 +24,11 @@ function weekStart(d: Date): Date {
   return copy;
 }
 
-export function AccountHeatmap({ account, onArticleClick }: Props) {
+export function AccountHeatmap({ account, selectedDate, onDateSelect }: Props) {
   const [articles, setArticles] = useState<Article[] | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   useEffect(() => {
     setArticles(null);
-    setSelectedDate(null);
     fetch(`/api/kb/accounts/${encodeURIComponent(account)}/articles?limit=3000`)
       .then((r) => r.json())
       .then(setArticles)
@@ -59,7 +57,6 @@ export function AccountHeatmap({ account, onArticleClick }: Props) {
       date: string;
       day: number;
       week: number;
-      articles: Article[];
       ingested: number;
       total: number;
     }> = [];
@@ -72,7 +69,7 @@ export function AccountHeatmap({ account, onArticleClick }: Props) {
         const key = cellDate.toISOString().slice(0, 10);
         const arts = byDate.get(key) ?? [];
         const ingested = arts.filter((a) => a.ingest_status !== "raw" && a.ingest_status !== "tag_failed").length;
-        cells.push({ date: key, day: d, week: w, articles: arts, ingested, total: arts.length });
+        cells.push({ date: key, day: d, week: w, ingested, total: arts.length });
       }
     }
 
@@ -89,11 +86,6 @@ export function AccountHeatmap({ account, onArticleClick }: Props) {
 
     return { cells, weeks: totalWeeks, months };
   }, [articles]);
-
-  const popupArticles = useMemo(() => {
-    if (!selectedDate || !articles) return [];
-    return articles.filter((a) => a.published_at.startsWith(selectedDate));
-  }, [selectedDate, articles]);
 
   if (articles === null) return <div className="py-4 text-xs text-[var(--meta)]">加载 {account} 的文章…</div>;
   if (articles.length === 0) return <div className="py-4 text-xs text-[var(--faint)]">该账号无文章</div>;
@@ -146,7 +138,7 @@ export function AccountHeatmap({ account, onArticleClick }: Props) {
                 stroke={isSelected ? "var(--accent)" : "none"}
                 strokeWidth={isSelected ? 2 : 0}
                 className="cursor-pointer"
-                onClick={() => setSelectedDate((prev) => prev === c.date ? null : c.date)}
+                onClick={() => onDateSelect?.(selectedDate === c.date ? null : c.date)}
               />
             );
           })}
@@ -163,44 +155,8 @@ export function AccountHeatmap({ account, onArticleClick }: Props) {
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-sm" style={{ background: "var(--accent)" }} /> 全部入库
         </span>
-        <span className="ml-auto text-[10px] text-[var(--faint)]">点击格子查看当日文章</span>
+        <span className="ml-auto text-[10px] text-[var(--faint)]">点击格子筛选当日文章</span>
       </div>
-
-      {selectedDate && popupArticles.length > 0 && (
-        <div className="rounded bg-[var(--bg-1)] p-3 border border-[var(--accent-soft)]">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-xs text-[var(--meta)] font-semibold">
-              {formatBeijingDate(selectedDate)} · {popupArticles.length} 篇
-            </div>
-            <button
-              type="button"
-              onClick={() => setSelectedDate(null)}
-              aria-label="关闭"
-              className="w-5 h-5 flex items-center justify-center rounded text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"
-            >
-              ✕
-            </button>
-          </div>
-          <div className="space-y-1 max-h-[240px] overflow-auto">
-            {popupArticles.map((a) => {
-              const isRaw = a.ingest_status === "raw" || a.ingest_status === "tag_failed";
-              return (
-                <div
-                  key={a.id}
-                  className={`flex items-center gap-2 px-2 py-1 rounded text-xs ${
-                    isRaw && onArticleClick ? "cursor-pointer hover:bg-[var(--bg-2)]" : ""
-                  }`}
-                  onClick={() => isRaw && onArticleClick?.(a.id, a.title, a.published_at, a.word_count)}
-                >
-                  <span className="w-3 h-3 rounded-sm shrink-0" style={{ background: isRaw ? "var(--hair-strong)" : "var(--accent)" }} />
-                  <span className={`truncate flex-1 ${isRaw ? "text-[var(--body)]" : "text-[var(--meta)]"}`}>{a.title}</span>
-                  <span className="text-[var(--faint)] shrink-0">{a.word_count ?? "—"} 字</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

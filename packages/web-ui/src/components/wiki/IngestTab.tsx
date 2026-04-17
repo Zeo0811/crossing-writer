@@ -29,8 +29,8 @@ export function IngestTab({ model }: IngestTabProps) {
   const [activeAccount, setActiveAccount] = useState<string | null>(null);
   const [articles, setArticles] = useState<ArticleListItem[]>([]);
   const [search, setSearch] = useState("");
+  const [heatmapDate, setHeatmapDate] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [quickAddLoading, setQuickAddLoading] = useState<string | null>(null);
   const cart = useIngestCart({ maxArticles: MAX_ARTICLES });
   const ingest = useIngestState();
 
@@ -41,6 +41,7 @@ export function IngestTab({ model }: IngestTabProps) {
   }, []);
 
   useEffect(() => {
+    setHeatmapDate(null);
     if (!activeAccount) { setArticles([]); return; }
     void fetch(`/api/kb/accounts/${encodeURIComponent(activeAccount)}/articles?limit=3000`).then(async (r) => {
       if (r.ok) setArticles(await r.json());
@@ -48,10 +49,16 @@ export function IngestTab({ model }: IngestTabProps) {
   }, [activeAccount]);
 
   const visibleArticles = useMemo(() => {
-    if (!search) return articles;
-    const q = search.toLowerCase();
-    return articles.filter((a) => a.title.toLowerCase().includes(q));
-  }, [articles, search]);
+    let list = articles;
+    if (heatmapDate) {
+      list = list.filter((a) => a.published_at.startsWith(heatmapDate));
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter((a) => a.title.toLowerCase().includes(q));
+    }
+    return list;
+  }, [articles, search, heatmapDate]);
 
   const duplicates = useMemo(() => new Set<string>(), []);
   const selectedIds = useMemo(() => new Set(cart.entries.map((e) => e.articleId)), [cart.entries]);
@@ -64,33 +71,6 @@ export function IngestTab({ model }: IngestTabProps) {
       publishedAt: a.published_at, wordCount: a.word_count,
     };
     cart.toggle(entry);
-  }
-
-  function toggleFromHeatmap(articleId: string, title: string, publishedAt: string, wordCount: number | null) {
-    if (!activeAccount) return;
-    cart.toggle({ articleId, account: activeAccount, title, publishedAt, wordCount });
-  }
-
-  async function handleQuickAdd(account: string) {
-    setQuickAddLoading(account);
-    try {
-      const r = await fetch(`/api/kb/accounts/${encodeURIComponent(account)}/articles?limit=3000`);
-      if (!r.ok) return;
-      const list = (await r.json()) as ArticleListItem[];
-      const unIngested = list
-        .filter((a) => a.ingest_status === "raw" || a.ingest_status === "tag_failed")
-        .slice(0, MAX_ARTICLES);
-      for (const a of unIngested) {
-        if (!cart.has(a.id)) {
-          cart.toggle({
-            articleId: a.id, account, title: a.title,
-            publishedAt: a.published_at, wordCount: a.word_count,
-          });
-        }
-      }
-    } finally {
-      setQuickAddLoading(null);
-    }
   }
 
   function handleConfirm(payload: IngestStartArgs) {
@@ -116,8 +96,6 @@ export function IngestTab({ model }: IngestTabProps) {
           accounts={accounts}
           cartPerAccount={cart.perAccountCount}
           onSelect={setActiveAccount}
-          onQuickAdd={handleQuickAdd}
-          quickAddLoading={quickAddLoading}
         />
       ) : (
         <div className="flex gap-4">
@@ -145,14 +123,30 @@ export function IngestTab({ model }: IngestTabProps) {
                   ✕
                 </button>
               </div>
-              <AccountHeatmap account={activeAccount} onArticleClick={toggleFromHeatmap} />
+              <AccountHeatmap
+                account={activeAccount}
+                selectedDate={heatmapDate}
+                onDateSelect={setHeatmapDate}
+              />
             </div>
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜索该账号文章标题…"
-              leftSlot="⌕"
-            />
+            <div className="flex items-center gap-2">
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="搜索该账号文章标题…"
+                leftSlot="⌕"
+                className="flex-1"
+              />
+              {heatmapDate && (
+                <button
+                  type="button"
+                  onClick={() => setHeatmapDate(null)}
+                  className="text-xs text-[var(--accent)] hover:underline px-2 py-1 rounded border border-[var(--accent-soft)] bg-[var(--accent-fill)]"
+                >
+                  {heatmapDate} 筛选中 ✕
+                </button>
+              )}
+            </div>
             <ArticleList
               articles={visibleArticles}
               duplicates={duplicates}
