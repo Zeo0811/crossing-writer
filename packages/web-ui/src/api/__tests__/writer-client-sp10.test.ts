@@ -63,7 +63,7 @@ describe("SP-10 writer-client agent config APIs", () => {
     (globalThis as any).fetch = fetchMock;
     const out = await getAgentConfigs();
     expect(fetchMock).toHaveBeenCalledWith("/api/config/agents", undefined);
-    expect(out.agents["writer.opening"].model.cli).toBe("claude");
+    expect(out.agents["writer.opening"]!.model!.cli).toBe("claude");
   });
 
   it("getAgentConfigs throws on non-ok response", async () => {
@@ -78,7 +78,7 @@ describe("SP-10 writer-client agent config APIs", () => {
     (globalThis as any).fetch = fetchMock;
     const out = await getAgentConfig("writer.opening");
     expect(fetchMock).toHaveBeenCalledWith("/api/config/agents/writer.opening", undefined);
-    expect(out.model.cli).toBe("codex");
+    expect(out.model!.cli).toBe("codex");
   });
 
   it("setAgentConfig PUTs JSON body", async () => {

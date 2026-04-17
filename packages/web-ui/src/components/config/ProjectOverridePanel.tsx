@@ -260,8 +260,8 @@ export function ProjectOverridePanel({ projectId, onClose }: ProjectOverridePane
                         backgroundPosition: "right 10px center",
                       }}
                     >
-                      <option value="">默认 · {modelLabel(defaultCfg.model)}</option>
-                      {MODEL_CHOICES.filter((m) => modelKey(m) !== modelKey(defaultCfg.model)).map((m) => (
+                      <option value="">默认 · {modelLabel(defaultCfg.model ?? { cli: "claude" })}</option>
+                      {MODEL_CHOICES.filter((m) => modelKey(m) !== modelKey(defaultCfg.model ?? { cli: "claude" })).map((m) => (
                         <option key={modelKey(m)} value={modelKey(m)}>
                           {modelLabel(m)}
                         </option>

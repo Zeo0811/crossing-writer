@@ -275,7 +275,10 @@ export interface AgentToolsConfig {
 
 export interface AgentConfigEntry {
   agentKey: string;
-  model: AgentModelConfig;
+  // SP-C Task 6: `model` field removed server-side; kept optional on the
+  // client so legacy code paths (ProjectOverridePanel, tests) still compile
+  // during the migration. New code should consult `defaultModel` instead.
+  model?: AgentModelConfig;
   promptVersion?: string;
   styleBinding?: AgentStyleBinding;
   tools?: AgentToolsConfig;
@@ -301,6 +304,33 @@ export interface ProjectOverride {
 export async function getAgentConfigs(): Promise<{ agents: Record<string, AgentConfigEntry> }> {
   const res = await throwingFetch(`/api/config/agents`);
   return res.json();
+}
+
+// SP-C Task 8: 2-tier defaultModel (writer / other) on ServerConfig.
+export interface DefaultModelEntry {
+  cli: "claude" | "codex";
+  model?: string;
+}
+
+export interface DefaultModelConfig {
+  writer: DefaultModelEntry;
+  other: DefaultModelEntry;
+}
+
+export async function getDefaultModel(): Promise<DefaultModelConfig> {
+  const res = await throwingFetch(`/api/config/agents`);
+  const body = await res.json();
+  return body.defaultModel as DefaultModelConfig;
+}
+
+export async function setDefaultModel(
+  patch: Partial<DefaultModelConfig>,
+): Promise<void> {
+  await throwingFetch(`/api/config/agents`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ defaultModel: patch }),
+  });
 }
 
 export async function getAgentConfig(agentKey: string): Promise<AgentConfigEntry> {
