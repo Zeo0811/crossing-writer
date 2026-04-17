@@ -4,7 +4,7 @@ import { RawArticleDrawer } from "../components/wiki/RawArticleDrawer.js";
 import { IngestTab } from "../components/wiki/IngestTab.js";
 import { ModelSelector } from "../components/wiki/ModelSelector.js";
 import { IngestConsoleFab } from "../components/wiki/IngestConsoleFab.js";
-import { Input, Button, Chip } from "../components/ui";
+import { Input, Button, Chip, PixelLoader } from "../components/ui";
 import { formatBeijingShort } from "../utils/time";
 import { useIngestState } from "../hooks/useIngestState";
 import { useIngestCart } from "../hooks/useIngestCart";
@@ -41,13 +41,16 @@ export function KnowledgePage() {
   const [statusInfo, setStatusInfo] = useState<WikiStatus | null>(null);
   const [drawerSource, setDrawerSource] = useState<{ account: string; articleId: string } | null>(null);
   const [model, setModel] = useState<{ cli: "claude" | "codex"; model: string }>({ cli: "claude", model: "sonnet" });
+  const [loading, setLoading] = useState(true);
 
   const ingest = useIngestState();
   const cart = useIngestCart({ maxArticles: MAX_ARTICLES });
 
   useEffect(() => {
-    void getPages().then(setPages).catch(() => setPages([]));
-    void wikiStatus().then(setStatusInfo).catch(() => setStatusInfo(null));
+    Promise.all([
+      getPages().then(setPages).catch(() => setPages([])),
+      wikiStatus().then(setStatusInfo).catch(() => setStatusInfo(null)),
+    ]).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -138,7 +141,9 @@ export function KnowledgePage() {
         </div>
       </header>
 
-      {mode === "browse" ? (
+      {loading ? (
+        <PixelLoader label="知识库载入中" />
+      ) : mode === "browse" ? (
         <div className="p-6 space-y-4">
           <div className="flex items-center gap-3">
             <div className="inline-flex items-center gap-0.5 p-1 h-10 rounded border border-[var(--hair)]">
