@@ -14,6 +14,11 @@ export { aggregateSnippets } from "./style-distiller/snippet-aggregator.js";
 export { runIngest } from "./wiki/orchestrator.js";
 export { ensureSchema } from "./wiki/migrations.js";
 export { upsertMark, listMarks, filterAlreadyIngested, type MarkRow } from "./wiki/ingest-marks-repo.js";
+export {
+  createRun, finishRun, appendRunOp, listRuns, getRun,
+  type RunStatus, type CreateRunInput, type FinishRunInput, type AppendRunOpInput,
+  type RunRow, type RunOpRow, type RunSummary, type ListRunsInput,
+} from "./wiki/ingest-runs-repo.js";
 export { WikiStore, parseFrontmatter, serializeFrontmatter } from "./wiki/wiki-store.js";
 export { searchWiki } from "./wiki/search-wiki.js";
 export { rebuildIndex } from "./wiki/index-maintainer.js";
