@@ -30,14 +30,24 @@ export { CaseCoordinator } from "./roles/case-coordinator.js";
 export type { SynthesizeInput } from "./roles/case-coordinator.js";
 export { runCaseExpert, parseToolCalls as parseCaseToolCalls } from "./case-expert-runner.js";
 export type { ToolCall as CaseToolCall, ToolExecutor, RunCaseExpertResult } from "./case-expert-runner.js";
-export { WriterOpeningAgent, runWriterOpening } from "./roles/writer-opening-agent.js";
-export type { WriterOpeningInput, WriterOutput, ReferenceAccountKb, RunWriterOpeningOpts } from "./roles/writer-opening-agent.js";
+export { runWriterBookend } from "./roles/writer-bookend-agent.js";
+export type { RunWriterBookendOpts } from "./roles/writer-bookend-agent.js";
+export {
+  extractSubsection,
+  renderHardRulesBlock,
+  renderBookendPrompt,
+} from "./roles/writer-shared.js";
+export type {
+  WritingHardRules,
+  PanelFrontmatterLike,
+  ReferenceAccountKb,
+  WriterOutput,
+  RenderBookendPromptOpts,
+} from "./roles/writer-shared.js";
 export { WriterPracticeAgent, runWriterPractice } from "./roles/writer-practice-agent.js";
 export type { WriterPracticeInput, RunWriterPracticeOpts } from "./roles/writer-practice-agent.js";
 export { PracticeStitcherAgent } from "./roles/practice-stitcher-agent.js";
 export type { StitcherInput, StitcherOutput, StitcherCase } from "./roles/practice-stitcher-agent.js";
-export { WriterClosingAgent, runWriterClosing } from "./roles/writer-closing-agent.js";
-export type { WriterClosingInput, RunWriterClosingOpts } from "./roles/writer-closing-agent.js";
 export { StyleCriticAgent, runStyleCritic } from "./roles/style-critic-agent.js";
 export type { StyleCriticInput, StyleCriticOutput, RunStyleCriticOpts } from "./roles/style-critic-agent.js";
 export { StyleDistillerStructureAgent } from "./roles/style-distiller-structure-agent.js";
