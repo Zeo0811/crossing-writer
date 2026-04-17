@@ -18,11 +18,10 @@ describe("ProjectOverrideStore", () => {
   it("set + get roundtrip", () => {
     const s = new ProjectOverrideStore(dir);
     s.set("p1", {
-      agents: { "writer.opening": { model: { cli: "codex", model: "gpt-5" } } },
+      agents: { "writer.opening": { promptVersion: "v3" } },
     });
     const got = s.get("p1")!;
-    expect(got.agents["writer.opening"]!.model!.cli).toBe("codex");
-    expect(got.agents["writer.opening"]!.model!.model).toBe("gpt-5");
+    expect(got.agents["writer.opening"]!.promptVersion).toBe("v3");
   });
 
   it("set auto-creates project dir if absent", () => {
@@ -35,7 +34,7 @@ describe("ProjectOverrideStore", () => {
     const s = new ProjectOverrideStore(dir);
     s.set("p1", {
       agents: {
-        "writer.opening": { model: { cli: "codex" } },
+        "writer.opening": { promptVersion: "v3" },
         "writer.closing": { tools: { search_raw: false } },
       },
     });
@@ -47,7 +46,7 @@ describe("ProjectOverrideStore", () => {
 
   it("clear deletes file when last agent removed", () => {
     const s = new ProjectOverrideStore(dir);
-    s.set("p1", { agents: { "writer.opening": { model: { cli: "codex" } } } });
+    s.set("p1", { agents: { "writer.opening": { promptVersion: "v3" } } });
     s.clear("p1", "writer.opening");
     expect(s.get("p1")).toBeNull();
     expect(existsSync(join(dir, "p1", "config.override.json"))).toBe(false);
@@ -81,5 +80,15 @@ describe("ProjectOverrideStore", () => {
     const s = new ProjectOverrideStore(dir);
     writeFileSync(join(dir, "p1", "config.override.json"), "{ not json");
     expect(s.get("p1")).toBeNull();
+  });
+
+  it("SP-C Task 6: set + get roundtrip preserves defaultModel override", () => {
+    const s = new ProjectOverrideStore(dir);
+    s.set("p1", {
+      agents: {},
+      defaultModel: { writer: { cli: "codex", model: "gpt-5" } },
+    });
+    const got = s.get("p1")!;
+    expect(got.defaultModel?.writer).toEqual({ cli: "codex", model: "gpt-5" });
   });
 });

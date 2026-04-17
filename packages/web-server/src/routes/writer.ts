@@ -8,7 +8,7 @@ import type { ProjectOverrideStore } from "../services/project-override-store.js
 import type { StylePanelStore } from "../services/style-panel-store.js";
 import { mergeAgentConfig } from "../services/config-merger.js";
 import { resolveStyleBindingV2 } from "../services/style-binding-resolver.js";
-import { runWriter, runBookendWithValidation, type WriterAgentKey, type WriterConfig, type ResolveStyleForAgent } from "../services/writer-orchestrator.js";
+import { runWriter, runBookendWithValidation, type WriterAgentKey, type ResolveStyleForAgent } from "../services/writer-orchestrator.js";
 import { resolveModelForAgent } from "../services/model-resolver.js";
 import type { ContextBundleService } from "../services/context-bundle-service.js";
 import type { HardRulesStore } from "../services/hard-rules-store.js";
@@ -83,30 +83,6 @@ function buildResolveStyleForAgent(
   };
 }
 
-const AGENT_KEYS: WriterAgentKey[] = [
-  "writer.opening", "writer.practice", "writer.closing",
-  "practice.stitcher", "style_critic",
-];
-
-async function mergeWriterConfig(
-  deps: WriterDeps,
-  body: Partial<WriterConfig>,
-): Promise<WriterConfig> {
-  const cliModel: WriterConfig["cli_model_per_agent"] = {};
-  const agents = deps.configStore.current.agents ?? {};
-  for (const key of AGENT_KEYS) {
-    const override = body.cli_model_per_agent?.[key];
-    const globalCfg = agents[key] as { cli?: string; model?: unknown } | undefined;
-    const nestedModel = globalCfg?.model;
-    const isNewFormat = nestedModel && typeof nestedModel === "object" && "cli" in nestedModel;
-    const rawCli = (isNewFormat ? (nestedModel as { cli?: string }).cli : globalCfg?.cli) ?? "claude";
-    const cli: "claude" | "codex" = rawCli === "codex" ? "codex" : "claude";
-    const model: string | undefined = isNewFormat ? (nestedModel as { model?: string }).model : (typeof nestedModel === "string" ? nestedModel : undefined);
-    cliModel[key] = override ?? (globalCfg ? { cli, model } : undefined);
-  }
-  return { cli_model_per_agent: cliModel };
-}
-
 function sectionKeyToAgentKey(key: string): WriterAgentKey | null {
   if (key === "opening") return "writer.opening";
   if (key === "closing") return "writer.closing";
@@ -116,7 +92,7 @@ function sectionKeyToAgentKey(key: string): WriterAgentKey | null {
 }
 
 export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
-  app.post<{ Params: { id: string }; Body: Partial<WriterConfig> }>(
+  app.post<{ Params: { id: string } }>(
     "/api/projects/:id/writer/start",
     async (req, reply) => {
       const project = await deps.store.get(req.params.id);
@@ -127,16 +103,7 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
       if (!project.article_type) {
         return reply.code(400).send({ error: 'project.article_type is required; please set it in Brief stage' });
       }
-      const body = req.body ?? {};
-      const writerConfig = await mergeWriterConfig(deps, body);
-      await deps.store.update(req.params.id, {
-        status: "writing_configuring",
-        writer_config: {
-          cli_model_per_agent: Object.fromEntries(
-            Object.entries(writerConfig.cli_model_per_agent).filter(([, v]) => v !== undefined),
-          ) as Record<string, { cli: string; model?: string }>,
-        },
-      });
+      await deps.store.update(req.params.id, { status: "writing_configuring" });
       const resolveStyleForAgent = buildResolveStyleForAgent(deps, req.params.id, project.article_type);
       void (async () => {
         try {
@@ -146,7 +113,6 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
             store: deps.store,
             vaultPath: deps.vaultPath,
             sqlitePath: deps.sqlitePath,
-            writerConfig,
             defaultModel: deps.configStore.current.defaultModel,
             ...(resolveStyleForAgent ? { resolveStyleForAgent } : {}),
             ...(deps.contextBundleService ? { contextBundleService: deps.contextBundleService } : {}),
@@ -477,17 +443,13 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
         return reply.code(400).send({ error: 'project.article_type is required; please set it in Brief stage' });
       }
       const failed = project.writer_failed_sections ?? [];
-      const cfg = project.writer_config;
-      const writerConfig: WriterConfig = {
-        cli_model_per_agent: (cfg?.cli_model_per_agent ?? {}) as WriterConfig["cli_model_per_agent"],
-      };
       const resolveStyleForAgent = buildResolveStyleForAgent(deps, req.params.id, project.article_type);
       void (async () => {
         try {
           await runWriter({
             projectId: req.params.id, projectsDir: deps.projectsDir, store: deps.store,
             vaultPath: deps.vaultPath, sqlitePath: deps.sqlitePath,
-            writerConfig, sectionsToRun: failed,
+            sectionsToRun: failed,
             defaultModel: deps.configStore.current.defaultModel,
             ...(resolveStyleForAgent ? { resolveStyleForAgent } : {}),
             ...(deps.contextBundleService ? { contextBundleService: deps.contextBundleService } : {}),

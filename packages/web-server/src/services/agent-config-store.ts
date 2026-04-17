@@ -42,7 +42,8 @@ export interface AgentToolsConfig {
 
 export interface AgentConfigEntry {
   agentKey: string;
-  model: AgentModelConfig;
+  // model field REMOVED (SP-C Task 6) — use resolveModelForAgent against
+  // ServerConfig.defaultModel instead.
   promptVersion?: string;
   styleBinding?: AgentStyleBinding;
   tools?: AgentToolsConfig;
@@ -56,16 +57,14 @@ export interface AgentConfigStore {
 }
 
 /**
- * SP-15: built-in defaults for agents whose preferred model is known upfront.
- * User-level config in `config.json#agents` takes precedence; this map is only
- * consulted when the key is missing from the persisted config. Surfaces the
- * slicer default (sonnet-4.5) to callers that resolve via the store.
+ * SP-15 / SP-C: built-in defaults for agents whose config shape is known
+ * upfront. User-level config in `config.json#agents` takes precedence; this
+ * map is only consulted when the key is missing from the persisted config.
+ * Model selection cascades from ServerConfig.defaultModel.other — no per-agent
+ * model field here anymore (Task 6).
  */
 export const DEFAULT_AGENT_CONFIGS: Record<string, AgentConfigEntry> = {
-  section_slicer: {
-    agentKey: "section_slicer",
-    model: { cli: "claude", model: "claude-sonnet-4-5" },
-  },
+  section_slicer: { agentKey: "section_slicer" },
 };
 
 function isAllowedAgentKey(key: string): boolean {
@@ -80,12 +79,6 @@ function validate(agentKey: string, cfg: AgentConfigEntry): void {
   }
   if (!cfg || typeof cfg !== "object") {
     throw new Error("invalid agent config: cfg must be an object");
-  }
-  if (!cfg.model || typeof cfg.model !== "object") {
-    throw new Error("invalid agent config: model is required");
-  }
-  if (cfg.model.cli !== "claude" && cfg.model.cli !== "codex") {
-    throw new Error(`invalid agent config: cli must be "claude" or "codex"`);
   }
   if (cfg.styleBinding !== undefined) {
     const sb = cfg.styleBinding;

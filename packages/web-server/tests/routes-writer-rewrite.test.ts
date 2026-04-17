@@ -36,9 +36,6 @@ async function seed() {
   await store.update(p.id, {
     status: "writing_ready",
     article_type: "实测",
-    writer_config: {
-      cli_model_per_agent: { "writer.opening": { cli: "claude", model: "opus" } },
-    },
   });
   const pDir = join(projectsDir, p.id);
   mkdirSync(join(pDir, "mission"), { recursive: true });
@@ -58,7 +55,6 @@ async function seed() {
     agentConfigStore: {
       get: (_key: string) => ({
         agentKey: _key,
-        model: { cli: "claude" },
         styleBinding: { account: "test-account", role: "opening" },
       }),
     } as any,

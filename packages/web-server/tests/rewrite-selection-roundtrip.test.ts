@@ -55,7 +55,6 @@ function makeBookendDeps(projectsDir: string, store: ProjectStore) {
     agentConfigStore: {
       get: (_key: string) => ({
         agentKey: _key,
-        model: { cli: "claude" },
         styleBinding: { account: "test-account", role: "opening" },
       }),
     } as any,

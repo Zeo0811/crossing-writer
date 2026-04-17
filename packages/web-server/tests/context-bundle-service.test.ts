@@ -125,16 +125,16 @@ describe("ContextBundleService — T2 composition", () => {
     const base = {
       "writer.opening": {
         agentKey: "writer.opening",
-        model: { cli: "claude" as const, model: "opus" },
+        promptVersion: "v1",
         styleBinding: { account: "A", role: "opening" as const },
         tools: { search_wiki: true },
       },
     };
     const merged = mergeAgentOverrides(base, {
-      "writer.opening": { model: { cli: "codex" as const } },
+      "writer.opening": { promptVersion: "v2", tools: { search_raw: true } },
     });
-    expect(merged["writer.opening"]!.model.cli).toBe("codex");
-    expect(merged["writer.opening"]!.model.model).toBe("opus");
+    expect(merged["writer.opening"]!.promptVersion).toBe("v2");
+    expect(merged["writer.opening"]!.tools).toEqual({ search_wiki: true, search_raw: true });
     expect(merged["writer.opening"]!.styleBinding!.account).toBe("A");
   });
 });

@@ -41,10 +41,6 @@ export type WriterAgentKey =
   | "writer.opening" | "writer.practice" | "writer.closing"
   | "practice.stitcher" | "style_critic";
 
-export interface WriterConfig {
-  cli_model_per_agent: Partial<Record<WriterAgentKey, { cli: "claude" | "codex"; model?: string }>>;
-}
-
 export interface ResolvedStyle {
   panel: StylePanel;
   typeSection: string;       // v2: only the section for the current article_type
@@ -89,9 +85,8 @@ export interface RunWriterOpts {
   store: ProjectStore;
   vaultPath: string;
   sqlitePath: string;
-  writerConfig: WriterConfig;
   /** SP-C Task 5: global 2-tier model defaults used by resolveModelForAgent.
-   *  Replaces per-agent cli_model_per_agent lookup inside the orchestrator. */
+   *  The sole source for CLI/model selection inside the orchestrator. */
   defaultModel: DefaultModelConfig;
   sectionsToRun?: string[];
   /** Optional style-binding resolver (SP-10). If omitted, orchestrator skips

@@ -1,9 +1,11 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { AgentConfigEntry } from "./agent-config-store.js";
+import type { DefaultModelConfig } from "../config.js";
 
 export interface ProjectOverride {
   agents: Partial<Record<string, Partial<AgentConfigEntry>>>;
+  defaultModel?: Partial<DefaultModelConfig>;
 }
 
 export class ProjectOverrideStore {

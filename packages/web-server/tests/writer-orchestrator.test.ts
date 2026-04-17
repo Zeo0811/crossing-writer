@@ -77,7 +77,6 @@ describe("writer-orchestrator", () => {
     await runWriter({
       projectId: pid, projectsDir, store,
       vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"),
-      writerConfig: { cli_model_per_agent: {} },
       defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
     });
     const pDir = join(projectsDir, pid);
@@ -98,7 +97,6 @@ describe("writer-orchestrator", () => {
     await expect(runWriter({
       projectId: pid, projectsDir, store,
       vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"),
-      writerConfig: { cli_model_per_agent: {} },
       defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
     })).rejects.toThrow();
     const project = await store.get(pid);
@@ -112,7 +110,6 @@ describe("writer-orchestrator", () => {
     await runWriter({
       projectId: pid, projectsDir, store,
       vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"),
-      writerConfig: { cli_model_per_agent: {} },
       defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
     });
     const pDir = join(projectsDir, pid);
@@ -162,7 +159,6 @@ describe("writer-orchestrator retry + override", () => {
     await runWriter({
       projectId: pid, projectsDir, store,
       vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"),
-      writerConfig: { cli_model_per_agent: {} },
       defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
       sectionsToRun: ["practice.case-02"],
     });
@@ -177,7 +173,7 @@ describe("writer-orchestrator retry + override", () => {
     expect(project?.writer_failed_sections).toEqual([]);
   });
 
-  it("per-project writer_config overrides are forwarded to runner invoker", async () => {
+  it("custom defaultModel (writer slot) is forwarded to runner invoker", async () => {
     const { vault, projectsDir, store } = setupProject();
     const pid = await seedProject(store, projectsDir, 1);
     const agentsMod = await import("@crossing/agents");
@@ -186,10 +182,7 @@ describe("writer-orchestrator retry + override", () => {
     await runWriter({
       projectId: pid, projectsDir, store,
       vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"),
-      writerConfig: {
-        cli_model_per_agent: { "writer.opening": { cli: "codex", model: "gpt-5" } },
-      },
-      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
+      defaultModel: { writer: { cli: 'codex', model: 'gpt-5' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
     });
     // runWriterBookend is called for both opening (call 0) and closing (call 1)
     const openingCallArgs = (agentsMod.runWriterBookend as any).mock.calls.find((c: any[]) => c[0].role === 'opening')?.[0];

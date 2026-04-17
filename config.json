@@ -11,35 +11,25 @@
   },
   "agents": {
     "brief_analyst": {
-      "cli": "claude",
-      "model": "sonnet"
+      "cli": "claude"
     },
     "coordinator": {
-      "cli": "claude",
-      "model": "opus"
+      "cli": "claude"
     },
     "product_overview": {
-      "cli": "claude",
-      "model": "opus"
+      "cli": "claude"
     },
     "case_coordinator": {
-      "cli": "claude",
-      "model": "opus"
+      "cli": "claude"
     },
     "topic_expert.赛博禅心": {
-      "cli": "claude",
-      "model": "opus"
+      "cli": "claude"
     },
     "topic_expert.数字生命卡兹克": {
-      "cli": "claude",
-      "model": "sonnet"
+      "cli": "claude"
     },
     "writer.opening": {
       "agentKey": "writer.opening",
-      "model": {
-        "cli": "claude",
-        "model": "claude-opus-4-6"
-      },
       "tools": {
         "search_wiki": true,
         "search_raw": true
@@ -51,10 +41,6 @@
     },
     "writer.practice": {
       "agentKey": "writer.practice",
-      "model": {
-        "cli": "claude",
-        "model": "claude-opus-4-6"
-      },
       "tools": {
         "search_wiki": true,
         "search_raw": true
@@ -66,10 +52,6 @@
     },
     "writer.closing": {
       "agentKey": "writer.closing",
-      "model": {
-        "cli": "claude",
-        "model": "claude-opus-4-6"
-      },
       "tools": {
         "search_wiki": true,
         "search_raw": true
@@ -78,6 +60,16 @@
         "account": "十字路口Crossing",
         "role": "closing"
       }
+    }
+  },
+  "defaultModel": {
+    "writer": {
+      "cli": "claude",
+      "model": "claude-opus-4-6"
+    },
+    "other": {
+      "cli": "claude",
+      "model": "sonnet"
     }
   }
 }

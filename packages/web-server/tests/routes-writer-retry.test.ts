@@ -36,7 +36,6 @@ describe("POST /writer/retry-failed", () => {
       status: "writing_failed",
       article_type: "实测",
       writer_failed_sections: ["practice.case-01"],
-      writer_config: { cli_model_per_agent: {} },
     });
     const app = Fastify();
     registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: { current: { agents: {}, defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } } } } as any });

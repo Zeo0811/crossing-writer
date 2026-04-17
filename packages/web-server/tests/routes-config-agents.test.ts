@@ -5,18 +5,15 @@ import type { AgentConfigEntry, AgentConfigStore } from "../src/services/agent-c
 
 function buildApp() {
   const state: Record<string, AgentConfigEntry> = {
-    "writer.opening": { agentKey: "writer.opening", model: { cli: "claude" } },
+    "writer.opening": { agentKey: "writer.opening", promptVersion: "v1" },
   };
   const store: AgentConfigStore = {
     getAll: () => state,
     get: (k: string) => state[k] ?? null,
     set: async (k: string, cfg: AgentConfigEntry) => {
-      // allowlist + cli validation (mirrors real store)
+      // allowlist (mirrors real store)
       const allow = ["writer.opening", "writer.practice", "writer.closing"];
       if (!allow.includes(k)) throw new Error(`unknown agentKey "${k}"`);
-      if (cfg.model?.cli && !["claude", "codex"].includes(cfg.model.cli)) {
-        throw new Error("invalid cli");
-      }
       state[k] = cfg;
     },
     remove: async (k: string) => {
@@ -34,7 +31,7 @@ describe("config-agents routes", () => {
     const r = await app.inject({ method: "GET", url: "/api/config/agents" });
     expect(r.statusCode).toBe(200);
     const body = JSON.parse(r.body);
-    expect(body.agents["writer.opening"].model.cli).toBe("claude");
+    expect(body.agents["writer.opening"].agentKey).toBe("writer.opening");
   });
 
   it("GET /api/config/agents/:agentKey returns entry", async () => {
@@ -55,21 +52,11 @@ describe("config-agents routes", () => {
     const r = await app.inject({
       method: "PUT",
       url: "/api/config/agents/writer.practice",
-      payload: { agentKey: "writer.practice", model: { cli: "codex", model: "gpt-5" } },
+      payload: { agentKey: "writer.practice", promptVersion: "v3" },
     });
     expect(r.statusCode).toBe(200);
     expect(JSON.parse(r.body).ok).toBe(true);
-    expect(state["writer.practice"].model.cli).toBe("codex");
-  });
-
-  it("PUT rejects bad cli → 400", async () => {
-    const { app } = buildApp();
-    const r = await app.inject({
-      method: "PUT",
-      url: "/api/config/agents/writer.opening",
-      payload: { agentKey: "writer.opening", model: { cli: "gpt" } },
-    });
-    expect(r.statusCode).toBe(400);
+    expect(state["writer.practice"].promptVersion).toBe("v3");
   });
 
   it("PUT rejects agentKey mismatch → 400", async () => {
@@ -77,7 +64,7 @@ describe("config-agents routes", () => {
     const r = await app.inject({
       method: "PUT",
       url: "/api/config/agents/writer.opening",
-      payload: { agentKey: "writer.closing", model: { cli: "claude" } },
+      payload: { agentKey: "writer.closing" },
     });
     expect(r.statusCode).toBe(400);
   });
@@ -87,7 +74,7 @@ describe("config-agents routes", () => {
     const r = await app.inject({
       method: "PUT",
       url: "/api/config/agents/writer.unknown",
-      payload: { agentKey: "writer.unknown", model: { cli: "claude" } },
+      payload: { agentKey: "writer.unknown" },
     });
     expect(r.statusCode).toBe(400);
   });

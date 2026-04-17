@@ -24,12 +24,6 @@ function validateOverride(o: unknown): string | null {
       return `agents[${key}] must be an object`;
     }
     const e = entry as Record<string, unknown>;
-    if (e.model) {
-      const model = e.model as Record<string, unknown>;
-      if (model.cli !== undefined && !VALID_CLIS.includes(model.cli as string)) {
-        return `agents[${key}].model.cli must be claude|codex`;
-      }
-    }
     if (e.styleBinding) {
       const sb = e.styleBinding as Record<string, unknown>;
       if (sb.role !== undefined && !VALID_ROLES.includes(sb.role as string)) {
@@ -37,6 +31,20 @@ function validateOverride(o: unknown): string | null {
       }
       if (sb.account !== undefined && (typeof sb.account !== "string" || sb.account.trim() === "")) {
         return `agents[${key}].styleBinding.account must be non-empty string`;
+      }
+    }
+  }
+  if (override.defaultModel !== undefined) {
+    const dm = override.defaultModel as Record<string, unknown>;
+    for (const slot of ["writer", "other"] as const) {
+      const entry = dm[slot];
+      if (entry === undefined) continue;
+      if (!entry || typeof entry !== "object") {
+        return `defaultModel.${slot} must be an object`;
+      }
+      const cli = (entry as Record<string, unknown>).cli;
+      if (cli !== undefined && !VALID_CLIS.includes(cli as string)) {
+        return `defaultModel.${slot}.cli must be claude|codex`;
       }
     }
   }

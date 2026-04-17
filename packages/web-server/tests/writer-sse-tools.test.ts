@@ -103,7 +103,6 @@ describe("writer orchestrator forwards tool_* events to SSE via event log", () =
       store,
       vaultPath: vault,
       sqlitePath: join(vault, "kb.sqlite"),
-      writerConfig: { cli_model_per_agent: {} },
       defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
     });
 

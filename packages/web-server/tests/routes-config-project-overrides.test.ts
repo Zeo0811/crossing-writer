@@ -51,12 +51,12 @@ describe("project override routes", () => {
     const put = await app.inject({
       method: "PUT",
       url: "/api/projects/p1/override",
-      payload: { agents: { "writer.opening": { model: { cli: "codex", model: "gpt-5" } } } },
+      payload: { agents: { "writer.opening": { promptVersion: "v9" } } },
     });
     expect(put.statusCode).toBe(200);
     const r = await app.inject({ method: "GET", url: "/api/projects/p1/override" });
     const body = JSON.parse(r.body);
-    expect(body.agents["writer.opening"].model.cli).toBe("codex");
+    expect(body.agents["writer.opening"].promptVersion).toBe("v9");
   });
 
   it("PUT 404 unknown project", async () => {
@@ -69,12 +69,12 @@ describe("project override routes", () => {
     expect(r.statusCode).toBe(404);
   });
 
-  it("PUT 400 on bad cli", async () => {
+  it("PUT 400 on bad defaultModel.writer.cli", async () => {
     const { app } = buildApp();
     const r = await app.inject({
       method: "PUT",
       url: "/api/projects/p1/override",
-      payload: { agents: { "writer.opening": { model: { cli: "gpt" } } } },
+      payload: { agents: {}, defaultModel: { writer: { cli: "gpt" } } },
     });
     expect(r.statusCode).toBe(400);
   });
@@ -106,8 +106,8 @@ describe("project override routes", () => {
       url: "/api/projects/p1/override",
       payload: {
         agents: {
-          "writer.opening": { model: { cli: "codex" } },
-          "writer.closing": { model: { cli: "claude" } },
+          "writer.opening": { promptVersion: "v9" },
+          "writer.closing": { promptVersion: "v7" },
         },
       },
     });

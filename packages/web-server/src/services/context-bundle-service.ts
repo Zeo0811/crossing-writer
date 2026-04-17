@@ -87,12 +87,11 @@ export function mergeAgentOverrides(
   const out: Record<string, AgentConfigEntry> = { ...base };
   for (const [k, ov] of Object.entries(override)) {
     if (!ov) continue;
-    const b = base[k] ?? { agentKey: k, model: { cli: "claude" } };
+    const b = base[k] ?? { agentKey: k };
     const merged: AgentConfigEntry = {
       ...b,
       ...ov,
       agentKey: k,
-      model: { ...b.model, ...(ov.model ?? {}) },
     };
     if (ov.styleBinding) merged.styleBinding = { ...(b.styleBinding ?? {}), ...ov.styleBinding } as any;
     if (ov.tools) merged.tools = { ...(b.tools ?? {}), ...ov.tools };

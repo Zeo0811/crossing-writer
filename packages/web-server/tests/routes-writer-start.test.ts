@@ -32,7 +32,7 @@ describe("POST /api/projects/:id/writer/start", () => {
     expect(res.statusCode).toBe(400);
   });
 
-  it("200 → writing_configuring → writing_running; persists writer_config; dispatches runWriter", async () => {
+  it("200 → writing_configuring; dispatches runWriter with defaultModel", async () => {
     const { vault, projectsDir, store } = setup();
     const p = await store.create({ name: "T" });
     await store.update(p.id, { status: "evidence_ready", article_type: "实测" });
@@ -45,14 +45,14 @@ describe("POST /api/projects/:id/writer/start", () => {
     await app.ready();
     const res = await app.inject({
       method: "POST", url: `/api/projects/${p.id}/writer/start`,
-      payload: {
-        cli_model_per_agent: { "writer.opening": { cli: "claude", model: "opus" } },
-      },
+      payload: {},
     });
     expect(res.statusCode).toBe(200);
     await new Promise((r) => setTimeout(r, 10));
     const project = await store.get(p.id);
-    expect(project?.writer_config?.cli_model_per_agent?.["writer.opening"]).toEqual({ cli: "claude", model: "opus" });
+    expect(project?.status).toBe("writing_configuring");
     expect((runWriter as any).mock.calls.length).toBe(1);
+    const opts = (runWriter as any).mock.calls[0][0];
+    expect(opts.defaultModel.writer.model).toBe("claude-opus-4-6");
   });
 });

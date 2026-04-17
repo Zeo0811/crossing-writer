@@ -83,7 +83,6 @@ function bindAllWriters(ctx: Ctx, account = "acct"): void {
     writePanel(ctx.vault, account, r);
     (ctx.agentConfigStore as any).set(`writer.${r}`, {
       agentKey: `writer.${r}`,
-      model: { cli: "claude" },
       styleBinding: { account, role: r },
     });
   }

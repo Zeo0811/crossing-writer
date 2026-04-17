@@ -17,7 +17,6 @@ function fakeConfigStore(initial: Record<string, AgentConfigEntry> = {}) {
 
 const validEntry: AgentConfigEntry = {
   agentKey: "writer.opening",
-  model: { cli: "claude", model: "opus" },
   styleBinding: { account: "A", role: "opening" },
   tools: { search_wiki: true, search_raw: true },
 };
@@ -52,19 +51,11 @@ describe("AgentConfigStore", () => {
     ).rejects.toThrow(/invalid agent config/);
   });
 
-  it("rejects bad cli", async () => {
-    const s = createAgentConfigStore(fakeConfigStore() as any);
-    await expect(
-      s.set("writer.opening", { agentKey: "writer.opening", model: { cli: "gpt" } } as any),
-    ).rejects.toThrow(/cli must be/);
-  });
-
   it("rejects styleBinding with bad role", async () => {
     const s = createAgentConfigStore(fakeConfigStore() as any);
     await expect(
       s.set("writer.opening", {
         agentKey: "writer.opening",
-        model: { cli: "claude" },
         styleBinding: { account: "A", role: "intro" },
       } as any),
     ).rejects.toThrow(/styleBinding\.role/);
@@ -75,7 +66,6 @@ describe("AgentConfigStore", () => {
     await expect(
       s.set("writer.opening", {
         agentKey: "writer.opening",
-        model: { cli: "claude" },
         styleBinding: { account: "", role: "opening" },
       } as any),
     ).rejects.toThrow(/account/);
@@ -99,7 +89,7 @@ describe("AgentConfigStore", () => {
   it("accepts all allowlisted keys", async () => {
     const s = createAgentConfigStore(fakeConfigStore() as any);
     for (const key of ["style_critic", "section_slicer", "style_distiller.composer", "coordinator"]) {
-      await s.set(key, { agentKey: key, model: { cli: "claude" } });
+      await s.set(key, { agentKey: key });
       expect(s.get(key)).not.toBeNull();
     }
   });
@@ -107,35 +97,23 @@ describe("AgentConfigStore", () => {
   it("accepts topic_expert.<specialty> with CJK", async () => {
     const s = createAgentConfigStore(fakeConfigStore() as any);
     for (const key of ["topic_expert.赛博禅心", "topic_expert.数字生命卡兹克", "topic_expert.foo-bar"]) {
-      await s.set(key, { agentKey: key, model: { cli: "claude" } });
+      await s.set(key, { agentKey: key });
       expect(s.get(key)).not.toBeNull();
     }
   });
 
-  it("SP-15: seeds section_slicer default to claude-sonnet-4-5", () => {
+  it("SP-C Task 6: seeds section_slicer default without model (cascades from defaultModel.other)", () => {
     const s = createAgentConfigStore(fakeConfigStore() as any);
     const entry = s.get("section_slicer");
     expect(entry).not.toBeNull();
-    expect(entry!.model.cli).toBe("claude");
-    expect(entry!.model.model).toBe("claude-sonnet-4-5");
-    expect(DEFAULT_AGENT_CONFIGS.section_slicer.model.model).toBe("claude-sonnet-4-5");
-  });
-
-  it("SP-15: user-set section_slicer model overrides the default", async () => {
-    const cs = fakeConfigStore();
-    const s = createAgentConfigStore(cs as any);
-    await s.set("section_slicer", {
-      agentKey: "section_slicer",
-      model: { cli: "claude", model: "claude-opus-4-6" },
-    });
-    const entry = s.get("section_slicer");
-    expect(entry!.model.model).toBe("claude-opus-4-6");
+    expect(entry!.agentKey).toBe("section_slicer");
+    expect(DEFAULT_AGENT_CONFIGS.section_slicer).toEqual({ agentKey: "section_slicer" });
   });
 
   it("rejects malformed topic_expert subkey", async () => {
     const s = createAgentConfigStore(fakeConfigStore() as any);
     await expect(
-      s.set("topic_expert.", { agentKey: "topic_expert.", model: { cli: "claude" } } as any),
+      s.set("topic_expert.", { agentKey: "topic_expert." } as any),
     ).rejects.toThrow(/invalid agent config/);
   });
 });
