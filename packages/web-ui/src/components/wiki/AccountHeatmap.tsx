@@ -10,8 +10,9 @@ interface Article {
 
 interface Props {
   account: string;
-  selectedDate?: string | null;
-  onDateSelect?: (date: string | null) => void;
+  selectedDates?: Set<string>;
+  onDateToggle?: (date: string) => void;
+  onClearDates?: () => void;
 }
 
 function daysBetween(a: Date, b: Date): number {
@@ -24,7 +25,7 @@ function weekStart(d: Date): Date {
   return copy;
 }
 
-export function AccountHeatmap({ account, selectedDate, onDateSelect }: Props) {
+export function AccountHeatmap({ account, selectedDates, onDateToggle, onClearDates }: Props) {
   const [articles, setArticles] = useState<Article[] | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(800);
@@ -144,7 +145,7 @@ export function AccountHeatmap({ account, selectedDate, onDateSelect }: Props) {
             }
             const allIngested = c.ingested === c.total;
             const partial = c.ingested > 0 && c.ingested < c.total;
-            const isSelected = selectedDate === c.date;
+            const isSelected = selectedDates?.has(c.date) ?? false;
             const fill = allIngested
               ? "var(--accent)"
               : partial
@@ -164,7 +165,7 @@ export function AccountHeatmap({ account, selectedDate, onDateSelect }: Props) {
                 stroke={isSelected ? "var(--accent)" : "none"}
                 strokeWidth={isSelected ? 2 : 0}
                 className="cursor-pointer"
-                onClick={() => onDateSelect?.(selectedDate === c.date ? null : c.date)}
+                onClick={() => onDateToggle?.(c.date)}
               />
             );
           })}
@@ -181,7 +182,11 @@ export function AccountHeatmap({ account, selectedDate, onDateSelect }: Props) {
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-sm" style={{ background: "var(--accent)" }} /> 全部入库
         </span>
-        <span className="ml-auto text-[10px] text-[var(--faint)]">点击格子筛选当日文章</span>
+        <span className="ml-auto text-[10px] text-[var(--faint)]">
+          {(selectedDates?.size ?? 0) > 0
+            ? <>已选 {selectedDates!.size} 天 · <button type="button" onClick={() => onClearDates?.()} className="text-[var(--accent)] hover:underline">清空</button></>
+            : "点击格子多选日期（可累加）"}
+        </span>
       </div>
     </div>
   );

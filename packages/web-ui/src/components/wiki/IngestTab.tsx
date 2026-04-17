@@ -30,7 +30,7 @@ export function IngestTab({ model, cart }: IngestTabProps) {
   const [activeAccount, setActiveAccount] = useState<string | null>(null);
   const [articles, setArticles] = useState<ArticleListItem[]>([]);
   const [search, setSearch] = useState("");
-  const [heatmapDate, setHeatmapDate] = useState<string | null>(null);
+  const [heatmapDates, setHeatmapDates] = useState<Set<string>>(() => new Set());
   const [showConfirm, setShowConfirm] = useState(false);
   const ingest = useIngestState();
 
@@ -41,7 +41,7 @@ export function IngestTab({ model, cart }: IngestTabProps) {
   }, []);
 
   useEffect(() => {
-    setHeatmapDate(null);
+    setHeatmapDates(new Set());
     if (!activeAccount) { setArticles([]); return; }
     void fetch(`/api/kb/accounts/${encodeURIComponent(activeAccount)}/articles?limit=3000`).then(async (r) => {
       if (r.ok) setArticles(await r.json());
@@ -50,15 +50,15 @@ export function IngestTab({ model, cart }: IngestTabProps) {
 
   const visibleArticles = useMemo(() => {
     let list = articles;
-    if (heatmapDate) {
-      list = list.filter((a) => a.published_at.startsWith(heatmapDate));
+    if (heatmapDates.size > 0) {
+      list = list.filter((a) => heatmapDates.has(a.published_at.slice(0, 10)));
     }
     if (search) {
       const q = search.toLowerCase();
       list = list.filter((a) => a.title.toLowerCase().includes(q));
     }
     return list;
-  }, [articles, search, heatmapDate]);
+  }, [articles, search, heatmapDates]);
 
   const duplicates = useMemo(() => new Set<string>(), []);
   const selectedIds = useMemo(() => new Set(cart.entries.map((e) => e.articleId)), [cart.entries]);
@@ -148,8 +148,13 @@ export function IngestTab({ model, cart }: IngestTabProps) {
               </div>
               <AccountHeatmap
                 account={activeAccount}
-                selectedDate={heatmapDate}
-                onDateSelect={setHeatmapDate}
+                selectedDates={heatmapDates}
+                onDateToggle={(d) => setHeatmapDates((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(d)) next.delete(d); else next.add(d);
+                  return next;
+                })}
+                onClearDates={() => setHeatmapDates(new Set())}
               />
             </div>
             <div className="flex items-center gap-2">
@@ -160,13 +165,14 @@ export function IngestTab({ model, cart }: IngestTabProps) {
                 leftSlot="⌕"
                 className="flex-1"
               />
-              {heatmapDate && (
+              {heatmapDates.size > 0 && (
                 <button
                   type="button"
-                  onClick={() => setHeatmapDate(null)}
-                  className="text-xs text-[var(--accent)] hover:underline px-2 py-1 rounded border border-[var(--accent-soft)] bg-[var(--accent-fill)]"
+                  onClick={() => setHeatmapDates(new Set())}
+                  className="text-xs text-[var(--accent)] hover:underline px-2 py-1 rounded border border-[var(--accent-soft)] bg-[var(--accent-fill)] whitespace-nowrap"
+                  title={Array.from(heatmapDates).sort().join(" · ")}
                 >
-                  {heatmapDate} 筛选中 ✕
+                  {heatmapDates.size === 1 ? Array.from(heatmapDates)[0] : `${heatmapDates.size} 天`} 筛选中 ✕
                 </button>
               )}
               {selectableVisible.length > 0 && (
