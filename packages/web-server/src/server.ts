@@ -95,7 +95,8 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
   registerStreamRoutes(app, { projectsDir: cfg.projectsDir });
 
   const configStore = createConfigStore(configPath);
-  // NOTE: legacy registerConfigRoutes superseded by SP-10 config-agents + config-project-overrides routes.
+  // Legacy routes/config.ts was removed — SP-10 config-agents + config-project-overrides
+  // are the active config routes; defaultModel GET/PATCH lives on /api/config/agents.
 
   const vaultRegistry = new ExpertRegistry(cfg.vaultPath);
   registerCasePlanRoutes(app, {
@@ -207,7 +208,7 @@ export async function buildApp(overrideConfig?: ServerConfig): Promise<FastifyIn
   );
 
   // SP-10 config workbench routes (stores created above, shared with writer routes)
-  registerConfigAgentsRoutes(app, { agentConfigStore });
+  registerConfigAgentsRoutes(app, { agentConfigStore, configStore });
   registerConfigStylePanelsRoutes(app, { stylePanelStore });
   registerConfigStylePanelsDistillRoutes(app, {
     vaultPath: configStore.current.vaultPath,

@@ -1,15 +1,42 @@
 import type { FastifyInstance } from "fastify";
 import type { AgentConfigEntry, AgentConfigStore } from "../services/agent-config-store.js";
+import type { ConfigStore } from "../services/config-store.js";
+import type { DefaultModelConfig } from "../config.js";
+
+const VALID_CLI = new Set(["claude", "codex"]);
 
 export interface ConfigAgentsDeps {
   agentConfigStore: AgentConfigStore;
+  configStore: ConfigStore;
 }
 
 export function registerConfigAgentsRoutes(app: FastifyInstance, deps: ConfigAgentsDeps): void {
   app.get("/api/config/agents", async (_req, reply) => {
     const agents = deps.agentConfigStore.getAll();
-    return reply.send({ agents });
+    return reply.send({ agents, defaultModel: deps.configStore.current.defaultModel });
   });
+
+  app.patch<{ Body: { defaultModel?: Partial<DefaultModelConfig> } }>(
+    "/api/config/agents",
+    async (req, reply) => {
+      const body = req.body ?? {};
+      if (body.defaultModel != null) {
+        for (const tier of ["writer", "other"] as const) {
+          const entry = body.defaultModel[tier];
+          if (entry === undefined) continue;
+          if (!entry || typeof entry !== "object") {
+            return reply.code(400).send({ error: `defaultModel.${tier}.cli must be claude|codex` });
+          }
+          const cli = (entry as { cli?: unknown }).cli;
+          if (typeof cli !== "string" || !VALID_CLI.has(cli)) {
+            return reply.code(400).send({ error: `defaultModel.${tier}.cli must be claude|codex` });
+          }
+        }
+        await deps.configStore.update({ defaultModel: body.defaultModel });
+      }
+      return reply.send({ ok: true });
+    },
+  );
 
   app.get<{ Params: { agentKey: string } }>(
     "/api/config/agents/:agentKey",
