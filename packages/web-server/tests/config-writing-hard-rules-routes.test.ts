@@ -64,4 +64,41 @@ describe('writing-hard-rules routes', () => {
     });
     expect(res.statusCode).toBe(400);
   });
+
+  it('PUT accepts word_count_overrides', async () => {
+    const { app } = await buildApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/config/writing-hard-rules',
+      payload: {
+        version: 1,
+        banned_phrases: [],
+        banned_vocabulary: [],
+        layout_rules: [],
+        word_count_overrides: {
+          opening: [180, 380],
+          closing: [160, 300],
+        },
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    const get = await app.inject({ method: 'GET', url: '/api/config/writing-hard-rules' });
+    expect(get.json().word_count_overrides.opening).toEqual([180, 380]);
+  });
+
+  it('PUT 400 on malformed word_count_overrides', async () => {
+    const { app } = await buildApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/config/writing-hard-rules',
+      payload: {
+        version: 1,
+        banned_phrases: [],
+        banned_vocabulary: [],
+        layout_rules: [],
+        word_count_overrides: { opening: [180, 'bad'] },
+      },
+    });
+    expect(res.statusCode).toBe(400);
+  });
 });

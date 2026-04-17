@@ -56,4 +56,28 @@ describe('HardRulesStore', () => {
     writeFileSync(join(tmp, 'writing-hard-rules.yaml'), 'version: 2\n', 'utf-8');
     await expect(store.read()).rejects.toThrow(/version/);
   });
+
+  it('seed includes default word_count_overrides', async () => {
+    const rules = await store.read();
+    expect(rules.word_count_overrides).toBeDefined();
+    expect(rules.word_count_overrides?.opening).toEqual([200, 400]);
+    expect(rules.word_count_overrides?.closing).toEqual([200, 350]);
+    expect(rules.word_count_overrides?.article).toEqual([3500, 8000]);
+  });
+
+  it('round-trips a custom word_count_overrides', async () => {
+    await store.write({
+      version: 1,
+      updated_at: '2026-04-17T00:00:00Z',
+      banned_phrases: [],
+      banned_vocabulary: [],
+      layout_rules: [],
+      word_count_overrides: {
+        opening: [180, 380],
+      },
+    });
+    const rules = await store.read();
+    expect(rules.word_count_overrides?.opening).toEqual([180, 380]);
+    expect(rules.word_count_overrides?.closing).toBeUndefined();
+  });
 });

@@ -23,6 +23,19 @@ export function registerWritingHardRulesRoutes(app: FastifyInstance, deps: Writi
           || !Array.isArray(body.layout_rules)) {
         return reply.code(400).send({ error: 'banned_phrases, banned_vocabulary, layout_rules must be arrays' });
       }
+      if (body.word_count_overrides !== undefined) {
+        const o = body.word_count_overrides;
+        if (typeof o !== 'object' || o === null || Array.isArray(o)) {
+          return reply.code(400).send({ error: 'word_count_overrides must be an object' });
+        }
+        for (const key of ['opening', 'closing', 'article'] as const) {
+          const v = (o as Record<string, unknown>)[key];
+          if (v === undefined) continue;
+          if (!Array.isArray(v) || v.length !== 2 || !v.every((n) => typeof n === 'number' && Number.isFinite(n))) {
+            return reply.code(400).send({ error: `word_count_overrides.${key} must be [min, max] numbers` });
+          }
+        }
+      }
       await deps.hardRulesStore.write(body);
       return reply.send({ ok: true });
     },

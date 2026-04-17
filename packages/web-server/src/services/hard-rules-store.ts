@@ -18,6 +18,13 @@ export interface WritingHardRules {
   banned_phrases: HardRulePhrase[];
   banned_vocabulary: HardRuleVocabulary[];
   layout_rules: string[];
+  /** Optional per-role total word-count override. When set, takes precedence
+   *  over panel's `### 字数范围` subsection text. Tuple is [min, max]. */
+  word_count_overrides?: {
+    opening?: [number, number];
+    closing?: [number, number];
+    article?: [number, number];
+  };
 }
 
 const FILENAME = 'writing-hard-rules.yaml';
@@ -37,6 +44,11 @@ const DEFAULT_RULES: WritingHardRules = {
     '段落平均字数 ≤ 80',
     '段与段之间必须有空行',
   ],
+  word_count_overrides: {
+    opening: [200, 400],
+    closing: [200, 350],
+    article: [3500, 8000],
+  },
 };
 
 export class HardRulesStore {
