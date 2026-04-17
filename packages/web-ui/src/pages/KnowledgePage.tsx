@@ -79,23 +79,29 @@ export function KnowledgePage() {
   }
 
   // Ingest button state: running > error > cart > idle
-  type IngestBtnState =
-    | { variant: "primary" | "secondary" | "danger"; suffix: string | null; dot: boolean; chipVariant?: "amber" | "red" | "accent" | "neutral"; chipLabel?: string };
+  type IngestBtnState = {
+    variant: "primary" | "secondary" | "danger";
+    label: string;
+    dotColor?: string;
+    chipVariant?: "amber" | "red" | "accent" | "neutral";
+    chipLabel?: string;
+    showPlus?: boolean;
+  };
 
   const ingestButton: IngestBtnState = (() => {
     if (mode === "ingest") {
-      return { variant: "secondary", suffix: null, dot: false };
+      return { variant: "secondary", label: "← 回到浏览" };
     }
     if (ingest.status === "running") {
-      return { variant: "primary", suffix: null, dot: true, chipVariant: "amber", chipLabel: "运行中" };
+      return { variant: "secondary", label: "入库中", dotColor: "var(--amber)" };
     }
     if (ingest.status === "error") {
-      return { variant: "danger", suffix: null, dot: false, chipVariant: "red", chipLabel: "失败" };
+      return { variant: "secondary", label: "入库失败", dotColor: "var(--red)" };
     }
     if (cart.totalCount > 0) {
-      return { variant: "primary", suffix: null, dot: false, chipVariant: "accent", chipLabel: `已选 ${cart.totalCount}` };
+      return { variant: "primary", label: "入库", showPlus: true, chipVariant: "accent", chipLabel: `${cart.totalCount}` };
     }
-    return { variant: "secondary", suffix: null, dot: false };
+    return { variant: "primary", label: "入库", showPlus: true };
   })();
 
   return (
@@ -108,12 +114,18 @@ export function KnowledgePage() {
             variant={ingestButton.variant}
             size="sm"
             onClick={() => setMode(mode === "browse" ? "ingest" : "browse")}
-            leftSlot={ingestButton.dot ? <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" /> : undefined}
+            leftSlot={
+              ingestButton.dotColor
+                ? <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: ingestButton.dotColor }} />
+                : ingestButton.showPlus
+                ? "＋"
+                : undefined
+            }
             rightSlot={ingestButton.chipLabel ? (
               <Chip variant={ingestButton.chipVariant ?? "neutral"} size="sm" tone="solid">{ingestButton.chipLabel}</Chip>
             ) : undefined}
           >
-            {mode === "ingest" ? "← 回到浏览" : "入库"}
+            {ingestButton.label}
           </Button>
         </div>
         <div className="flex items-center gap-3">
@@ -220,14 +232,18 @@ export function KnowledgePage() {
         </div>
       )}
 
-      {(ingest.status !== "idle" || ingest.events.length > 0) && (
-        <IngestConsoleFab
-          events={ingest.events}
-          status={ingest.status}
-          error={ingest.error}
-          onDismiss={ingest.dismiss}
-        />
-      )}
+      <IngestConsoleFab
+        events={ingest.events}
+        status={ingest.status}
+        error={ingest.error}
+        onDismiss={ingest.dismiss}
+        onOpenPage={(p) => {
+          setMode("browse");
+          setHits(null);
+          setQ("");
+          setSelected(p);
+        }}
+      />
       <RawArticleDrawer
         open={drawerSource !== null}
         account={drawerSource?.account ?? null}

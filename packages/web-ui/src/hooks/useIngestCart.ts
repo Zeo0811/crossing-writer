@@ -20,6 +20,8 @@ export interface UseIngestCartReturn {
   has: (articleId: string) => boolean;
   toggle: (entry: CartEntry) => void;
   remove: (articleId: string) => void;
+  addMany: (entries: CartEntry[]) => void;
+  removeMany: (articleIds: string[]) => void;
   clear: () => void;
 }
 
@@ -42,6 +44,16 @@ export function useIngestCart({ maxArticles }: UseIngestCartInput): UseIngestCar
   const remove = useCallback((id: string) => {
     setEntries((prev) => prev.filter((e) => e.articleId !== id));
   }, []);
+  const addMany = useCallback((toAdd: CartEntry[]) => {
+    setEntries((prev) => {
+      const existing = new Set(prev.map((e) => e.articleId));
+      return [...prev, ...toAdd.filter((e) => !existing.has(e.articleId))];
+    });
+  }, []);
+  const removeMany = useCallback((ids: string[]) => {
+    const s = new Set(ids);
+    setEntries((prev) => prev.filter((e) => !s.has(e.articleId)));
+  }, []);
   const clear = useCallback(() => setEntries([]), []);
 
   return {
@@ -49,6 +61,6 @@ export function useIngestCart({ maxArticles }: UseIngestCartInput): UseIngestCar
     totalCount: entries.length,
     perAccountCount,
     exceedsMax: entries.length > maxArticles,
-    has, toggle, remove, clear,
+    has, toggle, remove, addMany, removeMany, clear,
   };
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { IngestStreamEvent } from "../../api/wiki-client";
+import { formatBeijingTime } from "../../utils/time";
 
 export interface IngestProgressViewProps {
   events: IngestStreamEvent[];
@@ -8,7 +9,7 @@ export interface IngestProgressViewProps {
 }
 
 function fmt(e: IngestStreamEvent): { ts: string; tag: string; text: string; tone: "info" | "ok" | "err" } {
-  const ts = new Date().toISOString().slice(11, 19);
+  const ts = formatBeijingTime(e.receivedAt ?? new Date().toISOString());
   const anyE = e as unknown as Record<string, unknown>;
   switch (e.type) {
     case "run_started":

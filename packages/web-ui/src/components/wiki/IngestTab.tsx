@@ -73,6 +73,25 @@ export function IngestTab({ model, cart }: IngestTabProps) {
     cart.toggle(entry);
   }
 
+  const selectableVisible = useMemo(
+    () => visibleArticles.filter((a) => !duplicates.has(a.id)),
+    [visibleArticles, duplicates],
+  );
+  const allVisibleSelected =
+    selectableVisible.length > 0 && selectableVisible.every((a) => selectedIds.has(a.id));
+
+  function toggleSelectAll() {
+    if (!activeAccount || selectableVisible.length === 0) return;
+    if (allVisibleSelected) {
+      cart.removeMany(selectableVisible.map((a) => a.id));
+    } else {
+      cart.addMany(selectableVisible.map((a) => ({
+        articleId: a.id, account: activeAccount, title: a.title,
+        publishedAt: a.published_at, wordCount: a.word_count,
+      })));
+    }
+  }
+
   function handleConfirm(payload: IngestStartArgs) {
     setShowConfirm(false);
     ingest.start(payload);
@@ -148,6 +167,20 @@ export function IngestTab({ model, cart }: IngestTabProps) {
                   className="text-xs text-[var(--accent)] hover:underline px-2 py-1 rounded border border-[var(--accent-soft)] bg-[var(--accent-fill)]"
                 >
                   {heatmapDate} 筛选中 ✕
+                </button>
+              )}
+              {selectableVisible.length > 0 && (
+                <button
+                  type="button"
+                  data-testid="select-all-visible"
+                  onClick={toggleSelectAll}
+                  className={`text-xs px-3 h-8 rounded border whitespace-nowrap shrink-0 ${
+                    allVisibleSelected
+                      ? "text-[var(--accent)] border-[var(--accent-soft)] bg-[var(--accent-fill)] hover:bg-[rgba(64,255,159,0.15)]"
+                      : "text-[var(--body)] border-[var(--hair)] bg-[var(--bg-2)] hover:bg-[var(--bg-1)] hover:border-[var(--hair-strong)]"
+                  }`}
+                >
+                  {allVisibleSelected ? `取消全选 ${selectableVisible.length}` : `全选 ${selectableVisible.length} 篇`}
                 </button>
               )}
             </div>

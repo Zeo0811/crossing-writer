@@ -28,7 +28,7 @@ export function IngestProvider({ children }: { children: ReactNode }) {
     setError(null);
     startIngestStream(
       args,
-      (e) => setEvents((prev) => [...prev, e]),
+      (e) => setEvents((prev) => [...prev, { ...e, receivedAt: new Date().toISOString() }]),
       () => {
         setStatus("done");
         runningRef.current = false;

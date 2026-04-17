@@ -15,7 +15,7 @@ export interface AccountSidebarProps {
 
 export function AccountSidebar({ accounts, active, cartPerAccount, onSelect }: AccountSidebarProps) {
   return (
-    <aside className="w-[220px] shrink-0 bg-[var(--bg-2)] rounded p-3 overflow-auto max-h-[70vh]">
+    <aside className="w-full h-full bg-[var(--bg-2)] rounded p-3 overflow-auto">
       <div className="text-xs text-[var(--meta)] font-semibold mb-2">账号（{accounts.length}）</div>
       <ul className="space-y-1">
         {accounts.map((a) => {
