@@ -164,7 +164,7 @@ export function SectionCard({ projectId, sectionKey, label, initialBody }: Secti
         />
       )}
 
-      {isRewriting && (
+      {isRewriting && state.mode !== 'view' && state.mode !== 'edit' && (
         <RewriteModal
           label={label}
           mode={state.mode}

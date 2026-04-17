@@ -594,6 +594,7 @@ function ConsoleFab({ projectId, events, connectionState, lastEventTs }: { proje
 
 export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: string } = {}) {
   const params = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const projectId = propProjectId ?? params.id ?? "";
 
   const [project, setProject] = useState<any>(null);

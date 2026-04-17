@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { createPortal } from 'react-dom';
-import { ToolTimeline, type TimelineEvent } from './ToolTimeline.js';
+import { type TimelineEvent } from './ToolTimeline.js';
 import { SectionDiff } from './SectionDiff.js';
 import { MentionDropdown, SKILL_ITEMS, type MentionSkillItem } from './MentionDropdown.js';
 
@@ -214,7 +214,7 @@ export function RewriteModal(props: RewriteModalProps) {
 
   // Compute dropdown position anchored to the textarea. Rendered at body
   // scope so it can float above the modal scroll area without being clipped.
-  let dropdown: JSX.Element | null = null;
+  let dropdown: ReactElement | null = null;
   if (mention.active) {
     const rect = hintTaRef.current?.getBoundingClientRect();
     if (rect) {
