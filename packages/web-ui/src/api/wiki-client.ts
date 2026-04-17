@@ -76,12 +76,15 @@ export async function status(): Promise<WikiStatus> {
 
 export interface IngestStartArgs {
   accounts: string[];
+  article_ids?: string[];
   per_account_limit: number;
   batch_size: number;
-  mode: "full" | "incremental";
+  mode: "full" | "incremental" | "selected";
   since?: string;
   until?: string;
   cli_model?: { cli: "claude" | "codex"; model?: string };
+  max_articles?: number;
+  force_reingest?: boolean;
 }
 
 export interface IngestStream {
@@ -199,4 +202,24 @@ export async function getRawArticle(account: string, id: string): Promise<RawArt
   const r = await fetch(`/api/kb/raw-articles/${encodeURIComponent(account)}/${encodeURIComponent(id)}`);
   if (!r.ok) throw new Error(`getRawArticle ${r.status}`);
   return (await r.json()) as RawArticle;
+}
+
+export interface DupCheckResult {
+  already_ingested: Array<{
+    article_id: string;
+    first_ingested_at: string;
+    last_ingested_at: string;
+    last_run_id: string;
+  }>;
+  fresh: string[];
+}
+
+export async function checkDuplicates(articleIds: string[]): Promise<DupCheckResult> {
+  const r = await fetch("/api/kb/wiki/check-duplicates", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ article_ids: articleIds }),
+  });
+  if (!r.ok) throw new Error(`checkDuplicates ${r.status}`);
+  return (await r.json()) as DupCheckResult;
 }
