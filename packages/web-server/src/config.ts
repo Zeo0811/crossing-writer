@@ -43,6 +43,9 @@ function normalizeAgentModel(entry: { cli?: string; model?: unknown }): DefaultM
   // Nested AgentConfigEntry shape: model is { cli, model? }
   if (entry.model && typeof entry.model === "object") {
     const nested = entry.model as { cli?: string; model?: string };
+    // Nested shape: the inner AgentModelConfig.cli is authoritative — the outer
+    // cli field on AgentConfig is historically from when the two shapes were
+    // merged via `as never`, and does not reflect the runtime CLI choice.
     const nestedCli = (nested.cli === "codex" ? "codex" : "claude") as "claude" | "codex";
     return {
       cli: nestedCli,
