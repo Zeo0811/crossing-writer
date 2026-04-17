@@ -1,0 +1,186 @@
+import { describe, it, expect } from 'vitest';
+import {
+  extractSubsection,
+  renderHardRulesBlock,
+  renderBookendPrompt,
+  type WritingHardRules,
+  type PanelFrontmatterLike,
+} from '../src/roles/writer-shared.js';
+
+describe('extractSubsection', () => {
+  const SECTION = `### 目标
+给读者钩子。
+
+### 字数范围
+150 – 260 字
+
+### 结构骨架（三选一）
+**A. 场景** · xxx
+**B. 数据** · yyy
+
+### 高频锚词
+- 锚词 1
+- 锚词 2
+
+### 禁止出现
+- 禁词
+
+### 示例
+**示例 1** · 某篇 · 结构 A
+> 示例正文
+`;
+
+  it('extracts "目标" content', () => {
+    expect(extractSubsection(SECTION, '目标')).toBe('给读者钩子。');
+  });
+
+  it('extracts "字数范围" content', () => {
+    expect(extractSubsection(SECTION, '字数范围')).toBe('150 – 260 字');
+  });
+
+  it('extracts "结构骨架" heading included subsection', () => {
+    const out = extractSubsection(SECTION, '结构骨架（三选一）');
+    expect(out).toContain('**A. 场景**');
+    expect(out).toContain('**B. 数据**');
+  });
+
+  it('returns empty string when subsection missing', () => {
+    expect(extractSubsection(SECTION, '不存在')).toBe('');
+  });
+
+  it('handles last subsection up to end of string', () => {
+    expect(extractSubsection(SECTION, '示例')).toContain('示例 1');
+  });
+});
+
+describe('renderHardRulesBlock', () => {
+  const RULES: WritingHardRules = {
+    version: 1,
+    updated_at: '2026-04-17T00:00:00Z',
+    banned_phrases: [
+      { pattern: '不是.+?而是', is_regex: true, reason: '烂大街' },
+      { pattern: '正如所见', is_regex: false, reason: '翻译腔' },
+    ],
+    banned_vocabulary: [
+      { word: '笔者', reason: '第三人称不自然' },
+    ],
+    layout_rules: ['段落 ≤ 80 字', '段与段之间必须有空行'],
+  };
+
+  it('renders all three sections with merged vocab', () => {
+    const out = renderHardRulesBlock(RULES, ['炸裂了', '绝绝子']);
+    expect(out).toContain('## 写作硬规则');
+    expect(out).toContain('不是.+?而是');
+    expect(out).toContain('正如所见');
+    expect(out).toContain('笔者');
+    expect(out).toContain('炸裂了');
+    expect(out).toContain('绝绝子');
+    expect(out).toContain('段落 ≤ 80 字');
+  });
+
+  it('handles empty arrays gracefully', () => {
+    const empty: WritingHardRules = {
+      version: 1,
+      updated_at: '',
+      banned_phrases: [],
+      banned_vocabulary: [],
+      layout_rules: [],
+    };
+    const out = renderHardRulesBlock(empty, []);
+    expect(out).toContain('（无）');
+  });
+
+  it('dedupes vocab between global and panel', () => {
+    const out = renderHardRulesBlock(RULES, ['笔者', '新词']);
+    const matches = out.match(/^  - 笔者$/gm) ?? [];
+    expect(matches).toHaveLength(1);
+    expect(out).toContain('新词');
+  });
+});
+
+describe('renderBookendPrompt', () => {
+  const PANEL_FM: PanelFrontmatterLike = {
+    word_count_ranges: { opening: [150, 260], article: [3500, 8000] },
+    pronoun_policy: { we_ratio: 0.4, you_ratio: 0.3, avoid: ['笔者'] },
+    tone: { primary: '客观克制', humor_frequency: 'low', opinionated: 'mid' },
+    bold_policy: {
+      frequency: '每段 0-2 处',
+      what_to_bold: ['核心观点句'],
+      dont_bold: ['整段'],
+    },
+    transition_phrases: ['先说 XXX', '重点来了：'],
+    data_citation: { required: true, format_style: '数字+单位+来源', min_per_article: 1 },
+  };
+
+  const TYPE_SECTION = `### 目标
+给读者钩子。
+
+### 字数范围
+150 – 260 字
+
+### 结构骨架（三选一）
+**A. 场景** · xxx
+
+### 高频锚词
+- "2013 年"
+
+### 禁止出现
+- "本文将介绍"
+
+### 示例
+**示例 1** · ColaOS · 结构 A
+> 2013 年...
+`;
+
+  it('renders opening prompt with role-specific section', () => {
+    const out = renderBookendPrompt({
+      role: 'opening',
+      account: '十字路口Crossing',
+      articleType: '实测',
+      typeSection: TYPE_SECTION,
+      panelFrontmatter: PANEL_FM,
+      hardRulesBlock: '## 写作硬规则\n（略）',
+      projectContextBlock: '## 项目上下文\n(brief...)',
+      product_name: 'Floatboat',
+    });
+    expect(out).toContain('本次任务只写**一段**：**开头**');
+    expect(out).not.toContain('本次任务只写**一段**：**结尾**');
+    expect(out).toContain('150-260 字');
+    expect(out).toContain('给读者钩子。');
+    expect(out).toContain('十字路口Crossing');
+    expect(out).toContain('Floatboat');
+    expect(out).toContain('客观克制');
+    expect(out).toContain('先说 XXX');
+    // No unreplaced placeholders
+    expect(out).not.toMatch(/\{\{[^}]+\}\}/);
+  });
+
+  it('renders closing prompt with role-specific section', () => {
+    const out = renderBookendPrompt({
+      role: 'closing',
+      account: '十字路口Crossing',
+      articleType: '实测',
+      typeSection: TYPE_SECTION,
+      panelFrontmatter: PANEL_FM,
+      hardRulesBlock: '## 写作硬规则',
+      projectContextBlock: '## 项目上下文',
+    });
+    expect(out).toContain('本次任务只写**一段**：**结尾**');
+    expect(out).not.toContain('本次任务只写**一段**：**开头**');
+    expect(out).toContain('结尾');
+    expect(out).not.toMatch(/\{\{[^}]+\}\}/);
+  });
+
+  it('handles missing product_name / guest_name gracefully', () => {
+    const out = renderBookendPrompt({
+      role: 'opening',
+      account: 'acc',
+      articleType: '实测',
+      typeSection: TYPE_SECTION,
+      panelFrontmatter: PANEL_FM,
+      hardRulesBlock: '',
+      projectContextBlock: '',
+    });
+    expect(out).not.toMatch(/\{\{[^}]+\}\}/);
+  });
+});
