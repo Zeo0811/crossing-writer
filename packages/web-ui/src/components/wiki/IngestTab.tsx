@@ -7,7 +7,7 @@ import { IngestCartBar } from "./IngestCartBar";
 import { IngestConfirmDialog } from "./IngestConfirmDialog";
 import { useIngestCart, type CartEntry } from "../../hooks/useIngestCart";
 import { useIngestState } from "../../hooks/useIngestState";
-import { Input, Button } from "../ui";
+import { Input } from "../ui";
 import type { IngestStartArgs } from "../../api/wiki-client";
 
 interface AccountStat {
@@ -66,6 +66,11 @@ export function IngestTab({ model }: IngestTabProps) {
     cart.toggle(entry);
   }
 
+  function toggleFromHeatmap(articleId: string, title: string, publishedAt: string, wordCount: number | null) {
+    if (!activeAccount) return;
+    cart.toggle({ articleId, account: activeAccount, title, publishedAt, wordCount });
+  }
+
   async function handleQuickAdd(account: string) {
     setQuickAddLoading(account);
     try {
@@ -108,26 +113,31 @@ export function IngestTab({ model }: IngestTabProps) {
         />
       ) : (
         <div className="flex gap-4">
-          <div className="w-[220px] shrink-0">
-            <Button variant="ghost" size="sm" onClick={() => setActiveAccount(null)} className="mb-2 w-full justify-start">
-              ← 所有账号
-            </Button>
-            <AccountSidebar
-              accounts={accounts}
-              active={activeAccount}
-              cartPerAccount={cart.perAccountCount}
-              onSelect={setActiveAccount}
-            />
-          </div>
+          <AccountSidebar
+            accounts={accounts}
+            active={activeAccount}
+            cartPerAccount={cart.perAccountCount}
+            onSelect={setActiveAccount}
+          />
           <main className="flex-1 min-w-0 space-y-4">
-            <div className="rounded bg-[var(--bg-2)] p-4">
-              <div className="flex items-center justify-between mb-2">
+            <div className="rounded bg-[var(--bg-2)] p-4 w-fit max-w-full">
+              <div className="flex items-center gap-3 mb-3">
                 <h2 className="text-sm font-semibold text-[var(--heading)]">{activeAccount}</h2>
                 <span className="text-xs text-[var(--faint)]">
                   {accounts.find((a) => a.account === activeAccount)?.count ?? 0} 篇
                 </span>
+                <span className="flex-1" />
+                <button
+                  type="button"
+                  onClick={() => setActiveAccount(null)}
+                  aria-label="返回所有账号"
+                  title="返回所有账号"
+                  className="w-6 h-6 flex items-center justify-center rounded text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-1)]"
+                >
+                  ✕
+                </button>
               </div>
-              <AccountHeatmap account={activeAccount} />
+              <AccountHeatmap account={activeAccount} onArticleClick={toggleFromHeatmap} />
             </div>
             <Input
               value={search}

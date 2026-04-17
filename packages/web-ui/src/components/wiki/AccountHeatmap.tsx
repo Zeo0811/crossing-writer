@@ -26,10 +26,11 @@ function weekStart(d: Date): Date {
 
 export function AccountHeatmap({ account, onArticleClick }: Props) {
   const [articles, setArticles] = useState<Article[] | null>(null);
-  const [hoveredDate, setHoveredDate] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   useEffect(() => {
     setArticles(null);
+    setSelectedDate(null);
     fetch(`/api/kb/accounts/${encodeURIComponent(account)}/articles?limit=3000`)
       .then((r) => r.json())
       .then(setArticles)
@@ -89,10 +90,10 @@ export function AccountHeatmap({ account, onArticleClick }: Props) {
     return { cells, weeks: totalWeeks, months };
   }, [articles]);
 
-  const hoveredArticles = useMemo(() => {
-    if (!hoveredDate || !articles) return [];
-    return articles.filter((a) => a.published_at.startsWith(hoveredDate));
-  }, [hoveredDate, articles]);
+  const popupArticles = useMemo(() => {
+    if (!selectedDate || !articles) return [];
+    return articles.filter((a) => a.published_at.startsWith(selectedDate));
+  }, [selectedDate, articles]);
 
   if (articles === null) return <div className="py-4 text-xs text-[var(--meta)]">加载 {account} 的文章…</div>;
   if (articles.length === 0) return <div className="py-4 text-xs text-[var(--faint)]">该账号无文章</div>;
@@ -125,6 +126,7 @@ export function AccountHeatmap({ account, onArticleClick }: Props) {
             }
             const allIngested = c.ingested === c.total;
             const partial = c.ingested > 0 && c.ingested < c.total;
+            const isSelected = selectedDate === c.date;
             const fill = allIngested
               ? "var(--accent)"
               : partial
@@ -141,9 +143,10 @@ export function AccountHeatmap({ account, onArticleClick }: Props) {
                 rx={2}
                 fill={fill}
                 opacity={opacity}
+                stroke={isSelected ? "var(--accent)" : "none"}
+                strokeWidth={isSelected ? 2 : 0}
                 className="cursor-pointer"
-                onMouseEnter={() => setHoveredDate(c.date)}
-                onMouseLeave={() => setHoveredDate(null)}
+                onClick={() => setSelectedDate((prev) => prev === c.date ? null : c.date)}
               />
             );
           })}
@@ -160,21 +163,32 @@ export function AccountHeatmap({ account, onArticleClick }: Props) {
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-sm" style={{ background: "var(--accent)" }} /> 全部入库
         </span>
+        <span className="ml-auto text-[10px] text-[var(--faint)]">点击格子查看当日文章</span>
       </div>
 
-      {hoveredDate && hoveredArticles.length > 0 && (
-        <div className="rounded bg-[var(--bg-2)] p-3">
-          <div className="text-xs text-[var(--meta)] font-semibold mb-2">
-            {formatBeijingDate(hoveredDate)} · {hoveredArticles.length} 篇
+      {selectedDate && popupArticles.length > 0 && (
+        <div className="rounded bg-[var(--bg-1)] p-3 border border-[var(--accent-soft)]">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs text-[var(--meta)] font-semibold">
+              {formatBeijingDate(selectedDate)} · {popupArticles.length} 篇
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedDate(null)}
+              aria-label="关闭"
+              className="w-5 h-5 flex items-center justify-center rounded text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"
+            >
+              ✕
+            </button>
           </div>
-          <div className="space-y-1 max-h-[200px] overflow-auto">
-            {hoveredArticles.map((a) => {
+          <div className="space-y-1 max-h-[240px] overflow-auto">
+            {popupArticles.map((a) => {
               const isRaw = a.ingest_status === "raw" || a.ingest_status === "tag_failed";
               return (
                 <div
                   key={a.id}
                   className={`flex items-center gap-2 px-2 py-1 rounded text-xs ${
-                    isRaw && onArticleClick ? "cursor-pointer hover:bg-[var(--bg-1)]" : ""
+                    isRaw && onArticleClick ? "cursor-pointer hover:bg-[var(--bg-2)]" : ""
                   }`}
                   onClick={() => isRaw && onArticleClick?.(a.id, a.title, a.published_at, a.word_count)}
                 >
