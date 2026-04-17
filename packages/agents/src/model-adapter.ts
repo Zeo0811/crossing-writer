@@ -342,11 +342,28 @@ export async function invokeAgent(opts: InvokeOptions): Promise<AgentResult> {
   // keep it off otherwise so the agent stays sandboxed.
   // --output-format stream-json + --verbose: emit NDJSON stream so we can intercept
   //   tool_use / tool_result events live and surface them in the project console.
+  // Lock the subprocess down so it doesn't inherit the user's MCP servers,
+  // SessionStart hooks, or plugin skills. Without this:
+  //   - claude CLI loads 40+ MCP tools at startup (Gmail / Notion / Calendar / …)
+  //   - superpowers SessionStart hook injects the "using-superpowers" skill
+  //     text into the context (≈ 40K tokens of cached input per call)
+  //   - The model frequently tries to call a MCP tool "to check if a skill
+  //     applies" before it will emit the requested JSON, triggering a
+  //     permission denial round-trip
+  // Net effect measured: single-article test went from 18s / 54K cached tokens
+  // to 10s / 14K cached tokens after disabling both.
+  const emptyMcpConfig = join(tmpdir(), "crossing-agent-empty-mcp.json");
+  try {
+    writeFileSync(emptyMcpConfig, `{"mcpServers":{}}`, "utf-8");
+  } catch { /* tmp already writable from earlier sessions */ }
   const args = [
     "-p", "-",
     "--output-format", "stream-json",
     "--verbose",
     "--tools", images.length > 0 ? "Read" : "",
+    "--disable-slash-commands",
+    "--strict-mcp-config",
+    "--mcp-config", emptyMcpConfig,
     ...addDirArgs,
     ...(opts.model ? ["--model", opts.model] : []),
   ];
