@@ -717,8 +717,15 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
         </Button>
       </header>
 
-      <div className="px-6 pt-4 pb-3">
+      <div
+        className={
+          status === 'writing_ready' || status === 'writing_editing'
+            ? 'px-6 pt-4 pb-3 grid grid-cols-[1fr_220px] gap-5'
+            : 'px-6 pt-4 pb-3'
+        }
+      >
         <PhaseSteps status={status} />
+        {(status === 'writing_ready' || status === 'writing_editing') && <div />}
       </div>
 
       <main className="px-6 py-5">
