@@ -1,10 +1,10 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import pLimit from 'p-limit';
 import type { ArticleSample, DistillV2Options, DistillV2Result } from './types.js';
 import { splitParagraphs } from './paragraph-splitter.js';
-import { labelArticle, type LabelerInvoke } from './article-labeler.js';
+import { labelArticlesBatch } from './article-labeler.js';
 import { aggregateBuckets } from './aggregator-v2.js';
 import { composePanel, type ComposerInvoke } from './composer-v2.js';
 import { WRITER_ROLES } from './panel-v2-schema.js';
@@ -36,28 +36,45 @@ export async function runDistillV2(
     const samples = pool.slice(0, opts.sampleSize);
     emit('sampling.done', { actual_count: samples.length });
 
-    // [2] Per-article Labeling (parallel up to LABEL_CONCURRENCY)
+    // [2] Per-article Labeling — batched for cost (5 articles per sonnet call).
+    // Paragraph pre-splitting stays per-article (pure compute, sequential).
     const paragraphsByArticle = new Map<string, string[]>();
+    for (const sample of samples) {
+      const sourceBody = loadArticleBody(ctx.vaultPath, sample);
+      const paragraphs = splitParagraphs(sourceBody);
+      paragraphsByArticle.set(sample.id, paragraphs);
+    }
+
+    const BATCH_SIZE = 5;
+    const batches: (typeof samples)[] = [];
+    for (let i = 0; i < samples.length; i += BATCH_SIZE) {
+      batches.push(samples.slice(i, i + BATCH_SIZE));
+    }
+
     const limit = pLimit(LABEL_CONCURRENCY);
     let doneCount = 0;
 
-    const labeled = await Promise.all(
-      samples.map((sample) =>
+    const labeledNested = await Promise.all(
+      batches.map((batch) =>
         limit(async () => {
-          const paragraphs = splitParagraphs(sample.body_plain);
-          paragraphsByArticle.set(sample.id, paragraphs);
-          const invoke: LabelerInvoke = { invoke: opts.invokeLabeler, paragraphs };
-          const result = await labelArticle(sample, invoke);
-          doneCount += 1;
-          emit('labeling.article_done', {
-            id: sample.id,
-            type: result.type,
-            progress: `${doneCount}/${samples.length}`,
-          });
-          return result;
+          const items = batch.map((sample) => ({
+            sample,
+            paragraphs: paragraphsByArticle.get(sample.id) ?? [],
+          }));
+          const results = await labelArticlesBatch(items, opts.invokeLabeler);
+          for (const r of results) {
+            doneCount += 1;
+            emit('labeling.article_done', {
+              id: r.articleId,
+              type: r.type,
+              progress: `${doneCount}/${samples.length}`,
+            });
+          }
+          return results;
         }),
       ),
     );
+    const labeled = labeledNested.flat();
     emit('labeling.all_done', {});
 
     // [3] Aggregation (pure JS)
@@ -89,12 +106,16 @@ export async function runDistillV2(
   }
 }
 
+interface ArticleSampleWithPath extends ArticleSample {
+  md_path: string;
+}
+
 function loadPool(
   sqlitePath: string,
   account: string,
   since?: string,
   until?: string,
-): ArticleSample[] {
+): ArticleSampleWithPath[] {
   const db = new Database(sqlitePath, { readonly: true, fileMustExist: true });
   try {
     const where: string[] = ['account = @account'];
@@ -107,7 +128,7 @@ function loadPool(
       where.push('published_at <= @until');
       params.until = until;
     }
-    const sql = `SELECT id, account, title, published_at, word_count, body_plain
+    const sql = `SELECT id, account, title, published_at, word_count, body_plain, md_path
                  FROM ref_articles
                  WHERE ${where.join(' AND ')}
                  ORDER BY published_at DESC`;
@@ -118,6 +139,7 @@ function loadPool(
       published_at: string;
       word_count: number | null;
       body_plain: string | null;
+      md_path: string;
     }>;
     return rows.map((r) => ({
       id: r.id,
@@ -126,8 +148,26 @@ function loadPool(
       published_at: r.published_at,
       word_count: r.word_count ?? (r.body_plain ?? '').length,
       body_plain: r.body_plain ?? '',
+      md_path: r.md_path,
     }));
   } finally {
     db.close();
   }
+}
+
+/**
+ * Prefer the markdown file on disk (has real \n\n paragraph breaks) over
+ * the sqlite body_plain column (which is whitespace-collapsed to one line).
+ * Strip the YAML frontmatter before returning.
+ */
+function loadArticleBody(vaultPath: string, sample: ArticleSample & { md_path?: string }): string {
+  const mdPath = sample.md_path;
+  if (mdPath) {
+    const abs = join(vaultPath, mdPath);
+    if (existsSync(abs)) {
+      const raw = readFileSync(abs, 'utf-8');
+      return raw.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '');
+    }
+  }
+  return sample.body_plain;
 }

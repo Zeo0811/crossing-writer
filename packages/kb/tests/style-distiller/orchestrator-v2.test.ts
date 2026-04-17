@@ -10,13 +10,15 @@ function buildDb(path: string) {
   db.exec(`
     CREATE TABLE ref_articles (
       id TEXT PRIMARY KEY, account TEXT, title TEXT,
-      published_at TEXT, word_count INTEGER, body_plain TEXT
+      published_at TEXT, word_count INTEGER, body_plain TEXT, md_path TEXT
     );
   `);
-  const ins = db.prepare(`INSERT INTO ref_articles VALUES (?,?,?,?,?,?)`);
-  ins.run('a1', 'acc', '实测 X', '2026-01-01', 500, '开头段\n\n主体段\n\n结尾段');
-  ins.run('a2', 'acc', '访谈 Y', '2026-02-01', 500, '访谈开头\n\n访谈主体\n\n访谈结尾');
-  ins.run('a3', 'acc', '评论 Z', '2026-03-01', 500, '评论开头\n\n评论主体\n\n评论结尾');
+  const ins = db.prepare(`INSERT INTO ref_articles VALUES (?,?,?,?,?,?,?)`);
+  // md_path empty so orchestrator falls back to body_plain (preserves legacy
+  // test behavior — body_plain strings here DO contain \n\n breaks).
+  ins.run('a1', 'acc', '实测 X', '2026-01-01', 500, '开头段\n\n主体段\n\n结尾段', '');
+  ins.run('a2', 'acc', '访谈 Y', '2026-02-01', 500, '访谈开头\n\n访谈主体\n\n访谈结尾', '');
+  ins.run('a3', 'acc', '评论 Z', '2026-03-01', 500, '评论开头\n\n评论主体\n\n评论结尾', '');
   db.close();
 }
 
@@ -30,20 +32,31 @@ describe('runDistillV2', () => {
     const sqlite = join(tmp, 'ref.db');
     buildDb(sqlite);
 
-    // Mock labeler: returns type based on title keyword
+    // Mock labeler: batch-aware, returns type based on article content
     const invokeLabeler = vi.fn(async (opts: any) => {
       const text = opts.userMessage as string;
-      let type: string;
-      if (text.includes('实测')) type = '实测';
-      else if (text.includes('访谈')) type = '访谈';
-      else type = '评论';
-      const pMatches = Array.from(text.matchAll(/P(\d+)\|/g)).map((m) => +m[1]!);
-      const lines = pMatches.map((n, i) => {
-        const role = i === 0 ? 'opening' : i === pMatches.length - 1 ? 'closing' : 'practice';
-        return `  P${n}: ${role}`;
-      }).join('\n');
+      // Split into ARTICLE <id>: blocks
+      const blocks = text.split(/(?:^|\n\n)ARTICLE /).filter((b) => b.trim());
+      const lines: string[] = ['articles:'];
+      for (const block of blocks) {
+        const idMatch = /^([^:]+):/.exec(block);
+        if (!idMatch) continue;
+        const articleId = idMatch[1]!.trim();
+        let type: string;
+        if (block.includes('实测')) type = '实测';
+        else if (block.includes('访谈')) type = '访谈';
+        else type = '评论';
+        const pMatches = Array.from(block.matchAll(/P(\d+)\|/g)).map((m) => +m[1]!);
+        lines.push(`  ${articleId}:`);
+        lines.push(`    article_type: ${type}`);
+        lines.push(`    paragraphs:`);
+        pMatches.forEach((n, i) => {
+          const role = i === 0 ? 'opening' : i === pMatches.length - 1 ? 'closing' : 'practice';
+          lines.push(`      P${n}: ${role}`);
+        });
+      }
       return {
-        text: `article_type: ${type}\nparagraphs:\n${lines}`,
+        text: lines.join('\n'),
         meta: { cli: 'claude', durationMs: 50 },
       };
     });
@@ -158,10 +171,25 @@ x
     const sqlite = join(tmp, 'ref.db');
     buildDb(sqlite);
 
-    const invokeLabeler = vi.fn(async () => ({
-      text: 'article_type: 实测\nparagraphs:\n  P1: opening\n  P2: practice\n  P3: closing',
-      meta: { cli: 'claude', durationMs: 10 },
-    }));
+    const invokeLabeler = vi.fn(async (opts: any) => {
+      const text = opts.userMessage as string;
+      const blocks = text.split(/(?:^|\n\n)ARTICLE /).filter((b) => b.trim());
+      const lines: string[] = ['articles:'];
+      for (const block of blocks) {
+        const idMatch = /^([^:]+):/.exec(block);
+        if (!idMatch) continue;
+        const articleId = idMatch[1]!.trim();
+        const pMatches = Array.from(block.matchAll(/P(\d+)\|/g)).map((m) => +m[1]!);
+        lines.push(`  ${articleId}:`);
+        lines.push(`    article_type: 实测`);
+        lines.push(`    paragraphs:`);
+        pMatches.forEach((n, i) => {
+          const role = i === 0 ? 'opening' : i === pMatches.length - 1 ? 'closing' : 'practice';
+          lines.push(`      P${n}: ${role}`);
+        });
+      }
+      return { text: lines.join('\n'), meta: { cli: 'claude', durationMs: 10 } };
+    });
     const invokeComposer = vi.fn(async () => {
       throw new Error('llm exploded');
     });
