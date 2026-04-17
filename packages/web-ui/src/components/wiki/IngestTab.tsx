@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { AccountSidebar } from "./AccountSidebar";
+import { AccountGrid } from "./AccountGrid";
 import { AccountHeatmap } from "./AccountHeatmap";
 import { ArticleList, type ArticleListItem } from "./ArticleList";
 import { IngestCartBar } from "./IngestCartBar";
 import { IngestConfirmDialog } from "./IngestConfirmDialog";
 import { useIngestCart, type CartEntry } from "../../hooks/useIngestCart";
 import { useIngestState } from "../../hooks/useIngestState";
-import { Input } from "../ui";
+import { Input, Button } from "../ui";
 import type { IngestStartArgs } from "../../api/wiki-client";
 
 interface AccountStat {
@@ -29,6 +30,7 @@ export function IngestTab({ model }: IngestTabProps) {
   const [articles, setArticles] = useState<ArticleListItem[]>([]);
   const [search, setSearch] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
+  const [quickAddLoading, setQuickAddLoading] = useState<string | null>(null);
   const cart = useIngestCart({ maxArticles: MAX_ARTICLES });
   const ingest = useIngestState();
 
@@ -64,51 +66,84 @@ export function IngestTab({ model }: IngestTabProps) {
     cart.toggle(entry);
   }
 
+  async function handleQuickAdd(account: string) {
+    setQuickAddLoading(account);
+    try {
+      const r = await fetch(`/api/kb/accounts/${encodeURIComponent(account)}/articles?limit=3000`);
+      if (!r.ok) return;
+      const list = (await r.json()) as ArticleListItem[];
+      const unIngested = list
+        .filter((a) => a.ingest_status === "raw" || a.ingest_status === "tag_failed")
+        .slice(0, MAX_ARTICLES);
+      for (const a of unIngested) {
+        if (!cart.has(a.id)) {
+          cart.toggle({
+            articleId: a.id, account, title: a.title,
+            publishedAt: a.published_at, wordCount: a.word_count,
+          });
+        }
+      }
+    } finally {
+      setQuickAddLoading(null);
+    }
+  }
+
   function handleConfirm(payload: IngestStartArgs) {
     setShowConfirm(false);
     ingest.start(payload);
     cart.clear();
   }
 
+  const showGrid = activeAccount === null;
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-4">
-        <AccountSidebar
+      {showGrid ? (
+        <AccountGrid
           accounts={accounts}
-          active={activeAccount}
           cartPerAccount={cart.perAccountCount}
           onSelect={setActiveAccount}
+          onQuickAdd={handleQuickAdd}
+          quickAddLoading={quickAddLoading}
         />
-        <main className="flex-1 min-w-0 space-y-4">
-          {activeAccount ? (
-            <>
-              <div className="rounded bg-[var(--bg-2)] p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-sm font-semibold text-[var(--heading)]">{activeAccount}</h2>
-                  <span className="text-xs text-[var(--faint)]">
-                    {accounts.find((a) => a.account === activeAccount)?.count ?? 0} 篇
-                  </span>
-                </div>
-                <AccountHeatmap account={activeAccount} />
+      ) : (
+        <div className="flex gap-4">
+          <div className="w-[220px] shrink-0">
+            <Button variant="ghost" size="sm" onClick={() => setActiveAccount(null)} className="mb-2 w-full justify-start">
+              ← 所有账号
+            </Button>
+            <AccountSidebar
+              accounts={accounts}
+              active={activeAccount}
+              cartPerAccount={cart.perAccountCount}
+              onSelect={setActiveAccount}
+            />
+          </div>
+          <main className="flex-1 min-w-0 space-y-4">
+            <div className="rounded bg-[var(--bg-2)] p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-sm font-semibold text-[var(--heading)]">{activeAccount}</h2>
+                <span className="text-xs text-[var(--faint)]">
+                  {accounts.find((a) => a.account === activeAccount)?.count ?? 0} 篇
+                </span>
               </div>
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="搜索该账号文章标题…"
-                leftSlot="⌕"
-              />
-              <ArticleList
-                articles={visibleArticles}
-                duplicates={duplicates}
-                selectedIds={selectedIds}
-                onToggle={toggleArticle}
-              />
-            </>
-          ) : (
-            <div className="text-center py-16 text-[var(--meta)]">← 选一个账号</div>
-          )}
-        </main>
-      </div>
+              <AccountHeatmap account={activeAccount} />
+            </div>
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="搜索该账号文章标题…"
+              leftSlot="⌕"
+            />
+            <ArticleList
+              articles={visibleArticles}
+              duplicates={duplicates}
+              selectedIds={selectedIds}
+              onToggle={toggleArticle}
+            />
+          </main>
+        </div>
+      )}
 
       <IngestCartBar
         entries={cart.entries}
