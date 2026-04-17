@@ -125,8 +125,16 @@ export function SectionCard({ projectId, sectionKey, label, initialBody }: Secti
                 改写整段
               </button>
               {state.lastAcceptedBody !== null && (
-                <button className="px-2.5 py-1 rounded border border-[var(--hair)] text-[var(--meta)] hover:text-[var(--heading)]" onClick={() => void state.undo()}>
-                  ↶ 撤回
+                <button
+                  onClick={() => void state.undo()}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border border-[var(--hair)] text-[var(--meta)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors"
+                  title="撤回到改写前"
+                >
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M3 7v6h6" />
+                    <path d="M21 17a9 9 0 0 0-15-6.7L3 13" />
+                  </svg>
+                  撤回
                 </button>
               )}
             </>

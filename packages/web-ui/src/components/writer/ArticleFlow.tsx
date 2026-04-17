@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { getFinal } from '../../api/writer-client.js';
 import { RewriteMutexProvider } from '../../hooks/useRewriteMutex.js';
 import { SectionCard } from './SectionCard.js';
-import { WriterConsoleFab } from './WriterConsoleFab.js';
 
 export interface ArticleFlowProps {
   projectId: string;
