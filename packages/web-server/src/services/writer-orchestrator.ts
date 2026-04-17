@@ -7,7 +7,6 @@ import {
   invokeAgent,
   validateBookend,
   formatViolations,
-  type ReferenceAccountKb,
   type ChatMessage,
   type WriterToolEvent,
   type WriterRunResult,
@@ -42,7 +41,6 @@ export type WriterAgentKey =
 
 export interface WriterConfig {
   cli_model_per_agent: Partial<Record<WriterAgentKey, { cli: "claude" | "codex"; model?: string }>>;
-  reference_accounts_per_agent: Partial<Record<WriterAgentKey, string[]>>;
 }
 
 export interface ResolvedStyle {
@@ -133,28 +131,15 @@ function parseSelectedCases(md: string): ParsedCase[] {
   return out;
 }
 
-async function loadReferenceAccountKb(vaultPath: string, ids: string[]): Promise<ReferenceAccountKb[]> {
-  const out: ReferenceAccountKb[] = [];
-  for (const id of ids) {
-    const p = join(vaultPath, "08_experts", "style-panel", `${id}.md`);
-    if (!existsSync(p)) continue;
-    const text = await readFile(p, "utf-8");
-    out.push({ id, text });
-  }
-  return out;
-}
-
 function resolve(
   key: WriterAgentKey,
   cfg: WriterConfig,
   fallbackCli: "claude" | "codex" = "claude",
-): { cli: "claude" | "codex"; model?: string; referenceAccounts: string[] } {
+): { cli: "claude" | "codex"; model?: string } {
   const cliModel = cfg.cli_model_per_agent[key];
-  const refs = cfg.reference_accounts_per_agent[key] ?? [];
   return {
     cli: cliModel?.cli ?? fallbackCli,
     model: cliModel?.model,
-    referenceAccounts: refs,
   };
 }
 
@@ -166,23 +151,16 @@ function firstLast(text: string, lines = 3): { first: string; last: string } {
   };
 }
 
-function refsBlock(refs: ReferenceAccountKb[]): string {
-  return refs.length === 0
-    ? "(无参考账号)"
-    : refs.map((r) => `## 参考账号：${r.id}\n${r.text}`).join("\n\n");
-}
-
-function buildOpeningUserMessage(briefSummary: string, missionSummary: string, productOverview: string, refs: ReferenceAccountKb[]): string {
+function buildOpeningUserMessage(briefSummary: string, missionSummary: string, productOverview: string): string {
   return [
     "# Brief 摘要", briefSummary || "(无)", "",
     "# Mission 摘要", missionSummary || "(无)", "",
     "# 产品概览", productOverview || "(无)", "",
-    "# 参考账号风格素材", refsBlock(refs), "",
     "请按 system prompt 要求产出开头段正文。",
   ].join("\n");
 }
 
-function buildPracticeUserMessage(c: ParsedCase, notesFm: Record<string, unknown>, notesBody: string, shots: string[], refs: ReferenceAccountKb[]): string {
+function buildPracticeUserMessage(c: ParsedCase, notesFm: Record<string, unknown>, notesBody: string, shots: string[]): string {
   return [
     `# Case 编号：${c.caseId}`,
     `# Case 名：${c.name}`, "",
@@ -192,26 +170,23 @@ function buildPracticeUserMessage(c: ParsedCase, notesFm: Record<string, unknown
     "# 实测笔记正文", notesBody || "(无)", "",
     "# 截图清单",
     shots.length === 0 ? "(无)" : shots.map((p, i) => `- screenshot-${i + 1}: ${p}`).join("\n"), "",
-    "# 参考账号风格素材", refsBlock(refs), "",
     "请按 system prompt 要求产出该 case 实测小节。",
   ].join("\n");
 }
 
-function buildClosingUserMessage(openingText: string, stitchedPracticeText: string, refs: ReferenceAccountKb[]): string {
+function buildClosingUserMessage(openingText: string, stitchedPracticeText: string): string {
   return [
     "# 开头段", openingText, "",
     "# 实测主体（含过渡）", stitchedPracticeText, "",
-    "# 参考账号风格素材", refsBlock(refs), "",
     "请按 system prompt 要求产出结尾段。",
   ].join("\n");
 }
 
-function buildCriticUserMessage(fullArticle: string, sectionKeys: string[], refs: ReferenceAccountKb[]): string {
+function buildCriticUserMessage(fullArticle: string, sectionKeys: string[]): string {
   return [
     "# 当前 section_keys",
     sectionKeys.map((k) => `- ${k}`).join("\n"), "",
     "# 整篇首拼稿", fullArticle, "",
-    "# 参考账号风格素材", refsBlock(refs), "",
     "按 system prompt 格式输出。",
   ].join("\n");
 }
@@ -495,7 +470,6 @@ export async function runWriter(
           section_key: "opening", agent: "writer.opening",
           cli: openingResolved.cli, model: openingResolved.model ?? null,
         });
-        const refs = await loadReferenceAccountKb(opts.vaultPath, openingResolved.referenceAccounts);
         const t0 = Date.now();
         const openingStyle = resolvedStyles["writer.opening"] ?? null;
         const result: WriterRunResult = await runBookendWithValidation({
@@ -517,7 +491,7 @@ export async function runWriter(
             retryFeedback: retry,
             product_name: project.product_info?.name ?? undefined,
             invokeAgent: invokerFor("writer.opening", openingResolved.cli, openingResolved.model, writerRunLogDir),
-            userMessage: buildOpeningUserMessage(briefSummary, missionSummary, productOverview, refs),
+            userMessage: buildOpeningUserMessage(briefSummary, missionSummary, productOverview),
             images: projectImages,
             addDirs: projectAddDirs,
             ...(openingStyle ? { pinnedContext: formatStyleReference(openingStyle) } : {}),
@@ -531,7 +505,6 @@ export async function runWriter(
           frontmatter: {
             section: "opening", last_agent: "writer.opening",
             last_updated_at: new Date().toISOString(),
-            reference_accounts: openingResolved.referenceAccounts,
             cli: openingResolved.cli, model: openingResolved.model,
             ...(result.toolsUsed.length > 0 ? { tools_used: result.toolsUsed as unknown as ToolUsage[] } : {}),
           } as any,
@@ -560,7 +533,6 @@ export async function runWriter(
           section_key: sectionKey, agent: "writer.practice",
           cli: practiceResolved.cli, model: practiceResolved.model ?? null,
         });
-        const refs = await loadReferenceAccountKb(opts.vaultPath, practiceResolved.referenceAccounts);
         const notesPath = join(pDir, "evidence", c.caseId, "notes.md");
         let notesFm: Record<string, unknown> = {};
         let notesBody = "";
@@ -583,7 +555,7 @@ export async function runWriter(
         const result: WriterRunResult = await runWriterPractice({
           invokeAgent: invokerFor("writer.practice", practiceResolved.cli, practiceResolved.model),
           userMessage: prependContextBlock(
-            buildPracticeUserMessage(c, notesFm, notesBody, shots, refs),
+            buildPracticeUserMessage(c, notesFm, notesBody, shots),
             ctxBundle,
           ),
           images: Array.from(new Set([...shots, ...projectImages])),
@@ -600,7 +572,6 @@ export async function runWriter(
           frontmatter: {
             section: sectionKey, last_agent: "writer.practice",
             last_updated_at: new Date().toISOString(),
-            reference_accounts: practiceResolved.referenceAccounts,
             cli: practiceResolved.cli, model: practiceResolved.model,
             ...(result.toolsUsed.length > 0 ? { tools_used: result.toolsUsed as unknown as ToolUsage[] } : {}),
           } as any,
@@ -707,7 +678,6 @@ export async function runWriter(
         section_key: "closing", agent: "writer.closing",
         cli: closingResolved.cli, model: closingResolved.model ?? null,
       });
-      const refs = await loadReferenceAccountKb(opts.vaultPath, closingResolved.referenceAccounts);
       const t0 = Date.now();
       const closingStyle = resolvedStyles["writer.closing"] ?? null;
       const result: WriterRunResult = await runBookendWithValidation({
@@ -729,7 +699,7 @@ export async function runWriter(
           retryFeedback: retry,
           product_name: project.product_info?.name ?? undefined,
           invokeAgent: invokerFor("writer.closing", closingResolved.cli, closingResolved.model, writerRunLogDir),
-          userMessage: buildClosingUserMessage(openingBody, stitchedPractice, refs),
+          userMessage: buildClosingUserMessage(openingBody, stitchedPractice),
           images: projectImages,
           addDirs: projectAddDirs,
           ...(closingStyle ? { pinnedContext: formatStyleReference(closingStyle) } : {}),
@@ -743,7 +713,6 @@ export async function runWriter(
         frontmatter: {
           section: "closing", last_agent: "writer.closing",
           last_updated_at: new Date().toISOString(),
-          reference_accounts: closingResolved.referenceAccounts,
           cli: closingResolved.cli, model: closingResolved.model,
           ...(result.toolsUsed.length > 0 ? { tools_used: result.toolsUsed as unknown as ToolUsage[] } : {}),
         } as any,
@@ -769,11 +738,10 @@ export async function runWriter(
   try {
     const sectionKeys = ["opening", ...cases.map((c) => `practice.${c.caseId}`), "closing"];
     const fullArticle = await articleStore.mergeFinal();
-    const refs = await loadReferenceAccountKb(opts.vaultPath, criticResolved.referenceAccounts);
     const result: WriterRunResult = await runStyleCritic({
       invokeAgent: invokerFor("style_critic", criticResolved.cli, criticResolved.model),
       userMessage: prependContextBlock(
-        buildCriticUserMessage(fullArticle, sectionKeys, refs),
+        buildCriticUserMessage(fullArticle, sectionKeys),
         ctxBundle,
       ),
       images: projectImages,

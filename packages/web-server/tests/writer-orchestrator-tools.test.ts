@@ -78,7 +78,7 @@ describe("writer-orchestrator runs agents through runner", () => {
     await runWriter({
       projectId: pid, projectsDir, store,
       vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"),
-      writerConfig: { cli_model_per_agent: {}, reference_accounts_per_agent: {} },
+      writerConfig: { cli_model_per_agent: {} },
     });
 
     // Check events.ndjson contains writer.tool_called

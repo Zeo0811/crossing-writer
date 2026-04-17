@@ -68,7 +68,6 @@ export interface Project {
   };
   writer_config?: {
     cli_model_per_agent?: Record<string, { cli: string; model?: string }>;
-    reference_accounts_per_agent?: Record<string, string[]>;
   };
   writer_failed_sections?: string[];
   runs: Array<{

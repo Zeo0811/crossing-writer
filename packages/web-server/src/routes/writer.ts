@@ -16,7 +16,7 @@ import {
   WriterPracticeAgent,
   PracticeStitcherAgent, invokeAgent,
   runWriterPractice, runWriterBookend, renderHardRulesBlock,
-  type RunWriterBookendOpts, type ReferenceAccountKb, type ChatMessage, type WriterToolEvent,
+  type RunWriterBookendOpts, type ChatMessage, type WriterToolEvent,
 } from "@crossing/agents";
 import { dispatchSkill, type ArticleType } from "@crossing/kb";
 import { readFile } from "node:fs/promises";
@@ -27,7 +27,7 @@ export interface WriterDeps {
   projectsDir: string;
   vaultPath: string;
   sqlitePath: string;
-  configStore: ConfigStore | { get(key: string): Promise<{ cli?: string; model?: string; reference_accounts?: string[] } | undefined> };
+  configStore: ConfigStore | { get(key: string): Promise<{ cli?: string; model?: string } | undefined> };
   agentConfigStore?: AgentConfigStore;
   projectOverrideStore?: ProjectOverrideStore;
   stylePanelStore?: StylePanelStore;
@@ -92,7 +92,6 @@ async function mergeWriterConfig(
   body: Partial<WriterConfig>,
 ): Promise<WriterConfig> {
   const cliModel: WriterConfig["cli_model_per_agent"] = {};
-  const refs: WriterConfig["reference_accounts_per_agent"] = {};
   for (const key of AGENT_KEYS) {
     const override = body.cli_model_per_agent?.[key];
     const globalCfg = await (deps.configStore as any).get(key);
@@ -101,20 +100,8 @@ async function mergeWriterConfig(
     const cli: "claude" | "codex" = (isNewFormat ? nestedModel.cli : globalCfg?.cli) ?? "claude";
     const model: string | undefined = isNewFormat ? nestedModel.model : (typeof nestedModel === "string" ? nestedModel : undefined);
     cliModel[key] = override ?? (globalCfg ? { cli, model } : undefined);
-    const refOverride = body.reference_accounts_per_agent?.[key];
-    refs[key] = refOverride ?? (globalCfg?.reference_accounts ?? []);
   }
-  return { cli_model_per_agent: cliModel, reference_accounts_per_agent: refs };
-}
-
-function validateReferenceAccounts(vaultPath: string, refs: Record<string, string[]>): string[] {
-  const dir = join(vaultPath, "08_experts", "style-panel");
-  const existing = new Set(
-    existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".md")).map((f) => f.slice(0, -3)) : [],
-  );
-  const missing: string[] = [];
-  for (const ids of Object.values(refs)) for (const id of ids) if (!existing.has(id)) missing.push(id);
-  return [...new Set(missing)];
+  return { cli_model_per_agent: cliModel };
 }
 
 function sectionKeyToAgentKey(key: string): WriterAgentKey | null {
@@ -123,15 +110,6 @@ function sectionKeyToAgentKey(key: string): WriterAgentKey | null {
   if (key === "transitions") return "practice.stitcher";
   if (key.startsWith("practice.case-")) return "writer.practice";
   return null;
-}
-
-async function loadRefs(vault: string, ids: string[]): Promise<ReferenceAccountKb[]> {
-  const out: ReferenceAccountKb[] = [];
-  for (const id of ids) {
-    const p = join(vault, "08_experts", "style-panel", `${id}.md`);
-    if (existsSync(p)) out.push({ id, text: await readFile(p, "utf-8") });
-  }
-  return out;
 }
 
 export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
@@ -147,10 +125,6 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
         return reply.code(400).send({ error: 'project.article_type is required; please set it in Brief stage' });
       }
       const body = req.body ?? {};
-      const missing = validateReferenceAccounts(deps.vaultPath, body.reference_accounts_per_agent ?? {});
-      if (missing.length > 0) {
-        return reply.code(400).send({ error: `reference_accounts 不存在: ${missing.join(", ")}` });
-      }
       const writerConfig = await mergeWriterConfig(deps, body);
       await deps.store.update(req.params.id, {
         status: "writing_configuring",
@@ -158,7 +132,6 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
           cli_model_per_agent: Object.fromEntries(
             Object.entries(writerConfig.cli_model_per_agent).filter(([, v]) => v !== undefined),
           ) as Record<string, { cli: string; model?: string }>,
-          reference_accounts_per_agent: writerConfig.reference_accounts_per_agent as Record<string, string[]>,
         },
       });
       const resolveStyleForAgent = buildResolveStyleForAgent(deps, req.params.id, project.article_type);
@@ -282,8 +255,6 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
         await deps.store.update(req.params.id, { status: "writing_editing" });
         const cfg = project.writer_config;
         const cliModel = cfg?.cli_model_per_agent?.[agentKey] ?? { cli: "claude" };
-        const refIds = cfg?.reference_accounts_per_agent?.[agentKey] ?? [];
-        const refs = await loadRefs(deps.vaultPath, refIds);
         let newBody = "";
         const pDir = join(deps.projectsDir, req.params.id);
 
@@ -342,10 +313,6 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
             send(`writer.${type}`, { ...rest, section_key: req.params.key });
           };
 
-          const refBlock = refs.length === 0
-            ? "(无参考账号)"
-            : refs.map((r) => `## 参考账号：${r.id}\n${r.text}`).join("\n\n");
-
           if (agentKey === "writer.opening" || agentKey === "writer.closing") {
             if (!project.article_type) {
               return reply.code(400).send({ error: 'project.article_type is required' });
@@ -377,7 +344,6 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
                 "# Brief 摘要", (brief + hintBlock) || "(无)", "",
                 "# Mission 摘要", mission || "(无)", "",
                 "# 产品概览", po || "(无)", "",
-                "# 参考账号风格素材", refBlock, "",
                 "请按 system prompt 要求产出开头段正文。",
               ].join("\n");
             } else {
@@ -387,7 +353,6 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
               userMessage = [
                 "# 开头段", openingBody + hintBlock, "",
                 "# 实测主体（含过渡）", practiceText, "",
-                "# 参考账号风格素材", refBlock, "",
                 "请按 system prompt 要求产出结尾段。",
               ].join("\n");
             }
@@ -442,7 +407,6 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
               "# 实测笔记正文", notesBody || "(无)", "",
               "# 截图清单",
               shots.length === 0 ? "(无)" : shots.map((p, i) => `- screenshot-${i + 1}: ${p}`).join("\n"), "",
-              "# 参考账号风格素材", refBlock, "",
               "请按 system prompt 要求产出该 case 实测小节。",
             ].join("\n");
             const out = await runWriterPractice({
@@ -513,7 +477,6 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
       const cfg = project.writer_config;
       const writerConfig: WriterConfig = {
         cli_model_per_agent: (cfg?.cli_model_per_agent ?? {}) as WriterConfig["cli_model_per_agent"],
-        reference_accounts_per_agent: (cfg?.reference_accounts_per_agent ?? {}) as WriterConfig["reference_accounts_per_agent"],
       };
       const resolveStyleForAgent = buildResolveStyleForAgent(deps, req.params.id, project.article_type);
       void (async () => {

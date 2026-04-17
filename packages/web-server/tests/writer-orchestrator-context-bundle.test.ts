@@ -81,7 +81,7 @@ describe("writer-orchestrator SP-19 ContextBundle integration", () => {
       store: env.store,
       vaultPath: env.vault,
       sqlitePath: join(env.vault, "kb.sqlite"),
-      writerConfig: { cli_model_per_agent: {}, reference_accounts_per_agent: {} },
+      writerConfig: { cli_model_per_agent: {} },
       contextBundleService: env.svc,
     });
     expect(captured.length).toBeGreaterThan(0);
@@ -105,7 +105,7 @@ describe("writer-orchestrator SP-19 ContextBundle integration", () => {
       store: env.store,
       vaultPath: env.vault,
       sqlitePath: join(env.vault, "kb.sqlite"),
-      writerConfig: { cli_model_per_agent: {}, reference_accounts_per_agent: {} },
+      writerConfig: { cli_model_per_agent: {} },
     });
     for (const c of captured) {
       const contextSource = (c.key === 'opening' || c.key === 'closing')

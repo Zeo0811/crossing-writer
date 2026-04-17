@@ -111,7 +111,7 @@ describe("writer-orchestrator sp10 style binding integration", () => {
       store,
       vaultPath: vault,
       sqlitePath: join(vault, "kb.sqlite"),
-      writerConfig: { cli_model_per_agent: {}, reference_accounts_per_agent: {} },
+      writerConfig: { cli_model_per_agent: {} },
       resolveStyleForAgent,
     });
 
@@ -162,7 +162,7 @@ describe("writer-orchestrator sp10 style binding integration", () => {
       store,
       vaultPath: vault,
       sqlitePath: join(vault, "kb.sqlite"),
-      writerConfig: { cli_model_per_agent: {}, reference_accounts_per_agent: {} },
+      writerConfig: { cli_model_per_agent: {} },
       resolveStyleForAgent,
       onEvent,
     })) as any;
@@ -212,7 +212,7 @@ describe("writer-orchestrator sp10 style binding integration", () => {
       store,
       vaultPath: vault,
       sqlitePath: join(vault, "kb.sqlite"),
-      writerConfig: { cli_model_per_agent: {}, reference_accounts_per_agent: {} },
+      writerConfig: { cli_model_per_agent: {} },
       resolveStyleForAgent,
     });
 

@@ -77,7 +77,7 @@ describe("writer-orchestrator", () => {
     await runWriter({
       projectId: pid, projectsDir, store,
       vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"),
-      writerConfig: { cli_model_per_agent: {}, reference_accounts_per_agent: {} },
+      writerConfig: { cli_model_per_agent: {} },
     });
     const pDir = join(projectsDir, pid);
     expect(readFileSync(join(pDir, "article/sections/opening.md"), "utf-8")).toContain("OPENING_TEXT");
@@ -97,7 +97,7 @@ describe("writer-orchestrator", () => {
     await expect(runWriter({
       projectId: pid, projectsDir, store,
       vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"),
-      writerConfig: { cli_model_per_agent: {}, reference_accounts_per_agent: {} },
+      writerConfig: { cli_model_per_agent: {} },
     })).rejects.toThrow();
     const project = await store.get(pid);
     expect(project?.status).toBe("writing_failed");
@@ -110,7 +110,7 @@ describe("writer-orchestrator", () => {
     await runWriter({
       projectId: pid, projectsDir, store,
       vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"),
-      writerConfig: { cli_model_per_agent: {}, reference_accounts_per_agent: {} },
+      writerConfig: { cli_model_per_agent: {} },
     });
     const pDir = join(projectsDir, pid);
     const trans = readFileSync(join(pDir, "article/sections/practice/transitions.md"), "utf-8");
@@ -159,7 +159,7 @@ describe("writer-orchestrator retry + override", () => {
     await runWriter({
       projectId: pid, projectsDir, store,
       vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"),
-      writerConfig: { cli_model_per_agent: {}, reference_accounts_per_agent: {} },
+      writerConfig: { cli_model_per_agent: {} },
       sectionsToRun: ["practice.case-02"],
     });
 
@@ -184,7 +184,6 @@ describe("writer-orchestrator retry + override", () => {
       vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"),
       writerConfig: {
         cli_model_per_agent: { "writer.opening": { cli: "codex", model: "gpt-5" } },
-        reference_accounts_per_agent: { "writer.opening": ["赛博禅心"] },
       },
     });
     // runWriterBookend is called for both opening (call 0) and closing (call 1)

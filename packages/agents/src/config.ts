@@ -5,7 +5,6 @@ import { homedir } from "node:os";
 export interface AgentConfig {
   cli: "claude" | "codex";
   model?: string;
-  reference_accounts?: string[];
 }
 
 export interface CrossingConfig {

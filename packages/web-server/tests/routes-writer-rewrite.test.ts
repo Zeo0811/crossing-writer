@@ -38,7 +38,6 @@ async function seed() {
     article_type: "实测",
     writer_config: {
       cli_model_per_agent: { "writer.opening": { cli: "claude", model: "opus" } },
-      reference_accounts_per_agent: {},
     },
   });
   const pDir = join(projectsDir, p.id);
