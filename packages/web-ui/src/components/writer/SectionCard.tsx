@@ -262,7 +262,7 @@ export function SectionCard({ projectId, sectionKey, label, initialBody }: Secti
               </div>
             )}
           </div>
-          <div className="grid grid-cols-[1fr_280px] gap-4">
+          <div className={state.timeline.length > 0 ? "grid grid-cols-[1fr_280px] gap-4" : ""}>
             <div>
               {state.mode === 'rewrite_idle' ? (
                 <button
@@ -275,10 +275,12 @@ export function SectionCard({ projectId, sectionKey, label, initialBody }: Secti
                 <div className="text-sm text-[var(--meta)]">正在改写，请稍候…</div>
               )}
             </div>
-            <div className="rounded bg-[var(--bg-2)] p-3">
-              <div className="text-xs text-[var(--meta)] mb-2">活动日志</div>
-              <ToolTimeline events={state.timeline} />
-            </div>
+            {state.timeline.length > 0 && (
+              <div className="rounded bg-[var(--bg-2)] p-3">
+                <div className="text-xs text-[var(--meta)] mb-2">活动日志</div>
+                <ToolTimeline events={state.timeline} />
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -289,10 +291,12 @@ export function SectionCard({ projectId, sectionKey, label, initialBody }: Secti
           <div className="rounded bg-[var(--bg-2)] p-3 max-h-[400px] overflow-y-auto">
             <SectionDiff oldText={state.body} newText={state.draftBody} />
           </div>
-          <div className="rounded bg-[var(--bg-2)] p-3">
-            <div className="text-xs text-[var(--meta)] mb-2">活动日志</div>
-            <ToolTimeline events={state.timeline} />
-          </div>
+          {state.timeline.length > 0 && (
+            <div className="rounded bg-[var(--bg-2)] p-3">
+              <div className="text-xs text-[var(--meta)] mb-2">活动日志</div>
+              <ToolTimeline events={state.timeline} />
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <button
               onClick={() => void state.accept()}
