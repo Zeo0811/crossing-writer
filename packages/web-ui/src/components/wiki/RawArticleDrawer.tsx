@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import * as RadixDialog from "@radix-ui/react-dialog";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Dialog, DialogContent, Chip } from "../ui";
 import { getRawArticle, type RawArticle } from "../../api/wiki-client";
 
@@ -62,7 +64,9 @@ export function RawArticleDrawer({ open, account, articleId, onClose }: RawArtic
                   {article.word_count != null && <> · {article.word_count} 字</>}
                 </div>
               </header>
-              <pre className="whitespace-pre-wrap text-sm text-[var(--body)] font-sans leading-relaxed">{article.body_plain}</pre>
+              <div className="prose prose-sm max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{article.body_plain}</ReactMarkdown>
+              </div>
               {article.url && (
                 <a
                   href={article.url}
