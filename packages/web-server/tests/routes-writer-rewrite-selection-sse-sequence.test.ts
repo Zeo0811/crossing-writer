@@ -12,18 +12,18 @@ vi.mock("@crossing/agents", async () => {
       text: "",
       meta: { cli: "claude", model: "opus", durationMs: 1 },
     })),
-    runWriterOpening: vi.fn(async ({ onEvent, sectionKey }: any) => {
+    runWriterBookend: vi.fn(async ({ onEvent, sectionKey, role }: any) => {
       onEvent?.({
         type: "tool_called",
         section_key: sectionKey,
-        agent: "writer.opening",
+        agent: role === "opening" ? "writer.opening" : "writer.closing",
         tool: "search_kb",
         args: ["foo"],
       });
       onEvent?.({
         type: "tool_returned",
         section_key: sectionKey,
-        agent: "writer.opening",
+        agent: role === "opening" ? "writer.opening" : "writer.closing",
         tool: "search_kb",
         ok: true,
         duration_ms: 5,
@@ -31,17 +31,12 @@ vi.mock("@crossing/agents", async () => {
       onEvent?.({
         type: "tool_round_completed",
         section_key: sectionKey,
-        agent: "writer.opening",
+        agent: role === "opening" ? "writer.opening" : "writer.closing",
         round: 1,
       });
       return { finalText: "NEWTEXT", toolsUsed: [], rounds: 1 };
     }),
     runWriterPractice: vi.fn(async () => ({
-      finalText: "NEWTEXT",
-      toolsUsed: [],
-      rounds: 1,
-    })),
-    runWriterClosing: vi.fn(async () => ({
       finalText: "NEWTEXT",
       toolsUsed: [],
       rounds: 1,
@@ -52,15 +47,55 @@ vi.mock("@crossing/kb", async () => {
   const actual = await vi.importActual<any>("@crossing/kb");
   return { ...actual, dispatchSkill: vi.fn() };
 });
+vi.mock("../src/services/style-binding-resolver.js", async () => {
+  return {
+    resolveStyleBindingV2: vi.fn(async () => ({
+      panel: { frontmatter: { banned_vocabulary: [] } },
+      typeSection: "STYLE-SECTION",
+    })),
+  };
+});
 
 import { ProjectStore } from "../src/services/project-store.js";
 import { ArticleStore } from "../src/services/article-store.js";
 import { registerWriterRewriteSelectionRoutes } from "../src/routes/writer-rewrite-selection.js";
 
+function makeBookendDeps(projectsDir: string, store: ProjectStore) {
+  return {
+    store,
+    projectsDir,
+    vaultPath: "/tmp/v",
+    sqlitePath: "/tmp/kb.sqlite",
+    configStore: {
+      async get() {
+        return { cli: "claude" };
+      },
+    } as any,
+    agentConfigStore: {
+      get: (_key: string) => ({
+        agentKey: _key,
+        model: { cli: "claude" },
+        styleBinding: { account: "test-account", role: "opening" },
+      }),
+    } as any,
+    stylePanelStore: {} as any,
+    hardRulesStore: {
+      read: async () => ({
+        version: 1 as const,
+        updated_at: "2026-01-01T00:00:00Z",
+        banned_phrases: [],
+        banned_vocabulary: [],
+        layout_rules: [],
+      }),
+    } as any,
+  };
+}
+
 async function seed() {
   const projectsDir = mkdtempSync(join(tmpdir(), "sp09-sel-seq-"));
   const store = new ProjectStore(projectsDir);
   const p = await store.create({ name: "T" });
+  await store.update(p.id, { article_type: "实测" } as any);
   const pDir = join(projectsDir, p.id);
   const articles = new ArticleStore(pDir);
   await articles.init();
@@ -74,17 +109,7 @@ async function seed() {
     body: "hello OLDTEXT world",
   });
   const app = Fastify();
-  registerWriterRewriteSelectionRoutes(app, {
-    store,
-    projectsDir,
-    vaultPath: "/tmp/v",
-    sqlitePath: "/tmp/kb.sqlite",
-    configStore: {
-      async get() {
-        return { cli: "claude" };
-      },
-    } as any,
-  });
+  registerWriterRewriteSelectionRoutes(app, makeBookendDeps(projectsDir, store));
   await app.ready();
   return { app, projectId: p.id, projectsDir, articles };
 }

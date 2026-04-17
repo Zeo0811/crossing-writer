@@ -11,15 +11,11 @@ vi.mock("@crossing/agents", async () => {
   return {
     ...actual,
     invokeAgent: vi.fn(() => ({ text: "", meta: { cli: "claude", durationMs: 1 } })),
-    runWriterOpening: vi.fn(async ({ userMessage }: any) => {
+    runWriterBookend: vi.fn(async ({ userMessage }: any) => {
       captured.push(userMessage);
       return { finalText: "NEWTEXT", toolsUsed: [], rounds: 1 };
     }),
     runWriterPractice: vi.fn(async ({ userMessage }: any) => {
-      captured.push(userMessage);
-      return { finalText: "NEWTEXT", toolsUsed: [], rounds: 1 };
-    }),
-    runWriterClosing: vi.fn(async ({ userMessage }: any) => {
       captured.push(userMessage);
       return { finalText: "NEWTEXT", toolsUsed: [], rounds: 1 };
     }),
@@ -28,6 +24,14 @@ vi.mock("@crossing/agents", async () => {
 vi.mock("@crossing/kb", async () => {
   const actual = await vi.importActual<any>("@crossing/kb");
   return { ...actual, dispatchSkill: vi.fn() };
+});
+vi.mock("../src/services/style-binding-resolver.js", async () => {
+  return {
+    resolveStyleBindingV2: vi.fn(async () => ({
+      panel: { frontmatter: { banned_vocabulary: [] } },
+      typeSection: "STYLE-SECTION",
+    })),
+  };
 });
 
 import { ProjectStore } from "../src/services/project-store.js";
@@ -54,6 +58,7 @@ async function seed() {
   mkdirSync(vault, { recursive: true });
   const store = new ProjectStore(projectsDir);
   const p = await store.create({ name: "CtxSel" });
+  await store.update(p.id, { article_type: "实测" } as any);
   const pDir = join(projectsDir, p.id);
   mkdirSync(join(pDir, "brief"), { recursive: true });
   writeFileSync(join(pDir, "brief", "brief.md"), "BRIEF-REWRITE-TOKEN-abc789");
@@ -76,6 +81,23 @@ async function seed() {
     store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"),
     configStore: { get: async () => ({}) } as any,
     contextBundleService: svc,
+    agentConfigStore: {
+      get: (_key: string) => ({
+        agentKey: _key,
+        model: { cli: "claude" },
+        styleBinding: { account: "test-account", role: "opening" },
+      }),
+    } as any,
+    stylePanelStore: {} as any,
+    hardRulesStore: {
+      read: async () => ({
+        version: 1 as const,
+        updated_at: "2026-01-01T00:00:00Z",
+        banned_phrases: [],
+        banned_vocabulary: [],
+        layout_rules: [],
+      }),
+    } as any,
   });
   await app.ready();
   return { app, projectId: p.id };

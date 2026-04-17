@@ -12,17 +12,12 @@ vi.mock("@crossing/agents", async () => {
       text: "",
       meta: { cli: "claude", model: "opus", durationMs: 1 },
     })),
-    runWriterOpening: vi.fn(async () => ({
+    runWriterBookend: vi.fn(async () => ({
       finalText: "NEWTEXT",
       toolsUsed: [],
       rounds: 1,
     })),
     runWriterPractice: vi.fn(async () => ({
-      finalText: "NEWTEXT",
-      toolsUsed: [],
-      rounds: 1,
-    })),
-    runWriterClosing: vi.fn(async () => ({
       finalText: "NEWTEXT",
       toolsUsed: [],
       rounds: 1,
@@ -33,15 +28,55 @@ vi.mock("@crossing/kb", async () => {
   const actual = await vi.importActual<any>("@crossing/kb");
   return { ...actual, dispatchSkill: vi.fn() };
 });
+vi.mock("../src/services/style-binding-resolver.js", async () => {
+  return {
+    resolveStyleBindingV2: vi.fn(async () => ({
+      panel: { frontmatter: { banned_vocabulary: [] } },
+      typeSection: "STYLE-SECTION",
+    })),
+  };
+});
 
 import { ProjectStore } from "../src/services/project-store.js";
 import { ArticleStore } from "../src/services/article-store.js";
 import { registerWriterRewriteSelectionRoutes } from "../src/routes/writer-rewrite-selection.js";
 
+function makeBookendDeps(projectsDir: string, store: ProjectStore) {
+  return {
+    store,
+    projectsDir,
+    vaultPath: "/tmp/v",
+    sqlitePath: "/tmp/kb.sqlite",
+    configStore: {
+      async get() {
+        return { cli: "claude" };
+      },
+    } as any,
+    agentConfigStore: {
+      get: (_key: string) => ({
+        agentKey: _key,
+        model: { cli: "claude" },
+        styleBinding: { account: "test-account", role: "opening" },
+      }),
+    } as any,
+    stylePanelStore: {} as any,
+    hardRulesStore: {
+      read: async () => ({
+        version: 1 as const,
+        updated_at: "2026-01-01T00:00:00Z",
+        banned_phrases: [],
+        banned_vocabulary: [],
+        layout_rules: [],
+      }),
+    } as any,
+  };
+}
+
 async function seedWithBody(body: string, frontmatterExtra: any = {}) {
   const projectsDir = mkdtempSync(join(tmpdir(), "sp09-sel-rt-"));
   const store = new ProjectStore(projectsDir);
   const p = await store.create({ name: "T" });
+  await store.update(p.id, { article_type: "实测" } as any);
   const pDir = join(projectsDir, p.id);
   const articles = new ArticleStore(pDir);
   await articles.init();
@@ -56,17 +91,7 @@ async function seedWithBody(body: string, frontmatterExtra: any = {}) {
     body,
   });
   const app = Fastify();
-  registerWriterRewriteSelectionRoutes(app, {
-    store,
-    projectsDir,
-    vaultPath: "/tmp/v",
-    sqlitePath: "/tmp/kb.sqlite",
-    configStore: {
-      async get() {
-        return { cli: "claude" };
-      },
-    } as any,
-  });
+  registerWriterRewriteSelectionRoutes(app, makeBookendDeps(projectsDir, store));
   await app.ready();
   return { app, projectId: p.id, articles };
 }
@@ -78,7 +103,7 @@ describe("rewrite-selection round-trip: body replace + tools_used merge", () => 
 
   it("replaces only the selected substring inside a middle paragraph", async () => {
     const agents = (await import("@crossing/agents")) as any;
-    agents.runWriterOpening.mockImplementationOnce(async () => ({
+    agents.runWriterBookend.mockImplementationOnce(async () => ({
       finalText: "MIDDLE-NEW",
       toolsUsed: [],
       rounds: 1,
@@ -108,7 +133,7 @@ describe("rewrite-selection round-trip: body replace + tools_used merge", () => 
 
   it("accumulates tools_used across two sequential rewrite calls (append, no dedupe)", async () => {
     const agents = (await import("@crossing/agents")) as any;
-    agents.runWriterOpening
+    agents.runWriterBookend
       .mockImplementationOnce(async () => ({
         finalText: "FIRST",
         toolsUsed: [

@@ -2,14 +2,20 @@ import type { FastifyInstance } from "fastify";
 import { join } from "node:path";
 import type { ProjectStore } from "../services/project-store.js";
 import type { ConfigStore } from "../services/config-store.js";
+import type { AgentConfigStore } from "../services/agent-config-store.js";
+import type { StylePanelStore } from "../services/style-panel-store.js";
+import type { HardRulesStore } from "../services/hard-rules-store.js";
+import type { ProjectOverrideStore } from "../services/project-override-store.js";
 import { ArticleStore, type SectionKey } from "../services/article-store.js";
 import {
-  runWriterOpening,
+  runWriterBookend,
   runWriterPractice,
-  runWriterClosing,
+  renderHardRulesBlock,
   invokeAgent,
   type ChatMessage,
   type WriterToolEvent,
+  type RunWriterBookendOpts,
+  type RunWriterPracticeOpts,
 } from "@crossing/agents";
 import { dispatchSkill } from "@crossing/kb";
 import { buildSelectionRewriteUserMessage } from "../services/selection-rewrite-builder.js";
@@ -20,6 +26,7 @@ import {
   renderContextBlock,
   trimToBudget,
 } from "../services/context-bundle-service.js";
+import { resolveStyleBindingV2 } from "../services/style-binding-resolver.js";
 
 export interface RewriteSelectionDeps {
   store: ProjectStore;
@@ -36,6 +43,11 @@ export interface RewriteSelectionDeps {
   /** SP-19: optional unified ContextBundle service — when supplied, a
    *  `[Project Context]` block is prepended to the rewrite user message. */
   contextBundleService?: ContextBundleService;
+  /** SP-B: v2 style binding resolution */
+  agentConfigStore?: AgentConfigStore;
+  stylePanelStore?: StylePanelStore;
+  hardRulesStore?: HardRulesStore;
+  projectOverrideStore?: ProjectOverrideStore;
 }
 
 interface Body {
@@ -43,17 +55,14 @@ interface Body {
   user_prompt: string;
 }
 
-type RunnerFn = typeof runWriterOpening;
+type ResolvedRunnerKind =
+  | { kind: 'bookend'; role: 'opening' | 'closing'; agentKey: 'writer.opening' | 'writer.closing' }
+  | { kind: 'practice'; agentKey: 'writer.practice' };
 
-function pickRunner(
-  sectionKey: string,
-): { run: RunnerFn; agentKey: string } | null {
-  if (sectionKey === "opening")
-    return { run: runWriterOpening, agentKey: "writer.opening" };
-  if (sectionKey === "closing")
-    return { run: runWriterClosing, agentKey: "writer.closing" };
-  if (sectionKey.startsWith("practice.case-"))
-    return { run: runWriterPractice, agentKey: "writer.practice" };
+function resolveRunner(sectionKey: string): ResolvedRunnerKind | null {
+  if (sectionKey === 'opening') return { kind: 'bookend', role: 'opening', agentKey: 'writer.opening' };
+  if (sectionKey === 'closing') return { kind: 'bookend', role: 'closing', agentKey: 'writer.closing' };
+  if (sectionKey.startsWith('practice.case-')) return { kind: 'practice', agentKey: 'writer.practice' };
   return null;
 }
 
@@ -72,8 +81,8 @@ export function registerWriterRewriteSelectionRoutes(
         return reply
           .code(400)
           .send({ error: "selected_text and user_prompt required" });
-      const runner = pickRunner(req.params.key);
-      if (!runner)
+      const resolved = resolveRunner(req.params.key);
+      if (!resolved)
         return reply.code(400).send({ error: "unsupported section key" });
 
       const projectDir = join(deps.projectsDir, project.id);
@@ -124,7 +133,7 @@ export function registerWriterRewriteSelectionRoutes(
           }
         }
 
-        const cfg = (await (deps.configStore as any).get(runner.agentKey)) ?? {};
+        const cfg = (await (deps.configStore as any).get(resolved.agentKey)) ?? {};
         const cli = (cfg.cli ?? "claude") as "claude" | "codex";
         const model = cfg.model as string | undefined;
 
@@ -138,7 +147,7 @@ export function registerWriterRewriteSelectionRoutes(
             .map((m) => `[${m.role}]\n${m.content}`)
             .join("\n\n");
           const r = await invokeAgent({
-            agentKey: `${runner.agentKey}.selection`,
+            agentKey: `${resolved.agentKey}.selection`,
             cli,
             model,
             systemPrompt: sys,
@@ -162,24 +171,78 @@ export function registerWriterRewriteSelectionRoutes(
             sqlitePath: deps.sqlitePath,
           });
 
+        const onEvent = (ev: WriterToolEvent) => {
+          const { type, ...rest } = ev;
+          send(`writer.${type}`, { ...rest, section_key: req.params.key });
+        };
+
         const { images: projectImages, addDirs: projectAddDirs } =
           await collectProjectImages(projectDir);
 
-        const result = await (runner.run as any)({
-          invokeAgent: invoker,
-          userMessage,
-          images: projectImages,
-          addDirs: projectAddDirs,
-          dispatchTool,
-          sectionKey: req.params.key,
-          onEvent: (ev: WriterToolEvent) => {
-            const { type, ...rest } = ev;
-            send(`writer.${type}`, { ...rest, section_key: req.params.key });
-          },
-          maxRounds: 3,
-        });
+        let result: { finalText: string; toolsUsed?: unknown[] };
 
-        const newText = ((result?.finalText ?? result?.content ?? "") as string).trim();
+        if (resolved.kind === 'bookend') {
+          if (!project.article_type) {
+            send("writer.failed", {
+              section_key: req.params.key,
+              error: "project.article_type is required",
+            });
+            reply.raw.end();
+            return;
+          }
+          const agentCfg = deps.agentConfigStore?.get(resolved.agentKey);
+          const binding = agentCfg?.styleBinding;
+          if (!binding) {
+            send("writer.failed", {
+              section_key: req.params.key,
+              error: `no styleBinding for ${resolved.agentKey}`,
+            });
+            reply.raw.end();
+            return;
+          }
+          const resolvedStyle = await resolveStyleBindingV2(
+            binding,
+            project.article_type as '实测' | '访谈' | '评论',
+            deps.stylePanelStore!,
+          );
+          const rules = await deps.hardRulesStore!.read();
+          const hardRulesBlock = renderHardRulesBlock(
+            rules,
+            (resolvedStyle.panel.frontmatter as any).banned_vocabulary ?? [],
+          );
+
+          result = await runWriterBookend({
+            role: resolved.role,
+            sectionKey: req.params.key,
+            account: binding.account,
+            articleType: project.article_type as '实测' | '访谈' | '评论',
+            typeSection: resolvedStyle.typeSection,
+            panelFrontmatter: resolvedStyle.panel.frontmatter as any,
+            hardRulesBlock,
+            projectContextBlock: '',
+            product_name: (project as any).product_info?.name ?? undefined,
+            invokeAgent: invoker,
+            userMessage,
+            images: projectImages,
+            addDirs: projectAddDirs,
+            dispatchTool,
+            onEvent,
+            maxRounds: 5,
+          });
+        } else {
+          result = await runWriterPractice({
+            invokeAgent: invoker,
+            userMessage,
+            images: projectImages,
+            addDirs: projectAddDirs,
+            dispatchTool,
+            sectionKey: req.params.key,
+            onEvent,
+            maxRounds: 3,
+          } as RunWriterPracticeOpts);
+        }
+
+        const newText = ((result?.finalText ?? (result as any)?.content ?? "") as string).trim();
         const newBody =
           body.slice(0, matchIndex) +
           newText +
@@ -195,7 +258,7 @@ export function registerWriterRewriteSelectionRoutes(
           key: req.params.key as SectionKey,
           frontmatter: {
             ...current.frontmatter,
-            last_agent: runner.agentKey,
+            last_agent: resolved.agentKey,
             last_updated_at: new Date().toISOString(),
             ...(mergedTools.length > 0 ? { tools_used: mergedTools } : {}),
           } as any,
