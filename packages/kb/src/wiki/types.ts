@@ -20,7 +20,7 @@ export type PatchOp =
   | { op: "add_backlink"; path: string; to: string }
   | { op: "note"; body: string };
 
-export type IngestMode = "full" | "incremental";
+export type IngestMode = "full" | "incremental" | "selected";
 
 export interface IngestStepEvent {
   type: "batch_started" | "op_applied" | "batch_completed" | "batch_failed" | "account_completed" | "all_completed";
@@ -42,6 +42,9 @@ export interface IngestOptions {
   until?: string;
   cliModel?: { cli: "claude" | "codex"; model?: string };
   mode: IngestMode;
+  articleIds?: string[];
+  maxArticles?: number;
+  forceReingest?: boolean;
   onEvent?: (ev: IngestStepEvent) => void;
 }
 

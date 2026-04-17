@@ -100,3 +100,84 @@ describe("runIngest full mode", () => {
     }
   });
 });
+
+describe("runIngest mode=selected + maxArticles validation", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("throws when mode=selected without articleIds", async () => {
+    const { sqlitePath } = seedSqlite();
+    const vault = mkdtempSync(join(tmpdir(), "oc-v-"));
+    const err = await runIngest({
+      accounts: [],
+      perAccountLimit: 50,
+      batchSize: 5,
+      mode: "selected",
+    }, { vaultPath: vault, sqlitePath }).catch((e) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).message).toMatch(/article_ids required/);
+  });
+
+  it("throws when articleIds provided with mode=full", async () => {
+    const { sqlitePath } = seedSqlite();
+    const vault = mkdtempSync(join(tmpdir(), "oc-v-"));
+    const err = await runIngest({
+      accounts: ["AcctA"],
+      perAccountLimit: 50,
+      batchSize: 5,
+      mode: "full",
+      articleIds: ["A0"],
+    }, { vaultPath: vault, sqlitePath }).catch((e) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).message).toMatch(/implies mode=selected/);
+  });
+
+  it("throws when projected count exceeds maxArticles", async () => {
+    const { sqlitePath } = seedSqlite();
+    const vault = mkdtempSync(join(tmpdir(), "oc-v-"));
+    const err = await runIngest({
+      accounts: [],
+      perAccountLimit: 50,
+      batchSize: 5,
+      mode: "selected",
+      articleIds: ["A0", "A1", "A2"],
+      maxArticles: 2,
+    }, { vaultPath: vault, sqlitePath }).catch((e) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).message).toMatch(/max_articles exceeded/);
+  });
+
+  it("throws when accounts×perAccountLimit exceeds maxArticles in full mode", async () => {
+    const { sqlitePath } = seedSqlite();
+    const vault = mkdtempSync(join(tmpdir(), "oc-v-"));
+    const err = await runIngest({
+      accounts: ["AcctA", "AcctB"],
+      perAccountLimit: 30,
+      batchSize: 5,
+      mode: "full",
+      maxArticles: 50,
+    }, { vaultPath: vault, sqlitePath }).catch((e) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).message).toMatch(/max_articles exceeded/);
+  });
+
+  it("processes articles by id in selected mode", async () => {
+    const { sqlitePath } = seedSqlite();
+    const vault = mkdtempSync(join(tmpdir(), "oc-v-"));
+    const events: string[] = [];
+    const res = await runIngest({
+      accounts: [],
+      perAccountLimit: 50,
+      batchSize: 2,
+      mode: "selected",
+      articleIds: ["A0", "A1", "B0"],
+      onEvent: (ev) => events.push(ev.type),
+    }, { vaultPath: vault, sqlitePath });
+
+    // Should have processed 3 articles — check pages created (mock creates 1 page per article)
+    expect(res.pages_created).toBeGreaterThanOrEqual(3);
+    // Events should include batch_started / op_applied / batch_completed
+    expect(events).toContain("batch_started");
+    expect(events).toContain("op_applied");
+    expect(events).toContain("all_completed");
+  });
+});

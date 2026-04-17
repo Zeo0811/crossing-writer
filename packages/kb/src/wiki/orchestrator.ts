@@ -114,6 +114,36 @@ function toPatchOp(op: IngestorOp): PatchOp | null {
 }
 
 export async function runIngest(opts: IngestOptions, ctx: Ctx): Promise<IngestResult> {
+  // Validation: mode + articleIds consistency
+  if (opts.mode === "selected" && (!opts.articleIds || opts.articleIds.length === 0)) {
+    throw new Error("article_ids required for mode=selected");
+  }
+  if (opts.articleIds && opts.articleIds.length > 0 && opts.mode !== "selected") {
+    throw new Error("article_ids implies mode=selected");
+  }
+
+  // maxArticles enforcement (only when explicitly provided)
+  if (opts.maxArticles !== undefined) {
+    const maxArticles = opts.maxArticles;
+    const projectedCount = opts.mode === "selected"
+      ? (opts.articleIds ?? []).length
+      : opts.accounts.length * opts.perAccountLimit;
+    if (projectedCount > maxArticles) {
+      throw new Error(`max_articles exceeded: cap=${maxArticles} projected=${projectedCount}`);
+    }
+  } else if (opts.mode === "selected") {
+    // Default cap of 50 for selected mode
+    const maxArticles = 50;
+    const projectedCount = (opts.articleIds ?? []).length;
+    if (projectedCount > maxArticles) {
+      throw new Error(`max_articles exceeded: cap=${maxArticles} projected=${projectedCount}`);
+    }
+  }
+
+  if (opts.mode === "selected") {
+    return runSelectedIngest(opts, ctx);
+  }
+
   ensureVaultScaffold(ctx.vaultPath);
   const store = new WikiStore(ctx.vaultPath);
   const guide = loadGuide(ctx.vaultPath);
@@ -188,4 +218,80 @@ export async function runIngest(opts: IngestOptions, ctx: Ctx): Promise<IngestRe
   emit(opts.onEvent, { type: "all_completed", stats: { accounts_done: accountsDone.length, pages_created: pagesCreated, pages_updated: pagesUpdated } });
 
   return { accounts_done: accountsDone, pages_created: pagesCreated, pages_updated: pagesUpdated, sources_appended: sourcesAppended, images_appended: imagesAppended, notes };
+}
+
+function loadArticlesByIds(sqlitePath: string, articleIds: string[]): IngestArticle[] {
+  if (articleIds.length === 0) return [];
+  const db = new Database(sqlitePath, { readonly: true, fileMustExist: true });
+  try {
+    const placeholders = articleIds.map(() => "?").join(",");
+    const rows = db.prepare(
+      `SELECT id, account, title, published_at, body_plain, html_path
+       FROM ref_articles WHERE id IN (${placeholders})`,
+    ).all(...articleIds) as RawRow[];
+    const vaultRoot = dirname(dirname(sqlitePath));
+    return rows.map((r) => {
+      const bodyPlain = r.body_plain ?? "";
+      let imgs: ReturnType<typeof extractImagesFromMarkdown> = [];
+      if (r.html_path) {
+        const abs = r.html_path.startsWith("/") ? r.html_path : join(vaultRoot, r.html_path);
+        if (existsSync(abs)) {
+          try { imgs = extractImagesFromHtml(readFileSync(abs, "utf-8")); } catch { /* ignore */ }
+        }
+      }
+      if (imgs.length === 0) imgs = extractImagesFromMarkdown(bodyPlain);
+      return { id: r.id, title: r.title, published_at: r.published_at, body_plain: bodyPlain, images: imgs };
+    });
+  } finally { db.close(); }
+}
+
+async function runSelectedIngest(opts: IngestOptions, ctx: Ctx): Promise<IngestResult> {
+  ensureVaultScaffold(ctx.vaultPath);
+  const store = new WikiStore(ctx.vaultPath);
+  const guide = loadGuide(ctx.vaultPath);
+  const agent = new WikiIngestorAgent({ cli: opts.cliModel?.cli ?? "claude", model: opts.cliModel?.model });
+
+  const articles = loadArticlesByIds(ctx.sqlitePath, opts.articleIds!);
+
+  let pagesCreated = 0, pagesUpdated = 0, sourcesAppended = 0, imagesAppended = 0;
+  const notes: string[] = [];
+
+  const batches: IngestArticle[][] = [];
+  for (let i = 0; i < articles.length; i += opts.batchSize) batches.push(articles.slice(i, i + opts.batchSize));
+
+  for (let bi = 0; bi < batches.length; bi += 1) {
+    const batch = batches[bi]!;
+    emit(opts.onEvent, { type: "batch_started", account: "selected", batchIndex: bi, totalBatches: batches.length, stats: { articles_in_batch: batch.length } });
+    const t0 = Date.now();
+    try {
+      const snap = buildSnapshot(ctx.vaultPath, batch, 10);
+      const res = await agent.ingest({
+        account: "selected", batchIndex: bi, totalBatches: batches.length,
+        articles: batch, existingPages: snap.pages, indexMd: snap.indexMd, wikiGuide: guide,
+      });
+      let opsApplied = 0;
+      for (const rawOp of res.ops) {
+        const patch = toPatchOp(rawOp);
+        if (!patch) continue;
+        try {
+          const r = store.applyPatch(patch);
+          opsApplied += 1;
+          if (patch.op === "upsert") { if (r.created) pagesCreated += 1; if (r.updated) pagesUpdated += 1; }
+          else if (patch.op === "append_source") sourcesAppended += 1;
+          else if (patch.op === "append_image") imagesAppended += 1;
+          else if (patch.op === "note" && r.noted) notes.push(r.noted);
+          emit(opts.onEvent, { type: "op_applied", account: "selected", op: patch.op, path: patch.op !== "note" ? patch.path : undefined });
+        } catch (e) {
+          emit(opts.onEvent, { type: "op_applied", account: "selected", op: patch.op, error: (e as Error).message });
+        }
+      }
+      emit(opts.onEvent, { type: "batch_completed", account: "selected", batchIndex: bi, totalBatches: batches.length, duration_ms: Date.now() - t0, stats: { ops_applied: opsApplied } });
+    } catch (e) {
+      emit(opts.onEvent, { type: "batch_failed", account: "selected", batchIndex: bi, totalBatches: batches.length, error: (e as Error).message });
+    }
+  }
+
+  rebuildIndex(ctx.vaultPath);
+  emit(opts.onEvent, { type: "all_completed", stats: { pages_created: pagesCreated, pages_updated: pagesUpdated } });
+  return { accounts_done: ["selected"], pages_created: pagesCreated, pages_updated: pagesUpdated, sources_appended: sourcesAppended, images_appended: imagesAppended, notes };
 }
