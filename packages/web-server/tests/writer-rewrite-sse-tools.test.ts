@@ -8,7 +8,7 @@ vi.mock("@crossing/agents", async () => {
   const actual = await vi.importActual<any>("@crossing/agents");
   return {
     ...actual,
-    runWriterOpening: vi.fn(async (opts: any) => {
+    runWriterBookend: vi.fn(async (opts: any) => {
       opts.onEvent?.({ type: "tool_called", section_key: opts.sectionKey, agent: "writer.opening", tool: "search_raw", args: { query: "x" }, round: 1 });
       opts.onEvent?.({ type: "tool_returned", section_key: opts.sectionKey, agent: "writer.opening", tool: "search_raw", round: 1, hits_count: 2, duration_ms: 3 });
       opts.onEvent?.({ type: "tool_failed", section_key: opts.sectionKey, agent: "writer.opening", tool: "fetch_url", round: 1, duration_ms: 1, error: "net" });
@@ -20,6 +20,15 @@ vi.mock("@crossing/agents", async () => {
         meta: { cli: "claude", model: "opus", durationMs: 10, total_duration_ms: 10 },
       };
     }),
+    renderHardRulesBlock: vi.fn(() => "## 写作硬规则（绝对不允许违反）\n"),
+  };
+});
+vi.mock("../src/services/style-binding-resolver.js", async () => {
+  return {
+    resolveStyleBindingV2: vi.fn(async () => ({
+      panel: { frontmatter: { banned_vocabulary: [] } },
+      typeSection: "STYLE-SECTION",
+    })),
   };
 });
 
@@ -34,6 +43,7 @@ async function seed() {
   const p = await store.create({ name: "T" });
   await store.update(p.id, {
     status: "writing_ready",
+    article_type: "实测",
     writer_config: {
       cli_model_per_agent: { "writer.opening": { cli: "claude", model: "opus" } },
       reference_accounts_per_agent: {},
@@ -58,6 +68,23 @@ async function seed() {
     vaultPath: vault,
     sqlitePath: join(vault, "kb.sqlite"),
     configStore: { async get() { return { cli: "claude", model: "opus" }; } } as any,
+    agentConfigStore: {
+      get: (_key: string) => ({
+        agentKey: _key,
+        model: { cli: "claude" },
+        styleBinding: { account: "test-account", role: "opening" },
+      }),
+    } as any,
+    stylePanelStore: {} as any,
+    hardRulesStore: {
+      read: async () => ({
+        version: 1 as const,
+        updated_at: "2026-01-01T00:00:00Z",
+        banned_phrases: [],
+        banned_vocabulary: [],
+        layout_rules: [],
+      }),
+    } as any,
   });
   await app.ready();
   return { app, projectId: p.id };

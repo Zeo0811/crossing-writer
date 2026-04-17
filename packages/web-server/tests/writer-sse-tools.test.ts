@@ -7,7 +7,7 @@ vi.mock("@crossing/agents", async () => {
   const actual = await vi.importActual<any>("@crossing/agents");
   return {
     ...actual,
-    runWriterOpening: vi.fn(async (opts: any) => {
+    runWriterBookend: vi.fn(async (opts: any) => {
       // Emit all 4 tool event types to exercise the bridge.
       opts.onEvent?.({
         type: "tool_called",
@@ -43,7 +43,7 @@ vi.mock("@crossing/agents", async () => {
         total_tools_in_round: 2,
       });
       return {
-        finalText: "开场",
+        finalText: opts.role === "opening" ? "开场" : "结尾",
         toolsUsed: [{
           tool: "search_raw",
           query: "a",
@@ -59,10 +59,6 @@ vi.mock("@crossing/agents", async () => {
     }),
     runWriterPractice: vi.fn(async () => ({
       finalText: "## case-01 BODY", toolsUsed: [], rounds: 1,
-      meta: { cli: "claude", durationMs: 1, total_duration_ms: 1 },
-    })),
-    runWriterClosing: vi.fn(async () => ({
-      finalText: "结尾", toolsUsed: [], rounds: 1,
       meta: { cli: "claude", durationMs: 1, total_duration_ms: 1 },
     })),
     runStyleCritic: vi.fn(async () => ({

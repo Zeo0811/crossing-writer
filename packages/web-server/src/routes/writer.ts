@@ -10,13 +10,13 @@ import { mergeAgentConfig } from "../services/config-merger.js";
 import { resolveStyleBindingV2 } from "../services/style-binding-resolver.js";
 import { runWriter, type WriterAgentKey, type WriterConfig, type ResolveStyleForAgent } from "../services/writer-orchestrator.js";
 import type { ContextBundleService } from "../services/context-bundle-service.js";
-import type { HardRulesStore, WritingHardRules } from "../services/hard-rules-store.js";
+import type { HardRulesStore } from "../services/hard-rules-store.js";
 import { ArticleStore, type SectionKey } from "../services/article-store.js";
 import {
-  WriterOpeningAgent, WriterPracticeAgent, WriterClosingAgent,
+  WriterPracticeAgent,
   PracticeStitcherAgent, invokeAgent,
-  runWriterOpening, runWriterPractice, runWriterClosing,
-  type ReferenceAccountKb, type ChatMessage, type WriterToolEvent,
+  runWriterPractice, runWriterBookend, renderHardRulesBlock,
+  type RunWriterBookendOpts, type ReferenceAccountKb, type ChatMessage, type WriterToolEvent,
 } from "@crossing/agents";
 import { dispatchSkill, type ArticleType } from "@crossing/kb";
 import { readFile } from "node:fs/promises";
@@ -44,30 +44,6 @@ const SECTION_AGENT_TO_CONFIG_KEY: Record<string, string> = {
   "writer.closing": "writer.closing",
 };
 
-function renderHardRulesBlock(
-  rules: WritingHardRules,
-  panelBannedVocab: string[],
-): string {
-  const phrases = rules.banned_phrases.length
-    ? rules.banned_phrases
-        .map((p) => `  - ${p.pattern}${p.is_regex ? ' (regex)' : ''}：${p.reason}`)
-        .join('\n')
-    : '  （无）';
-
-  const mergedVocab = Array.from(new Set([
-    ...rules.banned_vocabulary.map((v) => v.word),
-    ...panelBannedVocab,
-  ]));
-  const vocab = mergedVocab.length
-    ? mergedVocab.map((w) => `  - ${w}`).join('\n')
-    : '  （无）';
-
-  const layout = rules.layout_rules.length
-    ? rules.layout_rules.map((r) => `  - ${r}`).join('\n')
-    : '  （无）';
-
-  return `## 写作硬规则（绝对不允许违反）\n\n禁用句式：\n${phrases}\n\n禁用词汇：\n${vocab}\n\n排版规则：\n${layout}`;
-}
 
 function buildResolveStyleForAgent(
   deps: WriterDeps,
@@ -369,33 +345,67 @@ export function registerWriterRoutes(app: FastifyInstance, deps: WriterDeps) {
             ? "(无参考账号)"
             : refs.map((r) => `## 参考账号：${r.id}\n${r.text}`).join("\n\n");
 
-          if (agentKey === "writer.opening") {
-            const brief = existsSync(join(pDir, "brief/brief.md")) ? await readFile(join(pDir, "brief/brief.md"), "utf-8") : "";
-            const mission = existsSync(join(pDir, "mission/selected.md")) ? await readFile(join(pDir, "mission/selected.md"), "utf-8") : "";
-            const po = existsSync(join(pDir, "context/product-overview.md")) ? await readFile(join(pDir, "context/product-overview.md"), "utf-8") : "";
-            const userMessage = [
-              "# Brief 摘要", (brief + hintBlock) || "(无)", "",
-              "# Mission 摘要", mission || "(无)", "",
-              "# 产品概览", po || "(无)", "",
-              "# 参考账号风格素材", refBlock, "",
-              "请按 system prompt 要求产出开头段正文。",
-            ].join("\n");
-            const out = await runWriterOpening({
-              invokeAgent: invoker, userMessage, dispatchTool, onEvent, sectionKey: req.params.key,
-            });
-            newBody = out.finalText;
-          } else if (agentKey === "writer.closing") {
-            const openingBody = (await as.readSection("opening"))?.body ?? "";
-            const list = await as.listSections();
-            const practiceText = list.filter((s) => s.key.startsWith("practice.case-")).map((s) => s.body).join("\n\n");
-            const userMessage = [
-              "# 开头段", openingBody + hintBlock, "",
-              "# 实测主体（含过渡）", practiceText, "",
-              "# 参考账号风格素材", refBlock, "",
-              "请按 system prompt 要求产出结尾段。",
-            ].join("\n");
-            const out = await runWriterClosing({
-              invokeAgent: invoker, userMessage, dispatchTool, onEvent, sectionKey: req.params.key,
+          if (agentKey === "writer.opening" || agentKey === "writer.closing") {
+            if (!project.article_type) {
+              return reply.code(400).send({ error: 'project.article_type is required' });
+            }
+            const role: 'opening' | 'closing' = agentKey === 'writer.opening' ? 'opening' : 'closing';
+            const bookendAgentKey: 'writer.opening' | 'writer.closing' = agentKey as 'writer.opening' | 'writer.closing';
+            const agentCfg = deps.agentConfigStore?.get(bookendAgentKey);
+            const binding = agentCfg?.styleBinding;
+            if (!binding) {
+              return reply.code(400).send({ error: `no styleBinding for ${bookendAgentKey}` });
+            }
+            const resolvedStyle = await resolveStyleBindingV2(
+              binding,
+              project.article_type,
+              deps.stylePanelStore!,
+            );
+            const rules = await deps.hardRulesStore!.read();
+            const hardRulesBlock = renderHardRulesBlock(
+              rules,
+              (resolvedStyle.panel.frontmatter as any).banned_vocabulary ?? [],
+            );
+
+            let userMessage: string;
+            if (role === 'opening') {
+              const brief = existsSync(join(pDir, "brief/brief.md")) ? await readFile(join(pDir, "brief/brief.md"), "utf-8") : "";
+              const mission = existsSync(join(pDir, "mission/selected.md")) ? await readFile(join(pDir, "mission/selected.md"), "utf-8") : "";
+              const po = existsSync(join(pDir, "context/product-overview.md")) ? await readFile(join(pDir, "context/product-overview.md"), "utf-8") : "";
+              userMessage = [
+                "# Brief 摘要", (brief + hintBlock) || "(无)", "",
+                "# Mission 摘要", mission || "(无)", "",
+                "# 产品概览", po || "(无)", "",
+                "# 参考账号风格素材", refBlock, "",
+                "请按 system prompt 要求产出开头段正文。",
+              ].join("\n");
+            } else {
+              const openingBody = (await as.readSection("opening"))?.body ?? "";
+              const list = await as.listSections();
+              const practiceText = list.filter((s) => s.key.startsWith("practice.case-")).map((s) => s.body).join("\n\n");
+              userMessage = [
+                "# 开头段", openingBody + hintBlock, "",
+                "# 实测主体（含过渡）", practiceText, "",
+                "# 参考账号风格素材", refBlock, "",
+                "请按 system prompt 要求产出结尾段。",
+              ].join("\n");
+            }
+
+            const out = await runWriterBookend({
+              role,
+              sectionKey: req.params.key,
+              account: binding.account,
+              articleType: project.article_type,
+              typeSection: resolvedStyle.typeSection,
+              panelFrontmatter: resolvedStyle.panel.frontmatter as any,
+              hardRulesBlock,
+              projectContextBlock: '',
+              product_name: project.product_info?.name ?? undefined,
+              invokeAgent: invoker,
+              userMessage,
+              dispatchTool,
+              onEvent,
+              maxRounds: 5,
             });
             newBody = out.finalText;
           } else {
