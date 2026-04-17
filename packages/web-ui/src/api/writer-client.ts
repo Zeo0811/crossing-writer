@@ -522,38 +522,65 @@ export async function clearProjectAgentOverride(
   });
 }
 
+export type RewriteStreamEvent =
+  | { type: 'writer.tool_called'; data: { tool: string; args: Record<string, unknown>; round: number; section_key: string; agent: string } }
+  | { type: 'writer.tool_returned'; data: { tool: string; hits_count: number; duration_ms: number; round: number; section_key: string; agent: string } }
+  | { type: 'writer.tool_round_completed'; data: { round: number; total_tools_in_round: number; section_key: string; agent: string } }
+  | { type: 'writer.validation_passed'; data: { attempt: number; chars: number; section_key: string; agent: string } }
+  | { type: 'writer.validation_retry'; data: { attempt: number; chars: number; violations: Array<Record<string, unknown>>; section_key: string; agent: string } }
+  | { type: 'writer.validation_failed'; data: { violations: Array<Record<string, unknown>>; section_key: string; agent: string } }
+  | { type: 'writer.rewrite_chunk'; data: { section_key: string; chunk: string } }
+  | { type: 'writer.rewrite_completed'; data: { section_key: string; last_agent: string } }
+  | { type: 'writer.rewrite_failed'; data: { section_key: string; error: string } };
+
+export interface RewriteStreamOpts {
+  hint?: string;
+  selected_text?: string;
+}
+
 export async function rewriteSectionStream(
   projectId: string,
-  key: string,
-  userHint: string | undefined,
-  onEvent: (ev: { type: string; data: any }) => void,
-  selectedText?: string,
+  sectionKey: string,
+  opts: RewriteStreamOpts,
+  onEvent: (event: RewriteStreamEvent) => void,
 ): Promise<void> {
-  const res = await fetch(`/api/projects/${projectId}/writer/sections/${encodeURIComponent(key)}/rewrite`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_hint: userHint, selected_text: selectedText }),
+  const url = `/api/projects/${encodeURIComponent(projectId)}/writer/sections/${encodeURIComponent(sectionKey)}/rewrite`;
+  const body: Record<string, string> = {};
+  if (opts.hint) body.user_hint = opts.hint;
+  if (opts.selected_text) body.selected_text = opts.selected_text;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
-  if (!res.ok || !res.body) throw new Error(`rewrite failed: ${res.status}`);
+  if (!res.ok || !res.body) {
+    throw new Error(`rewriteSectionStream: HTTP ${res.status}`);
+  }
   const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buf = "";
+  const decoder = new TextDecoder('utf-8');
+  let buffer = '';
   while (true) {
-    const { done, value } = await reader.read();
+    const { value, done } = await reader.read();
     if (done) break;
-    buf += decoder.decode(value, { stream: true });
+    buffer += decoder.decode(value, { stream: true });
     let idx: number;
-    while ((idx = buf.indexOf("\n\n")) >= 0) {
-      const raw = buf.slice(0, idx);
-      buf = buf.slice(idx + 2);
-      const eventMatch = /^event:\s*(.+)$/m.exec(raw);
-      const dataMatch = /^data:\s*(.*)$/m.exec(raw);
-      if (eventMatch && dataMatch) {
-        try {
-          onEvent({ type: eventMatch[1]!.trim(), data: JSON.parse(dataMatch[1]!) });
-        } catch {
-          onEvent({ type: eventMatch[1]!.trim(), data: dataMatch[1]! });
-        }
+    while ((idx = buffer.indexOf('\n\n')) !== -1) {
+      const frame = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 2);
+      const lines = frame.split('\n');
+      let evType = '';
+      let evData = '';
+      for (const line of lines) {
+        if (line.startsWith('event: ')) evType = line.slice(7).trim();
+        else if (line.startsWith('data: ')) evData += line.slice(6);
+      }
+      if (!evType) continue;
+      try {
+        const parsed = { type: evType, data: JSON.parse(evData || '{}') } as RewriteStreamEvent;
+        onEvent(parsed);
+      } catch {
+        // malformed frame; skip
       }
     }
   }
