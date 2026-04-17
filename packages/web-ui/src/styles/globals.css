@@ -47,6 +47,7 @@ body {
 .phase-trail-2 { animation-delay: 0.15s; }
 .phase-trail-3 { animation-delay: 0.3s; }
 .phase-trail-4 { animation-delay: 0.45s; }
+.phase-trail-5 { animation-delay: 0.6s; }
 
 /* Markdown 渲染补齐：frontmatter 块通常会被 react-markdown 当 thematic break，单独处理下 */
 .prose :where(h1):not(:where([class~="not-prose"] *)) {

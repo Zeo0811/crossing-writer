@@ -98,7 +98,7 @@ export function PhaseSteps({ status }: { status: ProjectStatus }) {
               {isCurrent && !isFailed && <span className="w-1 h-1 rounded-full bg-[var(--accent-on)] animate-pulse" />}
               {isCurrent && (
                 <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 flex flex-col items-center gap-[3px] z-10 pointer-events-none">
-                  {[14, 12, 10, 8].map((w, n) => (
+                  {[16, 12, 8, 5, 3].map((w, n) => (
                     <span
                       key={n}
                       className={`h-[2px] rounded-sm phase-trail-bar phase-trail-${n + 1}`}
