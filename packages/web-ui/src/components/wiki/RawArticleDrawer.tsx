@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import * as RadixDialog from "@radix-ui/react-dialog";
 import { Dialog, DialogContent, Chip } from "../ui";
 import { getRawArticle, type RawArticle } from "../../api/wiki-client";
 
@@ -33,9 +34,10 @@ export function RawArticleDrawer({ open, account, articleId, onClose }: RawArtic
         className="!left-auto !top-0 !right-0 !translate-x-0 !translate-y-0 !max-h-screen !h-screen !rounded-none border-l border-[var(--hair-strong)]"
         width="40vw"
         aria-label="原文抽屉"
+        aria-describedby={undefined}
       >
         <div className="flex items-center justify-between px-5 h-12 border-b border-[var(--hair)]">
-          <span className="text-xs text-[var(--meta)]">原文</span>
+          <RadixDialog.Title className="text-xs text-[var(--meta)] m-0 font-normal">原文</RadixDialog.Title>
           <button
             type="button"
             onClick={onClose}
