@@ -9,7 +9,12 @@ export interface IngestProgressViewProps {
 
 function fmt(e: IngestStreamEvent): { ts: string; tag: string; text: string; tone: "info" | "ok" | "err" } {
   const ts = new Date().toISOString().slice(11, 19);
+  const anyE = e as Record<string, unknown>;
   switch (e.type) {
+    case "run_started":
+      return { ts, tag: "run", text: `开始 · ${(anyE.runId as string | undefined)?.slice(0, 8) ?? ""}`, tone: "info" };
+    case "run_completed":
+      return { ts, tag: "run", text: `完成 · ${(anyE.runId as string | undefined)?.slice(0, 8) ?? ""}`, tone: "ok" };
     case "batch_started":
       return { ts, tag: "batch", text: `${(e.batchIndex ?? 0) + 1}/${e.totalBatches ?? "?"} 开始 · ${e.account ?? "?"}`, tone: "info" };
     case "batch_completed":
@@ -18,6 +23,8 @@ function fmt(e: IngestStreamEvent): { ts: string; tag: string; text: string; ton
       return { ts, tag: "batch", text: `${(e.batchIndex ?? 0) + 1} 失败：${e.error ?? ""}`, tone: "err" };
     case "op_applied":
       return { ts, tag: "op", text: `${e.op ?? "?"} ${e.path ?? ""}${e.error ? ` 错误=${e.error}` : ""}`, tone: e.error ? "err" : "info" };
+    case "article_skipped":
+      return { ts, tag: "skip", text: `${(anyE.articleId as string | undefined) ?? "?"} 已入库，跳过`, tone: "info" };
     case "account_completed":
       return { ts, tag: "acc", text: `${e.account ?? "?"} 完成 · ${JSON.stringify(e.stats ?? {})}`, tone: "ok" };
     case "all_completed":
@@ -70,10 +77,10 @@ export function IngestProgressView({ events, status, error }: IngestProgressView
               const { ts, tag, text, tone } = fmt(e);
               const color = tone === "ok" ? "var(--accent)" : tone === "err" ? "var(--red)" : "var(--meta)";
               return (
-                <div key={i} className="flex gap-2 text-[11px] leading-relaxed">
+                <div key={i} className="flex gap-3 text-[11px] leading-relaxed">
                   <span className="text-[var(--faint)] shrink-0">[{ts}]</span>
-                  <span className="shrink-0 w-12 text-right" style={{ color }}>{tag}</span>
-                  <span className="text-[var(--body)] whitespace-pre-wrap break-all flex-1">{text}</span>
+                  <span className="shrink-0 w-16 text-right" style={{ color }}>{tag}</span>
+                  <span className="text-[var(--body)] whitespace-pre-wrap break-all flex-1 min-w-0">{text}</span>
                 </div>
               );
             })}
