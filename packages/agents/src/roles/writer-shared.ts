@@ -55,10 +55,16 @@ export interface WriterOutput {
 /**
  * Extract the body of `### <subsectionName>` up to the next `### ` heading
  * (or end of input). Returns '' if the subsection is missing.
+ *
+ * Tolerant to suffix on the heading line — matches both:
+ *   `### 结构骨架`                 (bare)
+ *   `### 结构骨架（三选一）`         (full-width parens)
+ *   `### 结构骨架(三选一)`          (half-width parens)
+ * Composers in practice emit either form, depending on the LLM's mood.
  */
 export function extractSubsection(typeSection: string, subsectionName: string): string {
   const escaped = subsectionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const re = new RegExp(`(?:^|\\n)###\\s+${escaped}\\s*\\n([\\s\\S]*?)(?=\\n###\\s|$)`, 'u');
+  const re = new RegExp(`(?:^|\\n)###\\s+${escaped}[^\\n]*\\n([\\s\\S]*?)(?=\\n###\\s|$)`, 'u');
   const m = typeSection.match(re);
   return m?.[1]?.trim() ?? '';
 }
@@ -128,22 +134,16 @@ export function renderBookendPrompt(opts: RenderBookendPromptOpts): string {
       ? opts.panelFrontmatter.word_count_ranges.opening.join('-')
       : opts.panelFrontmatter.word_count_ranges.article.join('-');
 
-  // Extract 6 subsections (try exact panel heading first, then fallback to short form)
+  // Extract 6 subsections. extractSubsection is suffix-tolerant, so passing
+  // just the bare name catches `### 结构骨架`, `### 结构骨架(三选一)`, and
+  // `### 结构骨架（三选一）` — all three forms composers emit in practice.
   const subs = {
     目标: extractSubsection(opts.typeSection, '目标'),
     字数范围: extractSubsection(opts.typeSection, '字数范围'),
-    结构骨架:
-      extractSubsection(opts.typeSection, '结构骨架（三选一）') ||
-      extractSubsection(opts.typeSection, '结构骨架'),
-    高频锚词:
-      extractSubsection(opts.typeSection, '高频锚词（用不是抄）') ||
-      extractSubsection(opts.typeSection, '高频锚词'),
-    禁止出现:
-      extractSubsection(opts.typeSection, '禁止出现（本账号从来不写）') ||
-      extractSubsection(opts.typeSection, '禁止出现'),
-    示例:
-      extractSubsection(opts.typeSection, '示例（3 条真实样本，节奏模板）') ||
-      extractSubsection(opts.typeSection, '示例'),
+    结构骨架: extractSubsection(opts.typeSection, '结构骨架'),
+    高频锚词: extractSubsection(opts.typeSection, '高频锚词'),
+    禁止出现: extractSubsection(opts.typeSection, '禁止出现'),
+    示例: extractSubsection(opts.typeSection, '示例'),
   };
 
   // Conditional blocks — render only the matching role's block, drop the other
