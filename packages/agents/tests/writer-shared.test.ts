@@ -175,7 +175,9 @@ describe('renderBookendPrompt', () => {
     });
     expect(out).toContain('本次任务只写**一段**：**开头**');
     expect(out).not.toContain('本次任务只写**一段**：**结尾**');
-    expect(out).toContain('150-260 字');
+    // word_count now prefers the panel's extracted 字数范围 body over the
+    // numeric frontmatter fallback — check for the extracted form.
+    expect(out).toContain('150 – 260 字');
     expect(out).toContain('给读者钩子。');
     expect(out).toContain('十字路口Crossing');
     expect(out).toContain('Floatboat');

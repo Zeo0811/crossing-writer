@@ -129,10 +129,6 @@ export interface RenderBookendPromptOpts {
 export function renderBookendPrompt(opts: RenderBookendPromptOpts): string {
   const template = loadTemplate();
   const roleCn = opts.role === 'opening' ? '开头' : '结尾';
-  const wordRange =
-    opts.role === 'opening'
-      ? opts.panelFrontmatter.word_count_ranges.opening.join('-')
-      : opts.panelFrontmatter.word_count_ranges.article.join('-');
 
   // Extract 6 subsections. extractSubsection is suffix-tolerant, so passing
   // just the bare name catches `### 结构骨架`, `### 结构骨架(三选一)`, and
@@ -145,6 +141,17 @@ export function renderBookendPrompt(opts: RenderBookendPromptOpts): string {
     禁止出现: extractSubsection(opts.typeSection, '禁止出现'),
     示例: extractSubsection(opts.typeSection, '示例'),
   };
+
+  // Panel schema has `word_count_ranges.opening` and `word_count_ranges.article`
+  // but NOT a closing-specific range. For closing, the per-role "字数范围"
+  // subsection text in the panel body is the real source of truth (e.g.
+  // "10 – 110 字(单段)"). Use it whenever available; fall back to the
+  // frontmatter numeric range only if the subsection is missing.
+  const wordRange = subs.字数范围
+    ? subs.字数范围
+    : opts.role === 'opening'
+      ? `${opts.panelFrontmatter.word_count_ranges.opening.join('-')} 字`
+      : `${opts.panelFrontmatter.word_count_ranges.article.join('-')} 字（全文参考，非本段独占）`;
 
   // Conditional blocks — render only the matching role's block, drop the other
   let out = applyConditionalBlocks(template, opts.role);

@@ -7,7 +7,7 @@
 {{#if role === 'opening'}}
 写**开头**。
 - 目标：{{panel.目标}}
-- 字数硬约束：**{{panel.word_count}} 字**（超或不足都要重写）
+- 字数硬约束：**{{panel.word_count}}**（超或不足都要重写）
 - 可用结构骨架（三选一，从 panel 现学现用）：
 
 {{panel.结构骨架}}
@@ -27,7 +27,7 @@
 {{#if role === 'closing'}}
 写**结尾**。
 - 目标：{{panel.目标}}
-- 字数硬约束：**{{panel.word_count}} 字**
+- 字数硬约束：**{{panel.word_count}}**
 - 可用结构骨架（三选一）：
 
 {{panel.结构骨架}}
