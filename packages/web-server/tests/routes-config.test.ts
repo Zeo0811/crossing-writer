@@ -13,7 +13,7 @@ function mkApp() {
     vaultPath: "~/v",
     sqlitePath: "~/v/.i/r.sqlite",
     modelAdapter: { defaultCli: "claude", fallbackCli: "codex" },
-    agents: { "brief_analyst": { cli: "claude", model: "sonnet" } },
+    agents: { "brief_analyst": { cli: "claude" } },
   }, null, 2), "utf-8");
   const store = createConfigStore(path);
   const app = Fastify();
@@ -30,7 +30,7 @@ describe("GET/PATCH /api/config/agents", () => {
     const body = res.json();
     expect(body.defaultCli).toBe("claude");
     expect(body.fallbackCli).toBe("codex");
-    expect(body.agents.brief_analyst).toEqual({ cli: "claude", model: "sonnet" });
+    expect(body.agents.brief_analyst).toEqual({ cli: "claude" });
   });
 
   it("PATCH updates and persists", async () => {
