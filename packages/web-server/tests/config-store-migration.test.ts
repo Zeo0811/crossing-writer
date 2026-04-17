@@ -85,3 +85,83 @@ describe('loadServerConfig — defaultModel migration', () => {
     expect(cfg.defaultModel.other.model).toBe('claude-sonnet-4-5');
   });
 });
+
+describe('loadServerConfig — handles both flat and nested model shapes', () => {
+  it('nested AgentConfigEntry shape → derives flat defaultModel', () => {
+    writeFileSync(cfgPath, JSON.stringify({
+      vaultPath: '/tmp/vault',
+      sqlitePath: '/tmp/kb.sqlite',
+      modelAdapter: { defaultCli: 'claude', fallbackCli: 'codex' },
+      agents: {
+        'writer.opening': {
+          agentKey: 'writer.opening',
+          model: { cli: 'claude', model: 'claude-opus-4-6' },
+        },
+        'brief_analyst': {
+          agentKey: 'brief_analyst',
+          model: { cli: 'claude', model: 'claude-sonnet-4-5' },
+        },
+      },
+    }, null, 2));
+
+    const cfg = loadServerConfig(cfgPath);
+    expect(cfg.defaultModel.writer).toEqual({ cli: 'claude', model: 'claude-opus-4-6' });
+    expect(cfg.defaultModel.other).toEqual({ cli: 'claude', model: 'claude-sonnet-4-5' });
+    // No double-wrapping
+    expect(typeof cfg.defaultModel.writer.model).toBe('string');
+    expect(typeof cfg.defaultModel.other.model).toBe('string');
+  });
+
+  it('mixed shapes — one flat, one nested → both normalized', () => {
+    writeFileSync(cfgPath, JSON.stringify({
+      vaultPath: '/tmp/vault',
+      sqlitePath: '/tmp/kb.sqlite',
+      modelAdapter: { defaultCli: 'claude', fallbackCli: 'codex' },
+      agents: {
+        'writer.opening': { cli: 'claude', model: 'claude-opus-4-6' },
+        'brief_analyst':  {
+          agentKey: 'brief_analyst',
+          model: { cli: 'claude', model: 'claude-sonnet-4-5' },
+        },
+      },
+    }, null, 2));
+
+    const cfg = loadServerConfig(cfgPath);
+    expect(cfg.defaultModel.writer).toEqual({ cli: 'claude', model: 'claude-opus-4-6' });
+    expect(cfg.defaultModel.other).toEqual({ cli: 'claude', model: 'claude-sonnet-4-5' });
+  });
+
+  it('nested shape with different cli in inner vs outer → inner wins', () => {
+    // Outer says claude, inner says codex — the inner AgentModelConfig is authoritative
+    writeFileSync(cfgPath, JSON.stringify({
+      vaultPath: '/tmp/vault',
+      sqlitePath: '/tmp/kb.sqlite',
+      modelAdapter: { defaultCli: 'claude', fallbackCli: 'codex' },
+      agents: {
+        'writer.opening': {
+          cli: 'claude',
+          model: { cli: 'codex', model: 'gpt-5' },
+        },
+      },
+    }, null, 2));
+
+    const cfg = loadServerConfig(cfgPath);
+    expect(cfg.defaultModel.writer).toEqual({ cli: 'codex', model: 'gpt-5' });
+  });
+
+  it('missing model entirely → cli-only DefaultModelEntry (no model field)', () => {
+    writeFileSync(cfgPath, JSON.stringify({
+      vaultPath: '/tmp/vault',
+      sqlitePath: '/tmp/kb.sqlite',
+      modelAdapter: { defaultCli: 'claude', fallbackCli: 'codex' },
+      agents: {
+        'writer.opening': { cli: 'claude' },
+        'brief_analyst':  { cli: 'codex' },
+      },
+    }, null, 2));
+
+    const cfg = loadServerConfig(cfgPath);
+    expect(cfg.defaultModel.writer).toEqual({ cli: 'claude' });
+    expect(cfg.defaultModel.other).toEqual({ cli: 'codex' });
+  });
+});

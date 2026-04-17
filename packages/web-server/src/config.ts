@@ -34,6 +34,25 @@ const HARDCODED_DEFAULT_MODEL: DefaultModelConfig = {
   other:  { cli: "claude", model: "claude-sonnet-4-5" },
 };
 
+function normalizeAgentModel(entry: { cli?: string; model?: unknown }): DefaultModelEntry {
+  const cli = (entry.cli === "codex" ? "codex" : "claude") as "claude" | "codex";
+  // Legacy flat: model is a string
+  if (typeof entry.model === "string") {
+    return { cli, model: entry.model };
+  }
+  // Nested AgentConfigEntry shape: model is { cli, model? }
+  if (entry.model && typeof entry.model === "object") {
+    const nested = entry.model as { cli?: string; model?: string };
+    const nestedCli = (nested.cli === "codex" ? "codex" : "claude") as "claude" | "codex";
+    return {
+      cli: nestedCli,
+      ...(typeof nested.model === "string" ? { model: nested.model } : {}),
+    };
+  }
+  // No model field at all
+  return { cli };
+}
+
 function migrateRaw(raw: Record<string, unknown>): { migrated: boolean; result: Record<string, unknown> } {
   let migrated = false;
   const agents = (raw.agents ?? {}) as Record<string, AgentConfig & { reference_accounts?: string[] }>;
@@ -43,12 +62,8 @@ function migrateRaw(raw: Record<string, unknown>): { migrated: boolean; result: 
     const writerAgent = Object.entries(agents).find(([k]) => k.startsWith("writer."));
     const otherAgent  = Object.entries(agents).find(([k]) => !k.startsWith("writer."));
     raw.defaultModel = {
-      writer: writerAgent
-        ? { cli: writerAgent[1].cli, ...(writerAgent[1].model !== undefined ? { model: writerAgent[1].model } : {}) }
-        : HARDCODED_DEFAULT_MODEL.writer,
-      other: otherAgent
-        ? { cli: otherAgent[1].cli, ...(otherAgent[1].model !== undefined ? { model: otherAgent[1].model } : {}) }
-        : HARDCODED_DEFAULT_MODEL.other,
+      writer: writerAgent ? normalizeAgentModel(writerAgent[1]) : HARDCODED_DEFAULT_MODEL.writer,
+      other:  otherAgent  ? normalizeAgentModel(otherAgent[1])  : HARDCODED_DEFAULT_MODEL.other,
     };
   }
 
