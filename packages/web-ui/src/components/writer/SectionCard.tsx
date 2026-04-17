@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useSectionRewriteState } from '../../hooks/useSectionRewriteState.js';
 import { useRewriteMutex } from '../../hooks/useRewriteMutex.js';
+import { useTextSelection } from '../../hooks/useTextSelection.js';
 import { ToolTimeline } from './ToolTimeline.js';
 import { SectionDiff } from './SectionDiff.js';
+import { SelectionBubble } from './SelectionBubble.js';
+import { MentionDropdown, SKILL_ITEMS, type MentionSkillItem } from './MentionDropdown.js';
 import { putSection } from '../../api/writer-client.js';
 
 export interface SectionCardProps {
@@ -64,10 +67,78 @@ const mdComponents: Components = {
 
 export function SectionCard({ projectId, sectionKey, label, initialBody }: SectionCardProps) {
   const state = useSectionRewriteState({ projectId, sectionKey, initialBody });
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const selection = useTextSelection(bodyRef);
   const mutex = useRewriteMutex();
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedBodyRef = useRef<string>(initialBody);
+
+  const [mention, setMention] = useState<{ active: boolean; start: number; activeIndex: number }>({
+    active: false,
+    start: -1,
+    activeIndex: 0,
+  });
+  const hintTaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const closeMention = () => setMention({ active: false, start: -1, activeIndex: 0 });
+
+  function onHintChange(e: ChangeEvent<HTMLTextAreaElement>) {
+    const next = e.target.value;
+    state.setHint(next);
+    const caret = e.target.selectionStart ?? next.length;
+    const before = next.slice(0, caret);
+    const at = before.lastIndexOf('@');
+    if (at >= 0) {
+      const frag = before.slice(at + 1);
+      if (!/\s/.test(frag) && frag.length <= 40) {
+        setMention({ active: true, start: at, activeIndex: 0 });
+        return;
+      }
+    }
+    closeMention();
+  }
+
+  function insertSkill(item: MentionSkillItem) {
+    const ta = hintTaRef.current;
+    const caret = ta?.selectionStart ?? state.hint.length;
+    const start = mention.start >= 0 ? mention.start : caret;
+    const before = state.hint.slice(0, start);
+    const after = state.hint.slice(caret);
+    const nextVal = before + item.insertText + after;
+    state.setHint(nextVal);
+    closeMention();
+    queueMicrotask(() => {
+      const pos = before.length + item.insertText.length;
+      ta?.setSelectionRange(pos, pos);
+      ta?.focus();
+    });
+  }
+
+  function onHintKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (mention.active) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMention((m) => ({ ...m, activeIndex: Math.min(SKILL_ITEMS.length - 1, m.activeIndex + 1) }));
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMention((m) => ({ ...m, activeIndex: Math.max(0, m.activeIndex - 1) }));
+        return;
+      }
+      if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        insertSkill(SKILL_ITEMS[mention.activeIndex]!);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeMention();
+        return;
+      }
+    }
+  }
 
   const canRewrite = mutex.activeKey === null || mutex.activeKey === sectionKey;
 
@@ -138,11 +209,18 @@ export function SectionCard({ projectId, sectionKey, label, initialBody }: Secti
       </header>
 
       {state.mode === 'view' && (
-        <div className="px-4 py-4 text-[var(--body)] leading-relaxed">
+        <div ref={bodyRef} className="px-4 py-4 text-[var(--body)] leading-relaxed">
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
             {state.body}
           </ReactMarkdown>
         </div>
+      )}
+
+      {state.mode === 'view' && selection.text && selection.rect && (
+        <SelectionBubble
+          rect={selection.rect}
+          onClick={() => state.enterRewrite(selection.text)}
+        />
       )}
 
       {state.mode === 'edit' && (
@@ -163,13 +241,27 @@ export function SectionCard({ projectId, sectionKey, label, initialBody }: Secti
               <div className="italic">{state.selectedText}</div>
             </div>
           )}
-          <textarea
-            value={state.hint}
-            onChange={(e) => state.setHint(e.target.value)}
-            placeholder="改写提示（多行可）：更口语 / 加一个数据点 / 去掉最后两句 ..."
-            className="w-full min-h-[80px] bg-[var(--bg-2)] p-3 text-sm outline-none border border-[var(--hair)] rounded"
-            disabled={state.mode === 'rewrite_streaming'}
-          />
+          <div className="relative">
+            <textarea
+              ref={hintTaRef}
+              value={state.hint}
+              onChange={onHintChange}
+              onKeyDown={onHintKeyDown}
+              placeholder="改写提示（多行可，@ 触发 skill 补全）：更口语 / @search_wiki 查一下 / 加一个数据点 ..."
+              className="w-full min-h-[80px] bg-[var(--bg-2)] p-3 text-sm outline-none border border-[var(--hair)] rounded"
+              disabled={state.mode === 'rewrite_streaming'}
+            />
+            {mention.active && (
+              <div className="absolute left-0 top-full mt-1">
+                <MentionDropdown
+                  items={SKILL_ITEMS}
+                  activeIndex={mention.activeIndex}
+                  onSelect={insertSkill}
+                  onHover={(i) => setMention((m) => ({ ...m, activeIndex: i }))}
+                />
+              </div>
+            )}
+          </div>
           <div className="grid grid-cols-[1fr_280px] gap-4">
             <div>
               {state.mode === 'rewrite_idle' ? (
