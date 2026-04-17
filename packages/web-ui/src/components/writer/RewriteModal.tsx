@@ -141,7 +141,7 @@ export function RewriteModal(props: RewriteModalProps) {
           )}
 
           {mode !== 'rewrite_done' && (
-            <div className="relative">
+            <div>
               <label className="block text-xs text-[var(--meta)] mb-1 font-semibold">改写提示</label>
               <textarea
                 ref={hintTaRef}
@@ -153,16 +153,6 @@ export function RewriteModal(props: RewriteModalProps) {
                 disabled={mode === 'rewrite_streaming'}
                 autoFocus
               />
-              {mention.active && (
-                <div className="absolute left-0 top-full mt-1 z-10">
-                  <MentionDropdown
-                    items={SKILL_ITEMS}
-                    activeIndex={mention.activeIndex}
-                    onSelect={insertSkill}
-                    onHover={(i) => setMention((m) => ({ ...m, activeIndex: i }))}
-                  />
-                </div>
-              )}
             </div>
           )}
 
@@ -225,7 +215,40 @@ export function RewriteModal(props: RewriteModalProps) {
     </div>
   );
 
-  // Portal to body so nothing in the page tree can clip us.
+  // Compute dropdown position anchored to the textarea. Rendered at body
+  // scope so it can float above the modal scroll area without being clipped.
+  let dropdown: JSX.Element | null = null;
+  if (mention.active) {
+    const rect = hintTaRef.current?.getBoundingClientRect();
+    if (rect) {
+      dropdown = (
+        <div
+          style={{
+            position: 'fixed',
+            top: rect.bottom + 4,
+            left: rect.left,
+            zIndex: 1100,
+            minWidth: rect.width,
+          }}
+        >
+          <MentionDropdown
+            items={SKILL_ITEMS}
+            activeIndex={mention.activeIndex}
+            onSelect={insertSkill}
+            onHover={(i) => setMention((m) => ({ ...m, activeIndex: i }))}
+          />
+        </div>
+      );
+    }
+  }
+
+  // Portal everything to body so nothing in the page tree can clip us.
   if (typeof document === 'undefined') return null;
-  return createPortal(panel, document.body);
+  return createPortal(
+    <>
+      {panel}
+      {dropdown}
+    </>,
+    document.body,
+  );
 }

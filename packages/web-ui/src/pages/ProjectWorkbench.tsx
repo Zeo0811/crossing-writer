@@ -672,11 +672,19 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
 
       <header
         data-testid="pw-sidebar-header"
-        className="px-6 h-12 border-b bg-[var(--bg-1)] flex items-center gap-3 border-[var(--hair)]"
+        className="px-4 h-14 border-b bg-[var(--bg-1)] flex items-center gap-3 border-[var(--hair)]"
       >
         {!propProjectId && (
-          <Link to="/" className="text-sm text-[var(--meta)] hover:text-[var(--accent)] no-underline">
-            ←
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-[var(--hair)] text-sm text-[var(--body)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--bg-2)] no-underline transition-colors"
+            title="返回项目列表"
+            aria-label="返回"
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            <span>返回</span>
           </Link>
         )}
         <h1 className="text-base font-semibold text-[var(--heading)] m-0 truncate">{project.name}</h1>
@@ -690,11 +698,15 @@ export function ProjectWorkbench({ projectId: propProjectId }: { projectId?: str
         <button
           type="button"
           onClick={() => setOverrideOpen(true)}
-          className="w-7 h-7 flex items-center justify-center rounded text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"
+          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-[var(--hair)] text-sm text-[var(--body)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--bg-2)] transition-colors"
           title="本项目配置（覆盖 agent 模型 / 风格 / 工具）"
           aria-label="本项目配置"
         >
-          ⚙
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+          <span>配置</span>
         </button>
       </header>
 
