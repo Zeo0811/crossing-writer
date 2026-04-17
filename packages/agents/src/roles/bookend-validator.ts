@@ -1,3 +1,5 @@
+import type { WritingHardRules } from './writer-shared.js';
+
 export type Violation =
   | { kind: 'word_count'; chars: number; min: number; max: number; tolerance: 0.2 }
   | { kind: 'banned_phrase'; pattern: string; reason: string; excerpt: string }
@@ -126,4 +128,32 @@ export function findBannedVocabulary(
     }
   }
   return hits;
+}
+
+export interface ValidateBookendOpts {
+  finalText: string;
+  role: 'opening' | 'closing';
+  hardRules: WritingHardRules;
+  wordOverride?: [number, number];
+}
+
+export function validateBookend(opts: ValidateBookendOpts): ValidationResult {
+  const violations: Violation[] = [];
+  const chars = countChars(opts.finalText);
+
+  const wordViolation = checkWordCount(opts.finalText, opts.wordOverride);
+  if (wordViolation) violations.push(wordViolation);
+
+  for (const v of findBannedPhrases(opts.finalText, opts.hardRules.banned_phrases)) {
+    violations.push(v);
+  }
+  for (const v of findBannedVocabulary(opts.finalText, opts.hardRules.banned_vocabulary)) {
+    violations.push(v);
+  }
+
+  return {
+    ok: violations.length === 0,
+    violations,
+    chars,
+  };
 }

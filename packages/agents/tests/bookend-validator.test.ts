@@ -145,3 +145,94 @@ describe('findBannedVocabulary', () => {
     expect(hits).toHaveLength(2);
   });
 });
+
+import { validateBookend } from '../src/roles/bookend-validator.js';
+import type { WritingHardRules } from '../src/roles/writer-shared.js';
+
+const CLEAN_RULES: WritingHardRules = {
+  version: 1,
+  updated_at: '2026-04-17T00:00:00Z',
+  banned_phrases: [
+    { pattern: '不是.+?而是', is_regex: true, reason: '烂大街' },
+  ],
+  banned_vocabulary: [{ word: '笔者', reason: 'x' }],
+  layout_rules: [],
+  word_count_overrides: { opening: [200, 400], closing: [200, 350] },
+};
+
+describe('validateBookend', () => {
+  it('passes when all rules met', () => {
+    const text = '字'.repeat(300);
+    const r = validateBookend({
+      finalText: text,
+      role: 'closing',
+      hardRules: CLEAN_RULES,
+      wordOverride: [200, 350],
+    });
+    expect(r.ok).toBe(true);
+    expect(r.violations).toEqual([]);
+    expect(r.chars).toBe(300);
+  });
+
+  it('collects multiple violations', () => {
+    const text = `${'字'.repeat(500)}不是A而是B笔者`;
+    const r = validateBookend({
+      finalText: text,
+      role: 'closing',
+      hardRules: CLEAN_RULES,
+      wordOverride: [200, 350],
+    });
+    expect(r.ok).toBe(false);
+    const kinds = r.violations.map((v) => v.kind).sort();
+    expect(kinds).toEqual([
+      'banned_phrase',
+      'banned_vocabulary',
+      'word_count',
+    ]);
+  });
+
+  it('word_count skipped when override missing — other checks still run', () => {
+    const text = '字'.repeat(5) + '不是A而是B';
+    const r = validateBookend({
+      finalText: text,
+      role: 'closing',
+      hardRules: CLEAN_RULES,
+      wordOverride: undefined,
+    });
+    expect(r.ok).toBe(false);
+    expect(r.violations).toHaveLength(1);
+    expect(r.violations[0]!.kind).toBe('banned_phrase');
+  });
+
+  it('empty rules → all pass', () => {
+    const emptyRules: WritingHardRules = {
+      version: 1,
+      updated_at: '',
+      banned_phrases: [],
+      banned_vocabulary: [],
+      layout_rules: [],
+    };
+    const r = validateBookend({
+      finalText: '任意文字',
+      role: 'opening',
+      hardRules: emptyRules,
+      wordOverride: undefined,
+    });
+    expect(r.ok).toBe(true);
+    expect(r.violations).toEqual([]);
+  });
+
+  it('undercount violation', () => {
+    // range [200, 400], lowerBound = floor(200*0.8) = 160
+    const text = '字'.repeat(100);
+    const r = validateBookend({
+      finalText: text,
+      role: 'opening',
+      hardRules: CLEAN_RULES,
+      wordOverride: [200, 400],
+    });
+    expect(r.ok).toBe(false);
+    expect(r.violations).toHaveLength(1);
+    expect(r.violations[0]!.kind).toBe('word_count');
+  });
+});
