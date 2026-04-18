@@ -71,13 +71,6 @@ export function IngestConfirmDialog({ open, entries, model, onConfirm, onCancel 
                 </button>
               ))}
             </div>
-            {targetIds.length > 0 && (
-              <span className="text-[var(--faint)] text-[10px]">
-                {effectiveConcurrency === 1
-                  ? `${targetIds.length} 篇串行`
-                  : `${targetIds.length} 篇 · 同时跑 ${effectiveConcurrency} 个`}
-              </span>
-            )}
           </div>
         </div>
         <div className="px-5 py-3 border-t border-[var(--hair)] flex justify-end gap-2">
