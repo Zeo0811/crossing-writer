@@ -57,7 +57,7 @@ export function registerKbWikiRoutes(app: FastifyInstance, deps: KbWikiDeps) {
     if (!Number.isInteger(perAccountLimit) || perAccountLimit < 1 || perAccountLimit > 500) {
       return reply.code(400).send({ error: "per_account_limit must be integer in [1, 500]" });
     }
-    const batchSize = body.batch_size ?? 5;
+    const batchSize = body.batch_size ?? 1;
     if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 20) {
       return reply.code(400).send({ error: "batch_size must be integer in [1, 20]" });
     }

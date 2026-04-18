@@ -100,9 +100,19 @@ export function IngestTab({ model, cart }: IngestTabProps) {
     }
   }
 
-  function handleConfirm(payload: IngestStartArgs) {
+  function handleConfirm(payload: IngestStartArgs, concurrency: number) {
     setShowConfirm(false);
-    ingest.start(payload);
+    const ids = payload.article_ids ?? [];
+    const n = Math.max(1, Math.min(concurrency, ids.length));
+    const chunkSize = Math.ceil(ids.length / n);
+    for (let i = 0; i < ids.length; i += chunkSize) {
+      const chunk = ids.slice(i, i + chunkSize);
+      ingest.start({
+        ...payload,
+        article_ids: chunk,
+        max_articles: Math.max(chunk.length, 50),
+      });
+    }
     cart.clear();
   }
 

@@ -147,7 +147,7 @@ export function buildCli(): Command {
     .option("-c, --config <path>", "config.json path", "config.json")
     .requiredOption("--accounts <names>", "comma-separated wechat account names")
     .option("--per-account <n>", "max raw articles per account", "50")
-    .option("--batch-size <n>", "articles per ingestor batch", "5")
+    .option("--batch-size <n>", "articles per ingestor batch", "1")
     .option("--mode <mode>", "full | incremental", "full")
     .option("--since <iso>", "incremental: only after this iso ts")
     .option("--until <iso>", "incremental: only before this iso ts")

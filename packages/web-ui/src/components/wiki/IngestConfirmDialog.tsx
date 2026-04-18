@@ -8,14 +8,17 @@ export interface IngestConfirmDialogProps {
   open: boolean;
   entries: CartEntry[];
   model: { cli: "claude" | "codex"; model: string };
-  onConfirm: (payload: IngestStartArgs) => void;
+  onConfirm: (payload: IngestStartArgs, concurrency: number) => void;
   onCancel: () => void;
 }
+
+const CONCURRENCY_OPTIONS = [1, 3, 5, 8, 10];
 
 export function IngestConfirmDialog({ open, entries, model, onConfirm, onCancel }: IngestConfirmDialogProps) {
   const [dup, setDup] = useState<DupCheckResult | null>(null);
   const [force, setForce] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [concurrency, setConcurrency] = useState(5);
 
   useEffect(() => {
     if (!open || entries.length === 0) return;
@@ -31,6 +34,9 @@ export function IngestConfirmDialog({ open, entries, model, onConfirm, onCancel 
 
   const alreadyCount = dup?.already_ingested.length ?? 0;
   const targetIds = force ? entries.map((e) => e.articleId) : (dup?.fresh ?? []);
+  // Can't split into more chunks than we have articles.
+  const effectiveConcurrency = Math.max(1, Math.min(concurrency, targetIds.length));
+  const chunkSize = targetIds.length > 0 ? Math.ceil(targetIds.length / effectiveConcurrency) : 0;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onCancel(); }}>
@@ -47,6 +53,32 @@ export function IngestConfirmDialog({ open, entries, model, onConfirm, onCancel 
               <span>其中 {alreadyCount} 篇已入过库，{force ? "将重新入库" : "跳过"}</span>
             </label>
           )}
+          <div className="flex items-center gap-2 text-xs text-[var(--body)] pt-1">
+            <span className="text-[var(--meta)]">并发</span>
+            <div className="inline-flex items-center gap-0.5 p-0.5 rounded border border-[var(--hair)]">
+              {CONCURRENCY_OPTIONS.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setConcurrency(n)}
+                  className={`px-2 py-0.5 text-xs rounded ${
+                    concurrency === n
+                      ? "bg-[var(--accent-fill)] text-[var(--accent)] font-semibold"
+                      : "text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            {targetIds.length > 0 && (
+              <span className="text-[var(--faint)] text-[10px]">
+                {effectiveConcurrency === 1
+                  ? "单流串行"
+                  : `拆 ${effectiveConcurrency} 组 · 每组 ≤${chunkSize} 篇`}
+              </span>
+            )}
+          </div>
         </div>
         <div className="px-5 py-3 border-t border-[var(--hair)] flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={onCancel}>取消</Button>
@@ -58,12 +90,12 @@ export function IngestConfirmDialog({ open, entries, model, onConfirm, onCancel 
               accounts: [],
               article_ids: targetIds,
               per_account_limit: 50,
-              batch_size: 5,
+              batch_size: 1,
               mode: "selected",
               cli_model: model,
               force_reingest: force,
               max_articles: Math.max(entries.length, 50),
-            })}
+            }, effectiveConcurrency)}
           >
             确认
           </Button>
