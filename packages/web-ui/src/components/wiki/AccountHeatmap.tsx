@@ -32,6 +32,51 @@ export function AccountHeatmap({ account, selectedDates, onDateToggle, onClearDa
   const [containerWidth, setContainerWidth] = useState(800);
   const { completedSeq } = useIngestState();
 
+  // Drag-to-select: hold a draft set while the pointer is down so the
+  // user can paint a range of cells. We commit (diff vs. props) on
+  // pointer up, so parents only see the final selection change.
+  const [draft, setDraft] = useState<Set<string> | null>(null);
+  const dragModeRef = useRef<null | "add" | "remove">(null);
+
+  const beginDrag = (date: string, currentlySelected: boolean) => {
+    const next = new Set(selectedDates ?? []);
+    dragModeRef.current = currentlySelected ? "remove" : "add";
+    if (dragModeRef.current === "add") next.add(date);
+    else next.delete(date);
+    setDraft(next);
+  };
+
+  const extendDrag = (date: string) => {
+    if (!dragModeRef.current) return;
+    setDraft((prev) => {
+      const base = prev ?? new Set(selectedDates ?? []);
+      const next = new Set(base);
+      if (dragModeRef.current === "add") next.add(date);
+      else next.delete(date);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (!draft) return;
+    const up = () => {
+      const before = new Set(selectedDates ?? []);
+      const after = draft;
+      for (const d of after) if (!before.has(d)) onDateToggle?.(d);
+      for (const d of before) if (!after.has(d)) onDateToggle?.(d);
+      dragModeRef.current = null;
+      setDraft(null);
+    };
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    return () => {
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+  }, [draft, selectedDates, onDateToggle]);
+
+  const effectiveSelected = draft ?? selectedDates;
+
   useEffect(() => {
     setArticles(null);
     fetch(`/api/kb/accounts/${encodeURIComponent(account)}/articles?limit=3000`)
@@ -156,7 +201,7 @@ export function AccountHeatmap({ account, selectedDates, onDateToggle, onClearDa
             }
             const allIngested = c.ingested === c.total;
             const partial = c.ingested > 0 && c.ingested < c.total;
-            const isSelected = selectedDates?.has(c.date) ?? false;
+            const isSelected = effectiveSelected?.has(c.date) ?? false;
             const fill = allIngested
               ? "var(--accent)"
               : partial
@@ -176,7 +221,12 @@ export function AccountHeatmap({ account, selectedDates, onDateToggle, onClearDa
                 stroke={isSelected ? "var(--accent)" : "none"}
                 strokeWidth={isSelected ? 2 : 0}
                 className="cursor-pointer"
-                onClick={() => onDateToggle?.(c.date)}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  (e.target as Element).releasePointerCapture?.(e.pointerId);
+                  beginDrag(c.date, selectedDates?.has(c.date) ?? false);
+                }}
+                onPointerEnter={() => extendDrag(c.date)}
               />
             );
           })}
