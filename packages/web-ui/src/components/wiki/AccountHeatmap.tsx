@@ -282,12 +282,16 @@ export function AccountHeatmap({ account, selectedDates, onDateToggle, onClearDa
             const allIngested = c.ingested === c.total;
             const partial = c.ingested > 0 && c.ingested < c.total;
             const isSelected = effectiveSelected?.has(c.date) ?? false;
+            // Colors strictly follow the legend (未入库 / 部分入库 / 全部入库):
+            // no opacity modulation by article count, so every "未入库"
+            // cell looks identical to the legend swatch regardless of
+            // whether that day had 1 or 15 raw articles. Both dark and
+            // light themes inherit via the CSS vars in tokens.css.
             const fill = allIngested
               ? "var(--accent)"
               : partial
               ? "var(--accent-soft)"
               : "var(--hair-strong)";
-            const opacity = Math.min(0.3 + (c.total / 10) * 0.7, 1);
             const x = c.week * (cellSize + gap);
             const y = c.day * (cellSize + gap) + 16;
             return (
@@ -299,7 +303,6 @@ export function AccountHeatmap({ account, selectedDates, onDateToggle, onClearDa
                   height={cellSize}
                   rx={2}
                   fill={fill}
-                  opacity={opacity}
                 />
                 {isSelected && (
                   // Draw the accent border inset by 0.5px so the stroke sits
