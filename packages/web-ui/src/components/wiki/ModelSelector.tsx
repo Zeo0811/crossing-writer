@@ -4,17 +4,40 @@ import { Menu, MenuTrigger, MenuContent, MenuItem, MenuSeparator } from "../ui";
 export interface ModelValue { cli: "claude" | "codex"; model: string }
 
 const STORAGE_KEY = "crossing:wiki:model";
-const DEFAULT: ModelValue = { cli: "claude", model: "sonnet" };
+const DEFAULT: ModelValue = { cli: "claude", model: "claude-sonnet-4-5" };
 
-const CLAUDE_MODELS = ["opus", "sonnet", "haiku"] as const;
-const CODEX_MODELS = ["gpt-5.4"] as const;
+// id is what we hand to the CLI (--model), label is what we show in the UI.
+// Claude CLI does NOT accept short forms with a version (e.g. `opus-4.7`),
+// only bare aliases (`opus`) or full ids (`claude-opus-4-7`). So we store the
+// full id and display a compact label.
+interface ModelOption { id: string; label: string }
+const CLAUDE_MODELS: readonly ModelOption[] = [
+  { id: "claude-opus-4-7",   label: "opus-4.7" },
+  { id: "claude-sonnet-4-5", label: "sonnet-4.5" },
+  { id: "claude-haiku-4-5",  label: "haiku-4.5" },
+];
+const CODEX_MODELS: readonly ModelOption[] = [
+  { id: "gpt-5.4", label: "gpt-5.4" },
+];
 
-// Migrate legacy codex model ids that no longer work on ChatGPT accounts
-// (gpt-5 / gpt-5-codex / gpt-5-thinking → gpt-5.4). Keep the list sympathetic
-// to whatever CODEX_MODELS lists as the current default.
-function normalizeCodexModel(m: string): string {
-  if ((CODEX_MODELS as readonly string[]).includes(m)) return m;
-  return CODEX_MODELS[0];
+function findLabel(cli: "claude" | "codex", id: string): string {
+  const list = cli === "claude" ? CLAUDE_MODELS : CODEX_MODELS;
+  return list.find((m) => m.id === id)?.label ?? id;
+}
+
+// Normalize legacy model ids that were stored before we switched to full
+// version-suffixed ids:
+//   claude: opus/sonnet/haiku (bare aliases) → claude-opus-4-7 etc.
+//   codex:  gpt-5 / gpt-5-codex / gpt-5-thinking → gpt-5.4
+function normalizeModel(cli: "claude" | "codex", m: string): string {
+  const list = cli === "claude" ? CLAUDE_MODELS : CODEX_MODELS;
+  if (list.some((o) => o.id === m)) return m;
+  if (cli === "claude") {
+    const bare = m.split("-")[0]; // "opus" / "sonnet" / "haiku"
+    const match = list.find((o) => o.id.includes(`-${bare}-`));
+    if (match) return match.id;
+  }
+  return list[0]!.id;
 }
 
 function read(): ModelValue {
@@ -23,8 +46,8 @@ function read(): ModelValue {
     if (raw) {
       const v = JSON.parse(raw);
       if (v?.cli && v?.model) {
-        const model = v.cli === "codex" ? normalizeCodexModel(v.model) : v.model;
-        return { cli: v.cli, model } as ModelValue;
+        const cli = v.cli as "claude" | "codex";
+        return { cli, model: normalizeModel(cli, v.model) };
       }
     }
   } catch { /* ignore */ }
@@ -54,10 +77,10 @@ export function ModelSelector({ onChange }: ModelSelectorProps) {
       {/* Hidden test handles — always in DOM so jsdom tests can fire clicks without Radix portal */}
       <div aria-hidden="true" style={{ display: "none" }}>
         {CLAUDE_MODELS.map((m) => (
-          <button key={`th-claude-${m}`} data-testid={`model-item-${m}`} onClick={() => select({ cli: "claude", model: m })} />
+          <button key={`th-claude-${m.id}`} data-testid={`model-item-${m.label}`} onClick={() => select({ cli: "claude", model: m.id })} />
         ))}
         {CODEX_MODELS.map((m) => (
-          <button key={`th-codex-${m}`} data-testid={`model-item-${m}`} onClick={() => select({ cli: "codex", model: m })} />
+          <button key={`th-codex-${m.id}`} data-testid={`model-item-${m.label}`} onClick={() => select({ cli: "codex", model: m.id })} />
         ))}
       </div>
       <Menu>
@@ -68,21 +91,21 @@ export function ModelSelector({ onChange }: ModelSelectorProps) {
             className="text-xs text-[var(--meta)] hover:text-[var(--heading)] px-2 py-1 rounded border border-[var(--hair)] hover:border-[var(--accent-soft)]"
             style={{ fontFamily: "var(--font-mono)" }}
           >
-            ⚙ {value.cli}/{value.model} ▾
+            ⚙ {value.cli}/{findLabel(value.cli, value.model)} ▾
           </button>
         </MenuTrigger>
         <MenuContent align="end">
           <div className="px-2 py-1 text-[10px] text-[var(--faint)]">claude</div>
           {CLAUDE_MODELS.map((m) => (
-            <MenuItem key={`claude-${m}`} onSelect={() => select({ cli: "claude", model: m })}>
-              {m}
+            <MenuItem key={`claude-${m.id}`} onSelect={() => select({ cli: "claude", model: m.id })}>
+              {m.label}
             </MenuItem>
           ))}
           <MenuSeparator />
           <div className="px-2 py-1 text-[10px] text-[var(--faint)]">codex</div>
           {CODEX_MODELS.map((m) => (
-            <MenuItem key={`codex-${m}`} onSelect={() => select({ cli: "codex", model: m })}>
-              {m}
+            <MenuItem key={`codex-${m.id}`} onSelect={() => select({ cli: "codex", model: m.id })}>
+              {m.label}
             </MenuItem>
           ))}
         </MenuContent>

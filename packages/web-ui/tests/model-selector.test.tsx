@@ -9,9 +9,9 @@ import { ModelSelector } from "../src/components/wiki/ModelSelector";
 beforeEach(() => { localStorage.clear(); });
 
 describe("ModelSelector", () => {
-  it("defaults to claude/sonnet when no saved value", () => {
+  it("defaults to claude/sonnet-4.5 when no saved value", () => {
     render(<ModelSelector onChange={() => {}} />);
-    expect(screen.getByText(/claude\/sonnet/)).toBeInTheDocument();
+    expect(screen.getByText(/claude\/sonnet-4\.5/)).toBeInTheDocument();
   });
 
   it("reads saved value from localStorage", () => {
@@ -26,10 +26,16 @@ describe("ModelSelector", () => {
     expect(screen.getByText(/codex\/gpt-5\.4/)).toBeInTheDocument();
   });
 
+  it("migrates bare claude aliases (opus → claude-opus-4-7)", () => {
+    localStorage.setItem("crossing:wiki:model", JSON.stringify({ cli: "claude", model: "opus" }));
+    render(<ModelSelector onChange={() => {}} />);
+    expect(screen.getByText(/claude\/opus-4\.7/)).toBeInTheDocument();
+  });
+
   it("onChange called with initial value on mount", () => {
     const onChange = vi.fn();
     render(<ModelSelector onChange={onChange} />);
-    expect(onChange).toHaveBeenCalledWith({ cli: "claude", model: "sonnet" });
+    expect(onChange).toHaveBeenCalledWith({ cli: "claude", model: "claude-sonnet-4-5" });
   });
 
   it("onChange called with new value after selection", () => {
@@ -37,14 +43,14 @@ describe("ModelSelector", () => {
     render(<ModelSelector onChange={onChange} />);
     onChange.mockClear();
     // Radix portal doesn't open in jsdom — click item directly via data-testid
-    fireEvent.click(screen.getByTestId("model-item-opus"));
-    expect(onChange).toHaveBeenCalledWith({ cli: "claude", model: "opus" });
+    fireEvent.click(screen.getByTestId("model-item-opus-4.7"));
+    expect(onChange).toHaveBeenCalledWith({ cli: "claude", model: "claude-opus-4-7" });
   });
 
   it("persists selection to localStorage", () => {
     render(<ModelSelector onChange={() => {}} />);
     // Radix portal doesn't open in jsdom — click item directly via data-testid
-    fireEvent.click(screen.getByTestId("model-item-haiku"));
-    expect(JSON.parse(localStorage.getItem("crossing:wiki:model")!)).toMatchObject({ cli: "claude", model: "haiku" });
+    fireEvent.click(screen.getByTestId("model-item-haiku-4.5"));
+    expect(JSON.parse(localStorage.getItem("crossing:wiki:model")!)).toMatchObject({ cli: "claude", model: "claude-haiku-4-5" });
   });
 });
