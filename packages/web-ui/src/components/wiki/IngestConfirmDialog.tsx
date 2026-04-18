@@ -34,9 +34,9 @@ export function IngestConfirmDialog({ open, entries, model, onConfirm, onCancel 
 
   const alreadyCount = dup?.already_ingested.length ?? 0;
   const targetIds = force ? entries.map((e) => e.articleId) : (dup?.fresh ?? []);
-  // Can't split into more chunks than we have articles.
+  // Each article is its own run (batch_size=1). Concurrency caps
+  // how many run at the same time.
   const effectiveConcurrency = Math.max(1, Math.min(concurrency, targetIds.length));
-  const chunkSize = targetIds.length > 0 ? Math.ceil(targetIds.length / effectiveConcurrency) : 0;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onCancel(); }}>
@@ -74,8 +74,8 @@ export function IngestConfirmDialog({ open, entries, model, onConfirm, onCancel 
             {targetIds.length > 0 && (
               <span className="text-[var(--faint)] text-[10px]">
                 {effectiveConcurrency === 1
-                  ? "单流串行"
-                  : `拆 ${effectiveConcurrency} 组 · 每组 ≤${chunkSize} 篇`}
+                  ? `${targetIds.length} 篇串行`
+                  : `${targetIds.length} 篇 · 同时跑 ${effectiveConcurrency} 个`}
               </span>
             )}
           </div>

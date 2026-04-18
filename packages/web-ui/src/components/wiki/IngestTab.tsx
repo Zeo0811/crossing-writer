@@ -103,16 +103,13 @@ export function IngestTab({ model, cart }: IngestTabProps) {
   function handleConfirm(payload: IngestStartArgs, concurrency: number) {
     setShowConfirm(false);
     const ids = payload.article_ids ?? [];
-    const n = Math.max(1, Math.min(concurrency, ids.length));
-    const chunkSize = Math.ceil(ids.length / n);
-    for (let i = 0; i < ids.length; i += chunkSize) {
-      const chunk = ids.slice(i, i + chunkSize);
-      ingest.start({
-        ...payload,
-        article_ids: chunk,
-        max_articles: Math.max(chunk.length, 50),
-      });
-    }
+    // One run per article. Concurrency caps how many run at once.
+    const payloads: IngestStartArgs[] = ids.map((id) => ({
+      ...payload,
+      article_ids: [id],
+      max_articles: 50,
+    }));
+    ingest.startQueue(payloads, concurrency);
     cart.clear();
   }
 
