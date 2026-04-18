@@ -49,8 +49,8 @@ export function IngestProgressView({ events, status, error }: IngestProgressView
     status === "error" ? "var(--red)" : "var(--faint)";
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col gap-3 h-full min-h-0">
+      <div className="flex items-center gap-3 shrink-0">
         <div className="text-xs text-[var(--meta)] font-semibold">入库状态</div>
         <span className="inline-flex items-center gap-1.5 text-xs" style={{ color: statusColor }} data-testid="ingest-status">
           <span className={`w-1.5 h-1.5 rounded-full ${status === "running" ? "animate-pulse" : ""}`} style={{ background: statusColor }} />
@@ -60,15 +60,15 @@ export function IngestProgressView({ events, status, error }: IngestProgressView
       </div>
 
       {error && (
-        <div className="rounded border border-[var(--red)] bg-[rgba(255,107,107,0.05)] px-3 py-2 text-sm text-[var(--red)]">
+        <div className="shrink-0 rounded border border-[var(--red)] bg-[rgba(255,107,107,0.05)] px-3 py-2 text-sm text-[var(--red)]">
           {error}
         </div>
       )}
 
       <div
         ref={boxRef}
-        className="rounded bg-[var(--log-bg)] border border-[var(--hair)] overflow-auto"
-        style={{ height: 360, fontFamily: "var(--font-mono)" }}
+        className="flex-1 min-h-0 rounded bg-[var(--log-bg)] border border-[var(--hair)] overflow-auto"
+        style={{ fontFamily: "var(--font-mono)" }}
       >
         {events.length === 0 ? (
           <div className="p-6 text-center text-[var(--faint)] text-sm">尚未有事件。左侧表单填好后点「开始入库」。</div>
