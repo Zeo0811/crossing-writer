@@ -32,40 +32,42 @@ export function AccountHeatmap({ account, selectedDates, onDateToggle, onClearDa
   const [containerWidth, setContainerWidth] = useState(800);
   const { completedSeq } = useIngestState();
 
-  // Drag-to-select: hold a draft set while the pointer is down so the
-  // user can paint a range of cells. We commit (diff vs. props) on
-  // pointer up, so parents only see the final selection change.
+  // Drag-to-select. Two modes:
+  //   - paint (default): drag adds/removes each cell the pointer passes over,
+  //     based on whether the starting cell was already selected.
+  //   - box (Shift+drag): drag out a rubberband rectangle; on release every
+  //     cell inside the rectangle is added to the selection.
+  // While dragging we maintain a local draft so the preview tracks the pointer
+  // without a React state round-trip to the parent. On pointerup we diff draft
+  // against selectedDates and only surface the final delta.
   const [draft, setDraft] = useState<Set<string> | null>(null);
-  const dragModeRef = useRef<null | "add" | "remove">(null);
+  const dragModeRef = useRef<null | "paint-add" | "paint-remove" | "box">(null);
+  const [boxRect, setBoxRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const boxAnchorRef = useRef<{ x: number; y: number } | null>(null);
 
-  const beginDrag = (date: string, currentlySelected: boolean) => {
-    const next = new Set(selectedDates ?? []);
-    dragModeRef.current = currentlySelected ? "remove" : "add";
-    if (dragModeRef.current === "add") next.add(date);
-    else next.delete(date);
-    setDraft(next);
-  };
-
-  const extendDrag = (date: string) => {
-    if (!dragModeRef.current) return;
+  const paintToggle = (date: string) => {
+    if (dragModeRef.current !== "paint-add" && dragModeRef.current !== "paint-remove") return;
     setDraft((prev) => {
       const base = prev ?? new Set(selectedDates ?? []);
       const next = new Set(base);
-      if (dragModeRef.current === "add") next.add(date);
+      if (dragModeRef.current === "paint-add") next.add(date);
       else next.delete(date);
       return next;
     });
   };
 
   useEffect(() => {
-    if (!draft) return;
+    if (!dragModeRef.current) return;
     const up = () => {
-      const before = new Set(selectedDates ?? []);
-      const after = draft;
-      for (const d of after) if (!before.has(d)) onDateToggle?.(d);
-      for (const d of before) if (!after.has(d)) onDateToggle?.(d);
+      if (draft) {
+        const before = new Set(selectedDates ?? []);
+        for (const d of draft) if (!before.has(d)) onDateToggle?.(d);
+        for (const d of before) if (!draft.has(d)) onDateToggle?.(d);
+      }
       dragModeRef.current = null;
+      boxAnchorRef.current = null;
       setDraft(null);
+      setBoxRect(null);
     };
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", up);
@@ -178,10 +180,78 @@ export function AccountHeatmap({ account, selectedDates, onDateToggle, onClearDa
   const svgW = weeks * (cellSize + gap);
   const svgH = 7 * (cellSize + gap) + 20;
 
+  // Hit-test a pointer position against the grid to find the underlying
+  // date. We take the SVG's bounding rect then reverse the layout.
+  const cellAtPoint = (svg: SVGSVGElement, clientX: number, clientY: number): string | null => {
+    const r = svg.getBoundingClientRect();
+    const x = clientX - r.left;
+    const y = clientY - r.top - 16;
+    if (x < 0 || y < 0) return null;
+    const w = Math.floor(x / (cellSize + gap));
+    const d = Math.floor(y / (cellSize + gap));
+    if (w < 0 || w >= weeks || d < 0 || d > 6) return null;
+    const idx = w * 7 + d;
+    return cells[idx]?.date ?? null;
+  };
+
   return (
     <div className="space-y-3">
       <div ref={containerRef} className="overflow-x-auto pb-2 select-none">
-        <svg width={svgW} height={svgH} className="block">
+        <svg
+          width={svgW}
+          height={svgH}
+          className="block touch-none"
+          onPointerDown={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            const localX = e.clientX - r.left;
+            const localY = e.clientY - r.top;
+            e.preventDefault();
+            e.currentTarget.setPointerCapture(e.pointerId);
+            if (e.shiftKey) {
+              // Rubberband mode: every cell inside the box gets added on release.
+              dragModeRef.current = "box";
+              boxAnchorRef.current = { x: localX, y: localY };
+              setBoxRect({ x: localX, y: localY, w: 0, h: 0 });
+              setDraft(new Set(selectedDates ?? []));
+            } else {
+              const date = cellAtPoint(e.currentTarget, e.clientX, e.clientY);
+              if (!date) return;
+              const alreadyIn = selectedDates?.has(date) ?? false;
+              dragModeRef.current = alreadyIn ? "paint-remove" : "paint-add";
+              const next = new Set(selectedDates ?? []);
+              if (alreadyIn) next.delete(date); else next.add(date);
+              setDraft(next);
+            }
+          }}
+          onPointerMove={(e) => {
+            if (!dragModeRef.current) return;
+            const r = e.currentTarget.getBoundingClientRect();
+            const localX = e.clientX - r.left;
+            const localY = e.clientY - r.top;
+            if (dragModeRef.current === "box") {
+              const a = boxAnchorRef.current;
+              if (!a) return;
+              const x = Math.min(a.x, localX);
+              const y = Math.min(a.y, localY);
+              const w = Math.abs(localX - a.x);
+              const h = Math.abs(localY - a.y);
+              setBoxRect({ x, y, w, h });
+              const base = new Set(selectedDates ?? []);
+              // Which cells intersect the box?
+              for (const c of cells) {
+                if (c.total === 0) continue;
+                const cx = c.week * (cellSize + gap);
+                const cy = c.day * (cellSize + gap) + 16;
+                const overlaps = cx + cellSize >= x && cx <= x + w && cy + cellSize >= y && cy <= y + h;
+                if (overlaps) base.add(c.date);
+              }
+              setDraft(base);
+            } else {
+              const date = cellAtPoint(e.currentTarget, e.clientX, e.clientY);
+              if (date) paintToggle(date);
+            }
+          }}
+        >
           {months.map((m, i) => m ? (
             <text key={i} x={i * (cellSize + gap)} y={10} fontSize={9} fill="var(--meta)">{m}</text>
           ) : null)}
@@ -221,15 +291,23 @@ export function AccountHeatmap({ account, selectedDates, onDateToggle, onClearDa
                 stroke={isSelected ? "var(--accent)" : "none"}
                 strokeWidth={isSelected ? 2 : 0}
                 className="cursor-pointer"
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  (e.target as Element).releasePointerCapture?.(e.pointerId);
-                  beginDrag(c.date, selectedDates?.has(c.date) ?? false);
-                }}
-                onPointerEnter={() => extendDrag(c.date)}
+                pointerEvents="none"
               />
             );
           })}
+          {boxRect && (
+            <rect
+              x={boxRect.x}
+              y={boxRect.y}
+              width={boxRect.w}
+              height={boxRect.h}
+              fill="var(--accent)"
+              fillOpacity={0.12}
+              stroke="var(--accent)"
+              strokeWidth={1}
+              pointerEvents="none"
+            />
+          )}
         </svg>
       </div>
 
@@ -246,7 +324,7 @@ export function AccountHeatmap({ account, selectedDates, onDateToggle, onClearDa
         <span className="ml-auto text-[10px] text-[var(--faint)]">
           {(selectedDates?.size ?? 0) > 0
             ? <>已选 {selectedDates!.size} 天 · <button type="button" onClick={() => onClearDates?.()} className="text-[var(--accent)] hover:underline">清空</button></>
-            : "点击格子多选日期（可累加）"}
+            : "点击或拖拽选多天（Shift+拖 框选）"}
         </span>
       </div>
     </div>
