@@ -96,7 +96,8 @@ export function KnowledgePage() {
       return { variant: "secondary", label: "← 回到浏览" };
     }
     if (ingest.status === "running") {
-      const label = ingest.runningCount > 1 ? `入库中 · ${ingest.runningCount}` : "入库中";
+      const runPart = ingest.runningCount > 1 ? `入库中 · ${ingest.runningCount}` : "入库中";
+      const label = ingest.queuedCount > 0 ? `${runPart}（+${ingest.queuedCount} 排队）` : runPart;
       if (cart.totalCount > 0) {
         return { variant: "secondary", label, dotColor: "var(--amber)", chipVariant: "accent", chipLabel: `+${cart.totalCount}` };
       }
