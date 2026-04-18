@@ -30,7 +30,7 @@ function WritingConfig() {
   const m = useMock();
   const [voice, setVoice] = useState("十字路口·克制深度");
   const [refs, setRefs] = useState("@KojiTalks @TopGeeky @独立开发拾遗");
-  const [model, setModel] = useState("claude-opus-4-6");
+  const [model, setModel] = useState("claude-opus-4-7");
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
@@ -72,7 +72,7 @@ function WritingRunning() {
     <div className="rounded bg-[var(--bg-2)] p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div className="text-sm text-[var(--heading)] font-semibold">Writer 正在分段生成…</div>
-        <span className="text-xs text-[var(--meta)]">claude-opus-4-6 · 5-10 分钟</span>
+        <span className="text-xs text-[var(--meta)]">claude-opus-4-7 · 5-10 分钟</span>
       </div>
       <div className="space-y-1.5">
         {SECTIONS.map((s, i) => {

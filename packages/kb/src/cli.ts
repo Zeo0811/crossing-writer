@@ -152,7 +152,7 @@ export function buildCli(): Command {
     .option("--since <iso>", "incremental: only after this iso ts")
     .option("--until <iso>", "incremental: only before this iso ts")
     .option("--cli <cli>", "claude | codex", "claude")
-    .option("--model <model>", "opus | sonnet | haiku | gpt-5", "opus")
+    .option("--model <model>", "opus | sonnet | haiku | gpt-5.4", "opus")
     .action(async (opts: { config: string; accounts: string; perAccount: string; batchSize: string; mode: string; since?: string; until?: string; cli: string; model: string }) => {
       const cfg = loadConfig(opts.config);
       const mode = opts.mode as "full" | "incremental";

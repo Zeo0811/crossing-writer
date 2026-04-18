@@ -35,13 +35,13 @@ export function MockSettings() {
           <Row label="claude">
             <span className="inline-flex items-center gap-1.5 text-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
-              ready · claude-opus-4-6
+              ready · claude-opus-4-7
             </span>
           </Row>
           <Row label="codex">
             <span className="inline-flex items-center gap-1.5 text-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
-              ready · gpt-5-thinking
+              ready · gpt-5.4
             </span>
           </Row>
           <Row label="默认 CLI">

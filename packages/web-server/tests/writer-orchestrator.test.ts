@@ -77,7 +77,7 @@ describe("writer-orchestrator", () => {
     await runWriter({
       projectId: pid, projectsDir, store,
       vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"),
-      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
+      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-7' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
     });
     const pDir = join(projectsDir, pid);
     expect(readFileSync(join(pDir, "article/sections/opening.md"), "utf-8")).toContain("OPENING_TEXT");
@@ -97,7 +97,7 @@ describe("writer-orchestrator", () => {
     await expect(runWriter({
       projectId: pid, projectsDir, store,
       vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"),
-      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
+      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-7' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
     })).rejects.toThrow();
     const project = await store.get(pid);
     expect(project?.status).toBe("writing_failed");
@@ -110,7 +110,7 @@ describe("writer-orchestrator", () => {
     await runWriter({
       projectId: pid, projectsDir, store,
       vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"),
-      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
+      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-7' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
     });
     const pDir = join(projectsDir, pid);
     const trans = readFileSync(join(pDir, "article/sections/practice/transitions.md"), "utf-8");
@@ -159,7 +159,7 @@ describe("writer-orchestrator retry + override", () => {
     await runWriter({
       projectId: pid, projectsDir, store,
       vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"),
-      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
+      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-7' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
       sectionsToRun: ["practice.case-02"],
     });
 
@@ -182,7 +182,7 @@ describe("writer-orchestrator retry + override", () => {
     await runWriter({
       projectId: pid, projectsDir, store,
       vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"),
-      defaultModel: { writer: { cli: 'codex', model: 'gpt-5' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
+      defaultModel: { writer: { cli: 'codex', model: 'gpt-5.4' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
     });
     // runWriterBookend is called for both opening (call 0) and closing (call 1)
     const openingCallArgs = (agentsMod.runWriterBookend as any).mock.calls.find((c: any[]) => c[0].role === 'opening')?.[0];

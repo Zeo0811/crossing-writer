@@ -7,14 +7,25 @@ const STORAGE_KEY = "crossing:wiki:model";
 const DEFAULT: ModelValue = { cli: "claude", model: "sonnet" };
 
 const CLAUDE_MODELS = ["opus", "sonnet", "haiku"] as const;
-const CODEX_MODELS = ["gpt-5"] as const;
+const CODEX_MODELS = ["gpt-5.4"] as const;
+
+// Migrate legacy codex model ids that no longer work on ChatGPT accounts
+// (gpt-5 / gpt-5-codex / gpt-5-thinking → gpt-5.4). Keep the list sympathetic
+// to whatever CODEX_MODELS lists as the current default.
+function normalizeCodexModel(m: string): string {
+  if ((CODEX_MODELS as readonly string[]).includes(m)) return m;
+  return CODEX_MODELS[0];
+}
 
 function read(): ModelValue {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const v = JSON.parse(raw);
-      if (v?.cli && v?.model) return v as ModelValue;
+      if (v?.cli && v?.model) {
+        const model = v.cli === "codex" ? normalizeCodexModel(v.model) : v.model;
+        return { cli: v.cli, model } as ModelValue;
+      }
     }
   } catch { /* ignore */ }
   return DEFAULT;

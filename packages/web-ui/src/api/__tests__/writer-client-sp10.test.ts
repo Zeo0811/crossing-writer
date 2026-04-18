@@ -73,7 +73,7 @@ describe("SP-10 writer-client agent config APIs", () => {
 
   it("getAgentConfig GETs /api/config/agents/:agentKey (encoded)", async () => {
     const fetchMock = vi.fn(async () =>
-      okJson({ agentKey: "writer.opening", model: { cli: "codex", model: "gpt-5" } } as AgentConfigEntry),
+      okJson({ agentKey: "writer.opening", model: { cli: "codex", model: "gpt-5.4" } } as AgentConfigEntry),
     );
     (globalThis as any).fetch = fetchMock;
     const out = await getAgentConfig("writer.opening");

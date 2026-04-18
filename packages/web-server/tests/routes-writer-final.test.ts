@@ -19,7 +19,7 @@ describe("GET /writer/final", () => {
     await as.writeSection("opening", { key: "opening", frontmatter: { section: "opening", last_agent: "a", last_updated_at: "t", reference_accounts: ["X"] }, body: "O" });
     await as.writeSection("closing", { key: "closing", frontmatter: { section: "closing", last_agent: "a", last_updated_at: "t", reference_accounts: ["Y"] }, body: "C" });
     const app = Fastify();
-    registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: { current: { agents: {}, defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } } } } as any });
+    registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: { current: { agents: {}, defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-7' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } } } } as any });
     await app.ready();
     const res = await app.inject({ method: "GET", url: `/api/projects/${p.id}/writer/final` });
     expect(res.statusCode).toBe(200);

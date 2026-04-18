@@ -21,9 +21,9 @@ export interface ProjectOverridePanelProps {
 const WRITER_AGENTS = ["writer.opening", "writer.practice", "writer.closing"] as const;
 
 const MODEL_CHOICES: AgentModelConfig[] = [
-  { cli: "claude", model: "claude-opus-4-6" },
+  { cli: "claude", model: "claude-opus-4-7" },
   { cli: "claude", model: "claude-sonnet-4-5" },
-  { cli: "codex", model: "gpt-5" },
+  { cli: "codex", model: "gpt-5.4" },
 ];
 
 function modelKey(m: AgentModelConfig): string {

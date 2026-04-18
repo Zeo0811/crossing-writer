@@ -30,11 +30,11 @@ describe("section_slicer defaults (SP-15)", () => {
     (invokeAgent as any).mockReset();
     (invokeAgent as any).mockReturnValue({
       text: "[]",
-      meta: { cli: "claude", model: "claude-opus-4-6", durationMs: 1 },
+      meta: { cli: "claude", model: "claude-opus-4-7", durationMs: 1 },
     });
-    await runSectionSlicer("hello", { cli: "claude", model: "claude-opus-4-6" });
+    await runSectionSlicer("hello", { cli: "claude", model: "claude-opus-4-7" });
     const call = (invokeAgent as any).mock.calls[0][0];
-    expect(call.model).toBe("claude-opus-4-6");
+    expect(call.model).toBe("claude-opus-4-7");
   });
 });
 

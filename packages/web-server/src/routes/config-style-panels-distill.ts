@@ -209,7 +209,7 @@ export function registerConfigStylePanelsDistillRoutes(
         const r = await invokeAgent({
           agentKey: "style_distiller.composer",
           cli: "claude",
-          model: o.model ?? "claude-opus-4-6",
+          model: o.model ?? "claude-opus-4-7",
           systemPrompt: o.systemPrompt,
           userMessage: o.userMessage,
           runLogDir,

@@ -10,14 +10,14 @@ interface AgentRow {
 }
 
 const AGENTS: AgentRow[] = [
-  { id: "brief-analyst", name: "Brief Analyst", role: "解析甲方简报", cli: "claude", model: "claude-opus-4-6", status: "ready" },
+  { id: "brief-analyst", name: "Brief Analyst", role: "解析甲方简报", cli: "claude", model: "claude-opus-4-7", status: "ready" },
   { id: "mission-coord", name: "Mission Coordinator", role: "选题协调", cli: "claude", model: "claude-sonnet-4-6", status: "ready" },
-  { id: "mission-narrative", name: "Mission · 故事派", role: "选题候选", cli: "claude", model: "claude-opus-4-6", status: "ready" },
+  { id: "mission-narrative", name: "Mission · 故事派", role: "选题候选", cli: "claude", model: "claude-opus-4-7", status: "ready" },
   { id: "mission-systems", name: "Mission · 拆解派", role: "选题候选", cli: "claude", model: "claude-sonnet-4-6", status: "needs_review" },
-  { id: "mission-zeitgeist", name: "Mission · 时代派", role: "选题候选", cli: "codex", model: "gpt-5-thinking", status: "ready" },
-  { id: "overview-analyst", name: "Overview Analyst", role: "产品概览", cli: "claude", model: "claude-opus-4-6", status: "ready" },
-  { id: "case-firsttouch", name: "Case · 首次接触", role: "Case 规划", cli: "claude", model: "claude-opus-4-6", status: "ready" },
-  { id: "writer", name: "Writer", role: "正文创作", cli: "claude", model: "claude-opus-4-6", status: "running" },
+  { id: "mission-zeitgeist", name: "Mission · 时代派", role: "选题候选", cli: "codex", model: "gpt-5.4", status: "ready" },
+  { id: "overview-analyst", name: "Overview Analyst", role: "产品概览", cli: "claude", model: "claude-opus-4-7", status: "ready" },
+  { id: "case-firsttouch", name: "Case · 首次接触", role: "Case 规划", cli: "claude", model: "claude-opus-4-7", status: "ready" },
+  { id: "writer", name: "Writer", role: "正文创作", cli: "claude", model: "claude-opus-4-7", status: "running" },
 ];
 
 export function MockConfig() {
@@ -93,10 +93,10 @@ function ModelsView() {
   return (
     <div className="grid grid-cols-2 gap-3">
       {[
-        { name: "claude-opus-4-6", cli: "claude", price: "in $0.015 / 1K · out $0.075 / 1K", health: "ok" },
+        { name: "claude-opus-4-7", cli: "claude", price: "in $0.015 / 1K · out $0.075 / 1K", health: "ok" },
         { name: "claude-sonnet-4-6", cli: "claude", price: "in $0.003 / 1K · out $0.015 / 1K", health: "ok" },
         { name: "claude-haiku-4-5", cli: "claude", price: "in $0.0008 / 1K · out $0.004 / 1K", health: "ok" },
-        { name: "gpt-5-thinking", cli: "codex", price: "in $0.005 / 1K · out $0.025 / 1K", health: "starting" },
+        { name: "gpt-5.4", cli: "codex", price: "in $0.005 / 1K · out $0.025 / 1K", health: "starting" },
       ].map((m) => (
         <div key={m.name} className="rounded bg-[var(--bg-2)] p-4 space-y-2">
           <div className="flex items-center justify-between">

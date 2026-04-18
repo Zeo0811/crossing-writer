@@ -84,7 +84,7 @@ describe("mergeAllAgentConfigs", () => {
 
 describe('mergeDefaultModel', () => {
   const globalDM: DefaultModelConfig = {
-    writer: { cli: 'claude', model: 'claude-opus-4-6' },
+    writer: { cli: 'claude', model: 'claude-opus-4-7' },
     other:  { cli: 'claude', model: 'claude-sonnet-4-5' },
   };
 
@@ -95,14 +95,14 @@ describe('mergeDefaultModel', () => {
   });
 
   it('override writer only → writer replaced, other kept', () => {
-    const m = mergeDefaultModel(globalDM, { writer: { cli: 'codex', model: 'gpt-5' } });
-    expect(m.writer).toEqual({ cli: 'codex', model: 'gpt-5' });
+    const m = mergeDefaultModel(globalDM, { writer: { cli: 'codex', model: 'gpt-5.4' } });
+    expect(m.writer).toEqual({ cli: 'codex', model: 'gpt-5.4' });
     expect(m.other).toEqual(globalDM.other);
   });
 
   it('override other only → other replaced, writer kept', () => {
-    const m = mergeDefaultModel(globalDM, { other: { cli: 'codex', model: 'gpt-5' } });
-    expect(m.other).toEqual({ cli: 'codex', model: 'gpt-5' });
+    const m = mergeDefaultModel(globalDM, { other: { cli: 'codex', model: 'gpt-5.4' } });
+    expect(m.other).toEqual({ cli: 'codex', model: 'gpt-5.4' });
     expect(m.writer).toEqual(globalDM.writer);
   });
 

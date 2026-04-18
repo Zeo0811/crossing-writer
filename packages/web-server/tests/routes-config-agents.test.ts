@@ -112,10 +112,10 @@ describe("GET/PATCH defaultModel on /api/config/agents", () => {
     const res = await app.inject({
       method: "PATCH",
       url: "/api/config/agents",
-      payload: { defaultModel: { writer: { cli: "codex", model: "gpt-5" } } },
+      payload: { defaultModel: { writer: { cli: "codex", model: "gpt-5.4" } } },
     });
     expect(res.statusCode).toBe(200);
-    expect(configStore.current.defaultModel.writer).toEqual({ cli: "codex", model: "gpt-5" });
+    expect(configStore.current.defaultModel.writer).toEqual({ cli: "codex", model: "gpt-5.4" });
   });
 
   it("PATCH preserves other tier when only writer is set", async () => {
@@ -124,10 +124,10 @@ describe("GET/PATCH defaultModel on /api/config/agents", () => {
     const res = await app.inject({
       method: "PATCH",
       url: "/api/config/agents",
-      payload: { defaultModel: { writer: { cli: "codex", model: "gpt-5" } } },
+      payload: { defaultModel: { writer: { cli: "codex", model: "gpt-5.4" } } },
     });
     expect(res.statusCode).toBe(200);
-    expect(configStore.current.defaultModel.writer).toEqual({ cli: "codex", model: "gpt-5" });
+    expect(configStore.current.defaultModel.writer).toEqual({ cli: "codex", model: "gpt-5.4" });
     expect(configStore.current.defaultModel.other).toEqual(otherBefore);
   });
 

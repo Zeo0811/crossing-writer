@@ -86,9 +86,9 @@ describe("ProjectOverrideStore", () => {
     const s = new ProjectOverrideStore(dir);
     s.set("p1", {
       agents: {},
-      defaultModel: { writer: { cli: "codex", model: "gpt-5" } },
+      defaultModel: { writer: { cli: "codex", model: "gpt-5.4" } },
     });
     const got = s.get("p1")!;
-    expect(got.defaultModel?.writer).toEqual({ cli: "codex", model: "gpt-5" });
+    expect(got.defaultModel?.writer).toEqual({ cli: "codex", model: "gpt-5.4" });
   });
 });
