@@ -105,6 +105,19 @@ export function AccountHeatmap({ account, selectedDates, onDateToggle, onClearDa
     return () => obs.disconnect();
   }, []);
 
+  // Default-scroll to the newest week so the user sees this-month data
+  // on open, instead of having to scroll from 10-月 on the far left.
+  // Only fires when the natural grid is wider than the container (i.e.
+  // the stretched branch in the layout math doesn't apply).
+  useEffect(() => {
+    if (!containerRef.current) return;
+    if (!articles || articles.length === 0) return;
+    const el = containerRef.current;
+    requestAnimationFrame(() => {
+      el.scrollLeft = el.scrollWidth;
+    });
+  }, [articles, containerWidth]);
+
   const { cells, weeks, months } = useMemo(() => {
     if (!articles || articles.length === 0) return { cells: [], weeks: 0, months: [] as string[] };
 
