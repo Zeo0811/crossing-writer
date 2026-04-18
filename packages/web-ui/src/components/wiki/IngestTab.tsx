@@ -68,7 +68,20 @@ export function IngestTab({ model, cart }: IngestTabProps) {
     return list;
   }, [articles, search, heatmapDates]);
 
-  const duplicates = useMemo(() => new Set<string>(), []);
+  // Mark articles whose ingest_status indicates they've already been
+  // written to the wiki (either via the legacy tag pipeline or via the
+  // new wiki_ingest_marks table — the server promotes marks into a
+  // "wiki_marked" status value for this purpose). These rows render as
+  // disabled in ArticleList and are excluded from the "全选 N 篇" count.
+  const duplicates = useMemo(() => {
+    const s = new Set<string>();
+    for (const a of articles) {
+      if (a.ingest_status !== "raw" && a.ingest_status !== "tag_failed") {
+        s.add(a.id);
+      }
+    }
+    return s;
+  }, [articles]);
   const selectedIds = useMemo(() => new Set(cart.entries.map((e) => e.articleId)), [cart.entries]);
 
   function toggleArticle(articleId: string) {
