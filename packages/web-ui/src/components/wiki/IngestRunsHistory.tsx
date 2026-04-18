@@ -1,10 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  listIngestRuns,
-  getIngestRun,
-  type IngestRunSummary,
-  type IngestRunDetail,
-} from "../../api/wiki-client";
+import type { IngestRunSummary, IngestRunDetail } from "../../api/wiki-client";
 import { formatBeijingShort } from "../../utils/time";
 
 interface Props {
@@ -39,29 +34,84 @@ function duration(started: string, finished: string | null): string {
 
 export function IngestRunsHistory({ onOpenPage }: Props) {
   const [runs, setRuns] = useState<IngestRunSummary[] | null>(null);
+  const [runsError, setRunsError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detail, setDetail] = useState<IngestRunDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
+  // Initial load + manual retry. We defend against the fetch stalling
+  // (e.g., browser's HTTP/1.1 connection pool saturated by concurrent
+  // ingest SSE streams) by imposing an 8s client-side deadline.
   useEffect(() => {
-    void listIngestRuns({ limit: 50 }).then(setRuns).catch(() => setRuns([]));
-  }, []);
+    let cancelled = false;
+    setRuns(null);
+    setRunsError(null);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    fetch("/api/kb/wiki/runs?limit=50", { signal: ctrl.signal })
+      .then(async (r) => {
+        clearTimeout(timer);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = (await r.json()) as IngestRunSummary[];
+        if (!cancelled) { setRuns(data); setRunsError(null); }
+      })
+      .catch((err: unknown) => {
+        clearTimeout(timer);
+        if (cancelled) return;
+        const msg = (err as Error)?.name === "AbortError"
+          ? "加载超时（可能是浏览器连接池被占满），稍后点重试"
+          : `加载失败：${(err as Error)?.message ?? "unknown"}`;
+        setRuns([]);
+        setRunsError(msg);
+      });
+    return () => { cancelled = true; clearTimeout(timer); ctrl.abort(); };
+  }, [reloadKey]);
+
+  // Same connection-pool defense as the list fetch above.
+  const fetchDetail = (id: string, signal?: AbortSignal) =>
+    fetch(`/api/kb/wiki/runs/${encodeURIComponent(id)}`, { signal })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return (await r.json()) as IngestRunDetail;
+      });
 
   useEffect(() => {
     if (!activeId) { setDetail(null); return; }
+    let cancelled = false;
     setDetailLoading(true);
-    void getIngestRun(activeId)
-      .then(setDetail)
-      .catch(() => setDetail(null))
-      .finally(() => setDetailLoading(false));
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    fetchDetail(activeId, ctrl.signal)
+      .then((d) => { if (!cancelled) setDetail(d); })
+      .catch(() => { if (!cancelled) setDetail(null); })
+      .finally(() => {
+        clearTimeout(timer);
+        if (!cancelled) setDetailLoading(false);
+      });
+    return () => { cancelled = true; clearTimeout(timer); ctrl.abort(); };
   }, [activeId]);
 
-  // Poll every 3s while the selected run is still running, so live ops/stats update in place
+  // Poll every 3s while the selected run is still running, so live
+  // ops/stats update in place. Each poll has its own 4s timeout so a
+  // temporarily-stalled slot doesn't wedge subsequent polls.
   useEffect(() => {
     if (!activeId || detail?.status !== "running") return;
     const t = setInterval(() => {
-      void getIngestRun(activeId).then(setDetail).catch(() => {});
-      void listIngestRuns({ limit: 50 }).then(setRuns).catch(() => {});
+      const detailCtrl = new AbortController();
+      const detailTimer = setTimeout(() => detailCtrl.abort(), 4000);
+      fetchDetail(activeId, detailCtrl.signal)
+        .then(setDetail)
+        .catch(() => {})
+        .finally(() => clearTimeout(detailTimer));
+
+      const listCtrl = new AbortController();
+      const listTimer = setTimeout(() => listCtrl.abort(), 4000);
+      fetch("/api/kb/wiki/runs?limit=50", { signal: listCtrl.signal })
+        .then(async (r) => r.ok ? (await r.json()) as IngestRunSummary[] : null)
+        .then((d) => { if (d) setRuns(d); })
+        .catch(() => {})
+        .finally(() => clearTimeout(listTimer));
     }, 3000);
     return () => clearInterval(t);
   }, [activeId, detail?.status]);
@@ -112,7 +162,16 @@ export function IngestRunsHistory({ onOpenPage }: Props) {
     return <div className="py-12 text-center text-sm text-[var(--meta)]">加载中…</div>;
   }
   if (runs.length === 0) {
-    return <div className="py-12 text-center text-sm text-[var(--faint)]">暂无入库记录</div>;
+    return (
+      <div className="py-12 text-center text-sm">
+        {runsError
+          ? <div className="text-[var(--amber)] space-y-2">
+              <div>{runsError}</div>
+              <button type="button" onClick={() => setReloadKey((k) => k + 1)} className="text-[var(--accent)] hover:underline">重试</button>
+            </div>
+          : <span className="text-[var(--faint)]">暂无入库记录</span>}
+      </div>
+    );
   }
 
   return (
