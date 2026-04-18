@@ -182,16 +182,25 @@ export function AccountHeatmap({ account, selectedDates, onDateToggle, onClearDa
 
   // Hit-test a pointer position against the grid to find the underlying
   // date. We take the SVG's bounding rect then reverse the layout.
+  // Returns null if the pointer is on an empty cell (total=0), a gap, or
+  // the header row — callers use that null to switch into box-selection.
   const cellAtPoint = (svg: SVGSVGElement, clientX: number, clientY: number): string | null => {
     const r = svg.getBoundingClientRect();
     const x = clientX - r.left;
     const y = clientY - r.top - 16;
     if (x < 0 || y < 0) return null;
-    const w = Math.floor(x / (cellSize + gap));
-    const d = Math.floor(y / (cellSize + gap));
+    const cellStride = cellSize + gap;
+    const w = Math.floor(x / cellStride);
+    const d = Math.floor(y / cellStride);
     if (w < 0 || w >= weeks || d < 0 || d > 6) return null;
+    // Guard against gap pixels between cells so a press in the 2px
+    // seam lands on "blank" and starts the rubberband.
+    const localX = x - w * cellStride;
+    const localY = y - d * cellStride;
+    if (localX >= cellSize || localY >= cellSize) return null;
     const idx = w * 7 + d;
-    return cells[idx]?.date ?? null;
+    const c = cells[idx];
+    return c && c.total > 0 ? c.date : null;
   };
 
   return (
@@ -207,20 +216,21 @@ export function AccountHeatmap({ account, selectedDates, onDateToggle, onClearDa
             const localY = e.clientY - r.top;
             e.preventDefault();
             e.currentTarget.setPointerCapture(e.pointerId);
-            if (e.shiftKey) {
-              // Rubberband mode: every cell inside the box gets added on release.
-              dragModeRef.current = "box";
-              boxAnchorRef.current = { x: localX, y: localY };
-              setBoxRect({ x: localX, y: localY, w: 0, h: 0 });
-              setDraft(new Set(selectedDates ?? []));
-            } else {
-              const date = cellAtPoint(e.currentTarget, e.clientX, e.clientY);
-              if (!date) return;
+            const date = cellAtPoint(e.currentTarget, e.clientX, e.clientY);
+            if (date) {
+              // Press started on a real cell: paint mode.
               const alreadyIn = selectedDates?.has(date) ?? false;
               dragModeRef.current = alreadyIn ? "paint-remove" : "paint-add";
               const next = new Set(selectedDates ?? []);
               if (alreadyIn) next.delete(date); else next.add(date);
               setDraft(next);
+            } else {
+              // Press started on a blank spot (gap, empty cell, header):
+              // rubberband mode.
+              dragModeRef.current = "box";
+              boxAnchorRef.current = { x: localX, y: localY };
+              setBoxRect({ x: localX, y: localY, w: 0, h: 0 });
+              setDraft(new Set(selectedDates ?? []));
             }
           }}
           onPointerMove={(e) => {
@@ -324,7 +334,7 @@ export function AccountHeatmap({ account, selectedDates, onDateToggle, onClearDa
         <span className="ml-auto text-[10px] text-[var(--faint)]">
           {(selectedDates?.size ?? 0) > 0
             ? <>已选 {selectedDates!.size} 天 · <button type="button" onClick={() => onClearDates?.()} className="text-[var(--accent)] hover:underline">清空</button></>
-            : "点击或拖拽选多天（Shift+拖 框选）"}
+            : "点格子切换 · 按格子拖连选 · 按空白拖框选"}
         </span>
       </div>
     </div>
