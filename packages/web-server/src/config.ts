@@ -30,7 +30,7 @@ export interface ServerConfig {
 }
 
 const HARDCODED_DEFAULT_MODEL: DefaultModelConfig = {
-  writer: { cli: "claude", model: "claude-opus-4-6" },
+  writer: { cli: "claude", model: "claude-opus-4-7" },
   other:  { cli: "claude", model: "claude-sonnet-4-5" },
 };
 

@@ -75,7 +75,7 @@ describe("SP-19 E2E: ContextBundle end-to-end", () => {
     await runWriter({
       projectId: env.projectId, projectsDir: env.projectsDir,
       store: env.store, vaultPath: env.vault, sqlitePath: join(env.vault, "kb.sqlite"),
-      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
+      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-7' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
       contextBundleService: env.svc,
     });
     expect(captured.some((c) => c.userMessage.includes("INITIAL-BRIEF"))).toBe(true);
@@ -86,7 +86,7 @@ describe("SP-19 E2E: ContextBundle end-to-end", () => {
     await runWriter({
       projectId: env.projectId, projectsDir: env.projectsDir,
       store: env.store, vaultPath: env.vault, sqlitePath: join(env.vault, "kb.sqlite"),
-      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
+      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-7' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
       contextBundleService: env.svc,
     });
     expect(captured.length).toBeGreaterThan(0);
@@ -104,7 +104,7 @@ describe("SP-19 E2E: ContextBundle end-to-end", () => {
     await runWriter({
       projectId: env.projectId, projectsDir: env.projectsDir,
       store: env.store, vaultPath: env.vault, sqlitePath: join(env.vault, "kb.sqlite"),
-      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
+      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-7' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
       contextBundleService: env.svc,
     });
     expect(captured.length).toBeGreaterThan(0);

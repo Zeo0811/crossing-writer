@@ -12,9 +12,9 @@ import {
 } from "../../api/writer-client.js";
 
 const MODEL_CHOICES: Array<{ label: string; value: DefaultModelEntry }> = [
-  { label: "claude · claude-opus-4-6", value: { cli: "claude", model: "claude-opus-4-6" } },
+  { label: "claude · claude-opus-4-7", value: { cli: "claude", model: "claude-opus-4-7" } },
   { label: "claude · claude-sonnet-4-5", value: { cli: "claude", model: "claude-sonnet-4-5" } },
-  { label: "codex · gpt-5", value: { cli: "codex", model: "gpt-5" } },
+  { label: "codex · gpt-5.4", value: { cli: "codex", model: "gpt-5.4" } },
 ];
 
 type WriterAgentKey = "writer.opening" | "writer.practice" | "writer.closing";

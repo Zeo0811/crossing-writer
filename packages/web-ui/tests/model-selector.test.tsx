@@ -15,9 +15,15 @@ describe("ModelSelector", () => {
   });
 
   it("reads saved value from localStorage", () => {
+    localStorage.setItem("crossing:wiki:model", JSON.stringify({ cli: "codex", model: "gpt-5.4" }));
+    render(<ModelSelector onChange={() => {}} />);
+    expect(screen.getByText(/codex\/gpt-5\.4/)).toBeInTheDocument();
+  });
+
+  it("migrates legacy codex model id (gpt-5) to current default", () => {
     localStorage.setItem("crossing:wiki:model", JSON.stringify({ cli: "codex", model: "gpt-5" }));
     render(<ModelSelector onChange={() => {}} />);
-    expect(screen.getByText(/codex\/gpt-5/)).toBeInTheDocument();
+    expect(screen.getByText(/codex\/gpt-5\.4/)).toBeInTheDocument();
   });
 
   it("onChange called with initial value on mount", () => {

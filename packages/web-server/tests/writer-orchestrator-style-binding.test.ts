@@ -111,7 +111,7 @@ describe("writer-orchestrator sp10 style binding integration", () => {
       store,
       vaultPath: vault,
       sqlitePath: join(vault, "kb.sqlite"),
-      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
+      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-7' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
       resolveStyleForAgent,
     });
 
@@ -162,7 +162,7 @@ describe("writer-orchestrator sp10 style binding integration", () => {
       store,
       vaultPath: vault,
       sqlitePath: join(vault, "kb.sqlite"),
-      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
+      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-7' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
       resolveStyleForAgent,
       onEvent,
     })) as any;
@@ -212,7 +212,7 @@ describe("writer-orchestrator sp10 style binding integration", () => {
       store,
       vaultPath: vault,
       sqlitePath: join(vault, "kb.sqlite"),
-      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
+      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-7' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
       resolveStyleForAgent,
     });
 

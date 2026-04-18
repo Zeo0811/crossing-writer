@@ -26,7 +26,7 @@ describe("POST /api/projects/:id/writer/start", () => {
     const p = await store.create({ name: "T" });
     await store.update(p.id, { status: "brief_ready" });
     const app = Fastify();
-    registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: { current: { agents: {}, defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } } } } as any });
+    registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: { current: { agents: {}, defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-7' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } } } } as any });
     await app.ready();
     const res = await app.inject({ method: "POST", url: `/api/projects/${p.id}/writer/start`, payload: {} });
     expect(res.statusCode).toBe(400);
@@ -41,7 +41,7 @@ describe("POST /api/projects/:id/writer/start", () => {
       ["writer.opening","writer.practice","writer.closing","practice.stitcher","style_critic"]
         .map((k) => [k, { cli: "claude", model: "opus" }])
     );
-    registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: { current: { agents: mockAgents, defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } } } } as any });
+    registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: { current: { agents: mockAgents, defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-7' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } } } } as any });
     await app.ready();
     const res = await app.inject({
       method: "POST", url: `/api/projects/${p.id}/writer/start`,
@@ -53,6 +53,6 @@ describe("POST /api/projects/:id/writer/start", () => {
     expect(project?.status).toBe("writing_configuring");
     expect((runWriter as any).mock.calls.length).toBe(1);
     const opts = (runWriter as any).mock.calls[0][0];
-    expect(opts.defaultModel.writer.model).toBe("claude-opus-4-6");
+    expect(opts.defaultModel.writer.model).toBe("claude-opus-4-7");
   });
 });

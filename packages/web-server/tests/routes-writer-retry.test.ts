@@ -21,7 +21,7 @@ describe("POST /writer/retry-failed", () => {
     const p = await store.create({ name: "T" });
     await store.update(p.id, { status: "writing_ready" });
     const app = Fastify();
-    registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: { current: { agents: {}, defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } } } } as any });
+    registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: { current: { agents: {}, defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-7' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } } } } as any });
     await app.ready();
     const res = await app.inject({ method: "POST", url: `/api/projects/${p.id}/writer/retry-failed` });
     expect(res.statusCode).toBe(400);
@@ -38,7 +38,7 @@ describe("POST /writer/retry-failed", () => {
       writer_failed_sections: ["practice.case-01"],
     });
     const app = Fastify();
-    registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: { current: { agents: {}, defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } } } } as any });
+    registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: { current: { agents: {}, defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-7' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } } } } as any });
     await app.ready();
     const res = await app.inject({ method: "POST", url: `/api/projects/${p.id}/writer/retry-failed` });
     expect(res.statusCode).toBe(200);

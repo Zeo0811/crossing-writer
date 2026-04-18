@@ -36,7 +36,7 @@ describe('runWriterBookend', () => {
   it('invokes tool runner with role=opening system prompt', async () => {
     const invokeAgent = vi.fn(async () => ({
       text: '测试开头段正文。',
-      meta: { cli: 'claude', model: 'claude-opus-4-6', durationMs: 100 },
+      meta: { cli: 'claude', model: 'claude-opus-4-7', durationMs: 100 },
     }));
     const dispatchTool = vi.fn(async () => ({
       ok: true as const,
@@ -74,7 +74,7 @@ describe('runWriterBookend', () => {
   it('invokes tool runner with role=closing system prompt', async () => {
     const invokeAgent = vi.fn(async () => ({
       text: '测试结尾段。',
-      meta: { cli: 'claude', model: 'claude-opus-4-6', durationMs: 100 },
+      meta: { cli: 'claude', model: 'claude-opus-4-7', durationMs: 100 },
     }));
     const dispatchTool = vi.fn(async () => ({
       ok: true as const,

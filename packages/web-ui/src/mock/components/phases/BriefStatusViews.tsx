@@ -17,7 +17,7 @@ export function BriefAnalyzingView() {
     <div className="rounded bg-[var(--bg-2)] p-8 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-base text-[var(--heading)] font-semibold">正在解析…</h2>
-        <span className="text-xs text-[var(--meta)]">Brief Analyst · claude-opus-4-6</span>
+        <span className="text-xs text-[var(--meta)]">Brief Analyst · claude-opus-4-7</span>
       </div>
       <div className="space-y-2">
         {[80, 60, 90, 50, 70].map((w, i) => (

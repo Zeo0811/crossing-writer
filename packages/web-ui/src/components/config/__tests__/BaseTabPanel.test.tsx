@@ -4,7 +4,7 @@ import { BaseTabPanel } from "../BaseTabPanel.js";
 
 vi.mock("../../../api/writer-client.js", () => ({
   getDefaultModel: vi.fn().mockResolvedValue({
-    writer: { cli: "claude", model: "claude-opus-4-6" },
+    writer: { cli: "claude", model: "claude-opus-4-7" },
     other: { cli: "claude", model: "claude-sonnet-4-5" },
   }),
   setDefaultModel: vi.fn().mockResolvedValue(undefined),

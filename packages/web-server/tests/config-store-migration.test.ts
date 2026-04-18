@@ -22,17 +22,17 @@ describe('loadServerConfig — defaultModel migration', () => {
       sqlitePath: '/tmp/kb.sqlite',
       modelAdapter: { defaultCli: 'claude', fallbackCli: 'codex' },
       agents: {
-        'writer.opening': { cli: 'claude', model: 'claude-opus-4-6' },
+        'writer.opening': { cli: 'claude', model: 'claude-opus-4-7' },
         'brief_analyst':  { cli: 'claude', model: 'claude-sonnet-4-5' },
       },
     }, null, 2));
 
     const cfg = loadServerConfig(cfgPath);
-    expect(cfg.defaultModel.writer).toEqual({ cli: 'claude', model: 'claude-opus-4-6' });
+    expect(cfg.defaultModel.writer).toEqual({ cli: 'claude', model: 'claude-opus-4-7' });
     expect(cfg.defaultModel.other).toEqual({ cli: 'claude', model: 'claude-sonnet-4-5' });
 
     const raw = JSON.parse(readFileSync(cfgPath, 'utf-8'));
-    expect(raw.defaultModel.writer.model).toBe('claude-opus-4-6');
+    expect(raw.defaultModel.writer.model).toBe('claude-opus-4-7');
     expect(raw.defaultModel.other.model).toBe('claude-sonnet-4-5');
     expect(raw.agents['writer.opening'].model).toBeUndefined();
     expect(raw.agents['brief_analyst'].model).toBeUndefined();
@@ -44,7 +44,7 @@ describe('loadServerConfig — defaultModel migration', () => {
       modelAdapter: { defaultCli: 'claude', fallbackCli: 'codex' },
       agents: {
         'writer.opening': {
-          cli: 'claude', model: 'claude-opus-4-6',
+          cli: 'claude', model: 'claude-opus-4-7',
           reference_accounts: ['acct1', 'acct2'],
         },
       },
@@ -60,7 +60,7 @@ describe('loadServerConfig — defaultModel migration', () => {
       vaultPath: '/tmp/vault', sqlitePath: '/tmp/kb.sqlite',
       modelAdapter: { defaultCli: 'claude', fallbackCli: 'codex' },
       defaultModel: {
-        writer: { cli: 'claude', model: 'claude-opus-4-6' },
+        writer: { cli: 'claude', model: 'claude-opus-4-7' },
         other:  { cli: 'claude', model: 'claude-sonnet-4-5' },
       },
       agents: {},
@@ -69,7 +69,7 @@ describe('loadServerConfig — defaultModel migration', () => {
     loadServerConfig(cfgPath);
     loadServerConfig(cfgPath);
     const raw = JSON.parse(readFileSync(cfgPath, 'utf-8'));
-    expect(raw.defaultModel.writer.model).toBe('claude-opus-4-6');
+    expect(raw.defaultModel.writer.model).toBe('claude-opus-4-7');
   });
 
   it('no agents at all → hardcoded safe defaults', () => {
@@ -80,7 +80,7 @@ describe('loadServerConfig — defaultModel migration', () => {
     }, null, 2));
     const cfg = loadServerConfig(cfgPath);
     expect(cfg.defaultModel.writer.cli).toBe('claude');
-    expect(cfg.defaultModel.writer.model).toBe('claude-opus-4-6');
+    expect(cfg.defaultModel.writer.model).toBe('claude-opus-4-7');
     expect(cfg.defaultModel.other.cli).toBe('claude');
     expect(cfg.defaultModel.other.model).toBe('claude-sonnet-4-5');
   });
@@ -95,7 +95,7 @@ describe('loadServerConfig — handles both flat and nested model shapes', () =>
       agents: {
         'writer.opening': {
           agentKey: 'writer.opening',
-          model: { cli: 'claude', model: 'claude-opus-4-6' },
+          model: { cli: 'claude', model: 'claude-opus-4-7' },
         },
         'brief_analyst': {
           agentKey: 'brief_analyst',
@@ -105,7 +105,7 @@ describe('loadServerConfig — handles both flat and nested model shapes', () =>
     }, null, 2));
 
     const cfg = loadServerConfig(cfgPath);
-    expect(cfg.defaultModel.writer).toEqual({ cli: 'claude', model: 'claude-opus-4-6' });
+    expect(cfg.defaultModel.writer).toEqual({ cli: 'claude', model: 'claude-opus-4-7' });
     expect(cfg.defaultModel.other).toEqual({ cli: 'claude', model: 'claude-sonnet-4-5' });
     // No double-wrapping
     expect(typeof cfg.defaultModel.writer.model).toBe('string');
@@ -118,7 +118,7 @@ describe('loadServerConfig — handles both flat and nested model shapes', () =>
       sqlitePath: '/tmp/kb.sqlite',
       modelAdapter: { defaultCli: 'claude', fallbackCli: 'codex' },
       agents: {
-        'writer.opening': { cli: 'claude', model: 'claude-opus-4-6' },
+        'writer.opening': { cli: 'claude', model: 'claude-opus-4-7' },
         'brief_analyst':  {
           agentKey: 'brief_analyst',
           model: { cli: 'claude', model: 'claude-sonnet-4-5' },
@@ -127,7 +127,7 @@ describe('loadServerConfig — handles both flat and nested model shapes', () =>
     }, null, 2));
 
     const cfg = loadServerConfig(cfgPath);
-    expect(cfg.defaultModel.writer).toEqual({ cli: 'claude', model: 'claude-opus-4-6' });
+    expect(cfg.defaultModel.writer).toEqual({ cli: 'claude', model: 'claude-opus-4-7' });
     expect(cfg.defaultModel.other).toEqual({ cli: 'claude', model: 'claude-sonnet-4-5' });
   });
 
@@ -140,13 +140,13 @@ describe('loadServerConfig — handles both flat and nested model shapes', () =>
       agents: {
         'writer.opening': {
           cli: 'claude',
-          model: { cli: 'codex', model: 'gpt-5' },
+          model: { cli: 'codex', model: 'gpt-5.4' },
         },
       },
     }, null, 2));
 
     const cfg = loadServerConfig(cfgPath);
-    expect(cfg.defaultModel.writer).toEqual({ cli: 'codex', model: 'gpt-5' });
+    expect(cfg.defaultModel.writer).toEqual({ cli: 'codex', model: 'gpt-5.4' });
   });
 
   it('missing model entirely → cli-only DefaultModelEntry (no model field)', () => {

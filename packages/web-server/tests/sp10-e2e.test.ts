@@ -193,7 +193,7 @@ function serverConfig() {
     defaultCli: "claude" as const,
     fallbackCli: "claude" as const,
     defaultModel: {
-      writer: { cli: "claude" as const, model: "claude-opus-4-6" },
+      writer: { cli: "claude" as const, model: "claude-opus-4-7" },
       other: { cli: "claude" as const, model: "claude-sonnet-4-5" },
     },
     agents: {} as Record<string, unknown>,

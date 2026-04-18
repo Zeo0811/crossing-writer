@@ -103,7 +103,7 @@ describe("writer orchestrator forwards tool_* events to SSE via event log", () =
       store,
       vaultPath: vault,
       sqlitePath: join(vault, "kb.sqlite"),
-      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
+      defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-7' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } },
     });
 
     const events = readFileSync(join(pDir, "events.jsonl"), "utf-8");

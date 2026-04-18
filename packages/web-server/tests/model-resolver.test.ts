@@ -3,7 +3,7 @@ import { resolveModelForAgent } from '../src/services/model-resolver.js';
 import type { DefaultModelConfig } from '../src/config.js';
 
 const DM: DefaultModelConfig = {
-  writer: { cli: 'claude', model: 'claude-opus-4-6' },
+  writer: { cli: 'claude', model: 'claude-opus-4-7' },
   other:  { cli: 'claude', model: 'claude-sonnet-4-5' },
 };
 

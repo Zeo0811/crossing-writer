@@ -33,7 +33,7 @@ export async function composePanel(
   const resp = await opts.invoke({
     systemPrompt: loadSystemPrompt(),
     userMessage,
-    model: 'claude-opus-4-6',
+    model: 'claude-opus-4-7',
   });
   const cleaned = stripOuterFences(resp.text);
   validateOutput(cleaned);

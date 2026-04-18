@@ -87,19 +87,19 @@ describe("ProjectOverridePanel", () => {
     await waitFor(() => expect(screen.getByText("writer.opening")).toBeInTheDocument());
 
     const modelSel = screen.getByTestId("override-model-writer.opening") as HTMLSelectElement;
-    fireEvent.change(modelSel, { target: { value: "codex::gpt-5" } });
+    fireEvent.change(modelSel, { target: { value: "codex::gpt-5.4" } });
 
     fireEvent.click(screen.getByRole("button", { name: /保存/ }));
 
     await waitFor(() => expect(setProjectOverride).toHaveBeenCalled());
     const [pid, payload] = vi.mocked(setProjectOverride).mock.calls[0]!;
     expect(pid).toBe("p1");
-    expect(payload.agents["writer.opening"]?.model).toEqual({ cli: "codex", model: "gpt-5" });
+    expect(payload.agents["writer.opening"]?.model).toEqual({ cli: "codex", model: "gpt-5.4" });
   });
 
   it("clear override button calls clearProjectAgentOverride for that agent", async () => {
     vi.mocked(getProjectOverride).mockResolvedValue({
-      agents: { "writer.opening": { model: { cli: "codex", model: "gpt-5" } } },
+      agents: { "writer.opening": { model: { cli: "codex", model: "gpt-5.4" } } },
     });
     render(<ProjectOverridePanel projectId="p1" onClose={() => {}} />);
     await waitFor(() => expect(screen.getByText("writer.opening")).toBeInTheDocument());

@@ -66,7 +66,7 @@ function OverviewAnalyzing() {
     <div className="rounded bg-[var(--bg-2)] p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div className="text-sm text-[var(--heading)] font-semibold">正在抓取并归纳…</div>
-        <span className="text-xs text-[var(--meta)]">Overview Analyst · claude-opus-4-6</span>
+        <span className="text-xs text-[var(--meta)]">Overview Analyst · claude-opus-4-7</span>
       </div>
       <div className="space-y-2">
         {[85, 70, 92, 60, 78].map((w, i) => (

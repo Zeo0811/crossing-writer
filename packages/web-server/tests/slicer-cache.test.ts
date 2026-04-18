@@ -16,7 +16,7 @@ describe("SlicerCache", () => {
     const cache = new SlicerCache({ vaultRoot: freshVault() });
     const k1 = cache.computeKey({ model: "claude-sonnet-4-5", body: "hello", promptHash: "abc" });
     const k2 = cache.computeKey({ model: "claude-sonnet-4-5", body: "hello", promptHash: "abc" });
-    const k3 = cache.computeKey({ model: "claude-opus-4-6", body: "hello", promptHash: "abc" });
+    const k3 = cache.computeKey({ model: "claude-opus-4-7", body: "hello", promptHash: "abc" });
     expect(k1).toMatch(/^[a-f0-9]{16}$/);
     expect(k1).toBe(k2);
     expect(k1).not.toBe(k3);

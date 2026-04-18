@@ -19,7 +19,7 @@ async function setupWithArticle() {
   await as.writeSection("opening", { key: "opening", frontmatter: { section: "opening", last_agent: "writer.opening", last_updated_at: "2026-04-14T00:00:00Z" }, body: "# 开头\n" + "x".repeat(300) });
   await as.writeSection("closing", { key: "closing", frontmatter: { section: "closing", last_agent: "writer.closing", last_updated_at: "2026-04-14T00:00:00Z" }, body: "结尾" });
   const app = Fastify();
-  registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: { current: { agents: {}, defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } } } } as any });
+  registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: { current: { agents: {}, defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-7' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } } } } as any });
   await app.ready();
   return { app, projectId: p.id, store, projectsDir };
 }
@@ -42,7 +42,7 @@ describe("GET /writer/sections", () => {
     const p = await store.create({ name: "T" });
     await store.update(p.id, { status: "evidence_ready" });
     const app = Fastify();
-    registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: { current: { agents: {}, defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-6' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } } } } as any });
+    registerWriterRoutes(app, { store, projectsDir, vaultPath: vault, sqlitePath: join(vault, "kb.sqlite"), configStore: { current: { agents: {}, defaultModel: { writer: { cli: 'claude', model: 'claude-opus-4-7' }, other: { cli: 'claude', model: 'claude-sonnet-4-5' } } } } as any });
     await app.ready();
     const res = await app.inject({ method: "GET", url: `/api/projects/${p.id}/writer/sections` });
     expect(res.statusCode).toBe(200);
