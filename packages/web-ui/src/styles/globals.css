@@ -65,6 +65,65 @@ body {
   transform-origin: center;
 }
 
+/* ============================================================
+   Writer mascot — 3-frame loop: laptop out → typing → hand off
+   ============================================================ */
+.writer-mascot { display: inline-flex; align-items: center; line-height: 0; }
+.writer-mascot svg { image-rendering: pixelated; display: block; }
+/* Mascot palette — unified 3-color: pink, dark, cream. Fully theme-independent
+   so no accent-green leaks onto the blob, paper, or details. */
+.writer-mascot .wm-pink  { fill: var(--pink); }
+.writer-mascot .wm-dark  { fill: #1a1a1a; }
+.writer-mascot .wm-light { fill: #f5ecd2; }
+
+.writer-mascot .wm-frame { opacity: 0; }
+.writer-mascot .wm-f1 { animation: wm-f1 3.6s steps(1, end) infinite; }
+.writer-mascot .wm-f2 { animation: wm-f2 3.6s steps(1, end) infinite; }
+.writer-mascot .wm-f3 { animation: wm-f3 3.6s steps(1, end) infinite; }
+
+@keyframes wm-f1 {
+  0%, 32.9%        { opacity: 1; }
+  33%, 100%        { opacity: 0; }
+}
+@keyframes wm-f2 {
+  0%, 32.9%        { opacity: 0; }
+  33%, 65.9%       { opacity: 1; }
+  66%, 100%        { opacity: 0; }
+}
+@keyframes wm-f3 {
+  0%, 65.9%        { opacity: 0; }
+  66%, 99.9%       { opacity: 1; }
+}
+
+/* Per-frame micro-motion for life */
+.writer-mascot .wm-blink      { animation: wm-blink 0.9s steps(2, end) infinite; }
+.writer-mascot .wm-sparkle    { animation: wm-blink 0.35s steps(2, end) infinite; }
+.writer-mascot .wm-type-lines { animation: wm-type 0.45s steps(3, end) infinite; }
+.writer-mascot .wm-shake      { animation: wm-shake 0.18s steps(2, end) infinite; transform-origin: center; }
+
+@keyframes wm-blink {
+  0%,49%  { opacity: 1; }
+  50%,100%{ opacity: 0.35; }
+}
+@keyframes wm-type {
+  0%   { transform: translateY(0); }
+  50%  { transform: translateY(0.5px); }
+  100% { transform: translateY(0); }
+}
+@keyframes wm-shake {
+  0%,100% { transform: translate(0, 0); }
+  50%     { transform: translate(0.5px, -0.5px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .writer-mascot .wm-f1 { animation: none; opacity: 1; }
+  .writer-mascot .wm-f2,
+  .writer-mascot .wm-f3 { animation: none; opacity: 0; }
+  .writer-mascot .wm-blink,
+  .writer-mascot .wm-sparkle,
+  .writer-mascot .wm-type-lines { animation: none; }
+}
+
 /* Markdown 渲染补齐：frontmatter 块通常会被 react-markdown 当 thematic break，单独处理下 */
 .prose :where(h1):not(:where([class~="not-prose"] *)) {
   color: var(--accent);

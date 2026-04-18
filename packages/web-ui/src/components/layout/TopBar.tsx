@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import { useTheme } from "../../hooks/useTheme";
 import { useCliHealth } from "../../hooks/useCliHealth";
 import { IconProjects, IconKnowledge, IconStyle, IconConfig, IconSettings } from "./PixelIcons";
+import { WriterMascot } from "./WriterMascot";
 
 const NAV_ITEMS = [
   { to: "/", label: "项目", icon: IconProjects, end: true },
@@ -22,29 +23,9 @@ export function TopBar() {
 
   return (
     <header className="flex items-center gap-6 rounded border border-[var(--hair)] bg-[var(--bg-1)] py-3 px-[18px]">
-      <NavLink to="/" className="flex items-baseline gap-2 group">
-        <span
-          className="text-[14px] tracking-[1.5px] text-[var(--accent)] group-hover:drop-shadow-[0_0_8px_var(--accent)] transition-all"
-          style={{ fontFamily: "var(--font-pixel)" }}
-        >
-          CROSSING.WRITER
-        </span>
-        <span
-          className="text-[10px] text-[var(--accent-dim)]"
-          style={{ fontFamily: "var(--font-pixel)" }}
-        >
-          v1.5
-        </span>
+      <NavLink to="/" className="group flex items-center" title="回项目列表">
+        <WriterMascot className="transition-opacity group-hover:opacity-80" />
       </NavLink>
-      <span
-        className="w-3 h-3 inline-block"
-        style={{
-          background:
-            "linear-gradient(180deg, var(--pink) 0 60%, color-mix(in srgb, var(--pink) 70%, #000) 60% 100%)",
-          boxShadow: "0 0 0 1px var(--pink-shadow)",
-        }}
-        aria-hidden
-      />
       <nav className="flex items-center gap-5 text-[13px]">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
