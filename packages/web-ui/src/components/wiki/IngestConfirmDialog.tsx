@@ -87,7 +87,10 @@ export function IngestConfirmDialog({ open, entries, model, onConfirm, onCancel 
               mode: "selected",
               cli_model: model,
               force_reingest: force,
-              max_articles: Math.max(entries.length, 50),
+              // IngestTab will split this into one run per article, each with
+              // max_articles=1, so the aggregate cap only needs to cover the
+              // full selection for pre-split validation.
+              max_articles: Math.max(entries.length, 1),
             }, effectiveConcurrency)}
           >
             确认

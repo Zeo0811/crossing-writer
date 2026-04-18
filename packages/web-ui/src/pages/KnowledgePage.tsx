@@ -29,7 +29,6 @@ const KIND_LABEL: Record<string, string> = {
   person: "人物 person",
 };
 
-const MAX_ARTICLES = 50;
 
 export function KnowledgePage() {
   const [mode, setMode] = useState<"browse" | "ingest">("browse");
@@ -44,7 +43,7 @@ export function KnowledgePage() {
   const [loading, setLoading] = useState(true);
 
   const ingest = useIngestState();
-  const cart = useIngestCart({ maxArticles: MAX_ARTICLES });
+  const cart = useIngestCart();
 
   useEffect(() => {
     Promise.all([

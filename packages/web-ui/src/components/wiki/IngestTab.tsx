@@ -23,7 +23,6 @@ export interface IngestTabProps {
   cart: UseIngestCartReturn;
 }
 
-const MAX_ARTICLES = 50;
 
 export function IngestTab({ model, cart }: IngestTabProps) {
   const [accounts, setAccounts] = useState<AccountStat[]>([]);
@@ -117,10 +116,13 @@ export function IngestTab({ model, cart }: IngestTabProps) {
     setShowConfirm(false);
     const ids = payload.article_ids ?? [];
     // One run per article. Concurrency caps how many run at once.
+    // Each single-article payload only ever projects 1 article, so
+    // omit max_articles and let the backend's default-of-1-per-request
+    // validation handle it.
     const payloads: IngestStartArgs[] = ids.map((id) => ({
       ...payload,
       article_ids: [id],
-      max_articles: 50,
+      max_articles: 1,
     }));
     ingest.startQueue(payloads, concurrency);
     cart.clear();
@@ -133,7 +135,6 @@ export function IngestTab({ model, cart }: IngestTabProps) {
       <div className="shrink-0">
         <IngestCartBar
           entries={cart.entries}
-          maxArticles={MAX_ARTICLES}
           onClear={cart.clear}
           onSubmit={() => setShowConfirm(true)}
         />

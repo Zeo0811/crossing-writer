@@ -132,8 +132,11 @@ export async function runIngest(opts: IngestOptions, ctx: Ctx): Promise<IngestRe
       throw new Error(`max_articles exceeded: cap=${maxArticles} projected=${projectedCount}`);
     }
   } else if (opts.mode === "selected") {
-    // Default cap of 50 for selected mode
-    const maxArticles = 50;
+    // Sanity cap for selected mode when the caller didn't pass an
+    // explicit max_articles. The UI fans out to one run per article
+    // and never hits this; the cap only catches scripts / direct API
+    // calls that forgot to bound themselves.
+    const maxArticles = 5000;
     const projectedCount = (opts.articleIds ?? []).length;
     if (projectedCount > maxArticles) {
       throw new Error(`max_articles exceeded: cap=${maxArticles} projected=${projectedCount}`);

@@ -61,9 +61,9 @@ export function registerKbWikiRoutes(app: FastifyInstance, deps: KbWikiDeps) {
     if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 20) {
       return reply.code(400).send({ error: "batch_size must be integer in [1, 20]" });
     }
-    const maxArticles = body.max_articles ?? 50;
-    if (!Number.isInteger(maxArticles) || maxArticles < 1 || maxArticles > 500) {
-      return reply.code(400).send({ error: "max_articles must be integer in [1, 500]" });
+    const maxArticles = body.max_articles ?? 5000;
+    if (!Number.isInteger(maxArticles) || maxArticles < 1 || maxArticles > 10000) {
+      return reply.code(400).send({ error: "max_articles must be integer in [1, 10000]" });
     }
 
     // Project count check (before expensive DB scans)

@@ -8,15 +8,10 @@ export interface CartEntry {
   wordCount: number | null;
 }
 
-export interface UseIngestCartInput {
-  maxArticles: number;
-}
-
 export interface UseIngestCartReturn {
   entries: CartEntry[];
   totalCount: number;
   perAccountCount: Map<string, number>;
-  exceedsMax: boolean;
   has: (articleId: string) => boolean;
   toggle: (entry: CartEntry) => void;
   remove: (articleId: string) => void;
@@ -25,7 +20,7 @@ export interface UseIngestCartReturn {
   clear: () => void;
 }
 
-export function useIngestCart({ maxArticles }: UseIngestCartInput): UseIngestCartReturn {
+export function useIngestCart(): UseIngestCartReturn {
   const [entries, setEntries] = useState<CartEntry[]>([]);
 
   const idSet = useMemo(() => new Set(entries.map((e) => e.articleId)), [entries]);
@@ -60,7 +55,6 @@ export function useIngestCart({ maxArticles }: UseIngestCartInput): UseIngestCar
     entries,
     totalCount: entries.length,
     perAccountCount,
-    exceedsMax: entries.length > maxArticles,
     has, toggle, remove, addMany, removeMany, clear,
   };
 }
