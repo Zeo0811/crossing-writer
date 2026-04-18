@@ -288,21 +288,36 @@ export function AccountHeatmap({ account, selectedDates, onDateToggle, onClearDa
               ? "var(--accent-soft)"
               : "var(--hair-strong)";
             const opacity = Math.min(0.3 + (c.total / 10) * 0.7, 1);
+            const x = c.week * (cellSize + gap);
+            const y = c.day * (cellSize + gap) + 16;
             return (
-              <rect
-                key={i}
-                x={c.week * (cellSize + gap)}
-                y={c.day * (cellSize + gap) + 16}
-                width={cellSize}
-                height={cellSize}
-                rx={2}
-                fill={fill}
-                opacity={opacity}
-                stroke={isSelected ? "var(--accent)" : "none"}
-                strokeWidth={isSelected ? 2 : 0}
-                className="cursor-pointer"
-                pointerEvents="none"
-              />
+              <g key={i} pointerEvents="none">
+                <rect
+                  x={x}
+                  y={y}
+                  width={cellSize}
+                  height={cellSize}
+                  rx={2}
+                  fill={fill}
+                  opacity={opacity}
+                />
+                {isSelected && (
+                  // Draw the accent border inset by 0.5px so the stroke sits
+                  // entirely inside the cell instead of bleeding 1px in each
+                  // direction — avoids the visual mess where adjacent
+                  // selected cells' outlines ran into the 2px inter-cell gap.
+                  <rect
+                    x={x + 0.5}
+                    y={y + 0.5}
+                    width={cellSize - 1}
+                    height={cellSize - 1}
+                    rx={1.5}
+                    fill="none"
+                    stroke="var(--accent)"
+                    strokeWidth={1}
+                  />
+                )}
+              </g>
             );
           })}
           {boxRect && (
