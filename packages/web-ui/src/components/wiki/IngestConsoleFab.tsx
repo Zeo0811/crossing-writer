@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { IngestProgressView } from "./IngestProgressView";
 import { IngestRunsHistory } from "./IngestRunsHistory";
+import { useTheme } from "../../hooks/useTheme";
 import type { IngestStreamEvent } from "../../api/wiki-client";
 
 function ConsoleTerminalIcon() {
@@ -35,6 +36,7 @@ export function IngestConsoleFab({ events, status, error, onDismiss, onOpenPage 
   const [tab, setTab] = useState<"current" | "history">(
     status === "idle" && events.length === 0 ? "history" : "current",
   );
+  const { theme, toggle: toggleTheme } = useTheme();
 
   const running = status === "running";
   const failed = status === "error";
@@ -105,6 +107,15 @@ export function IngestConsoleFab({ events, status, error, onDismiss, onOpenPage 
                   清空日志
                 </button>
               )}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                title={theme === "dark" ? "切到亮色" : "切到深色"}
+                aria-label="Toggle theme"
+                className="w-7 h-7 flex items-center justify-center rounded text-[var(--meta)] hover:text-[var(--heading)] hover:bg-[var(--bg-2)]"
+              >
+                <span className="text-sm" aria-hidden>{theme === "dark" ? "☾" : "☀"}</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
